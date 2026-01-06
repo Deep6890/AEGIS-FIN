@@ -1,0 +1,15 @@
+# System
+AppData/
+NTUSER.*
+.vscode/
+node_modules/
+__pycache__/
+.env
+
+# Python
+*.pyc
+.ipynb_checkpoints/
+
+# OS
+Thumbs.db
+desktop.ini
