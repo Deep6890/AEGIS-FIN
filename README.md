@@ -1,8 +1,12 @@
 # AEGIS-FIN
 # 🏦 Unified Business Health Prediction System (UBHPS)
-
-[![Language](https://img.shields.io/badge/Python-3.8%2B-blue?style=for-the-badge&logo=python)](https://www.python.org/)
-[![Framework](https://img.shields.io/badge/TensorFlow-2.0-orange?style=for-the-badge&logo=tensorflow)](https://www.tensorflow.org/)
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![React](https://img.shields.io/badge/React-18.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+[![Machine Learning](https://img.shields.io/badge/Machine_Learning-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)](https://www.tensorflow.org/)
+[![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
+[![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS)
+[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![Status](https://img.shields.io/badge/Status-Prototype-green?style=for-the-badge)](https://github.com/)
 [![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)](LICENSE)
 
@@ -13,7 +17,7 @@
 ## 🖼️ Project Preview
 
 <p align="center">
-  <img src="assets/dashboard_preview.png" alt="UBHPS Dashboard" width="100%">
+  <img src="https://www.vecteezy.com/vector-art/36289812-piggy-bank-with-bank-building-and-coins-flat-illustration-vector-template-saving-money-passive-income-investment-concept-moneybox-accumulation-money-deposit-money-banking" alt="UBHPS Dashboard" width="100%">
   <br>
   <em>Fig 1: The Risk Analysis Dashboard showing Entropy Vectors and Recovery Index</em>
 </p>
