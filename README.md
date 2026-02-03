@@ -17,7 +17,9 @@
 ## 🖼️ Project Preview
 
 <p align="center">
-  <img src="[https://www.vecteezy.com/vector-art/36289812-piggy-bank-with-bank-building-and-coins-flat-illustration-vector-template-saving-money-passive-income-investment-concept-moneybox-accumulation-money-deposit-money-banking](https://www.freepik.com/premium-vector/people-taking-out-money-from-bank-concept-illustration_33530836.htm)" alt="UBHPS Dashboard" width="100%">
+<img src="https://as1.ftcdn.net/jpg/08/08/99/46/1000_F_808994683_OUZEZt581lOYP0H2zGRXMZKJ5g87jkjx.webp"
+     alt="UBHPS Dashboard"
+     width="100%">
   <br>
   <em>Fig 1: The Risk Analysis Dashboard showing Entropy Vectors and Recovery Index</em>
 </p>
