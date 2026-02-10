@@ -1,0 +1,25 @@
+External things
+
+- 1) Machine learning 
+- 2) Data structure and algorithm 
+- 3) Maths
+- 4) Web development 
+
+Internal things 
+
+- 1) Database management system 
+- 2) Probabilistic python modeling
+- 3) Design analysis and algorithm
+- 4) Data analysis using R
+- 5) Social Network analysis 
+- 6) Software group project
+
+ Extra things 
+
+- 1) Smart - flare system
+- 2) Nptel - database management system
+- 3) Nptel - Social network analysis 
+- 4) Machine learning Andrew ng
+- 5) Google analysis certification 
+- 6) Stock market project 
+
