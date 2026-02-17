@@ -1,18 +1,31 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function MainNavBar() {
+    const navigate = useNavigate();
+    const location = useLocation();
+
     const items = [
-        "Overview",
-        "Trends",
-        "Risk Analysis",
-        "Risky Accounts",
-        "Claim Accounts",
-        "About",
+        { name: "Overview", path: "/" },
+        { name: "Risk Analysis", path: "/risk-analysis" },
+        { name: "Trends", path: "/trends" },
+        { name: "Risky Accounts", path: "/risky-accounts" },
+        { name: "Claim Accounts", path: "/claim-accounts" },
+        { name: "About", path: "/about" },
     ];
 
-    const [active, setActive] = useState("Overview");
+    const [active, setActive] = useState(
+        items.find(item => item.path === location.pathname)?.name || "Overview"
+    );
     const containerRef = useRef(null);
     const indicatorRef = useRef(null);
+
+    useEffect(() => {
+        const currentItem = items.find(item => item.path === location.pathname);
+        if (currentItem) {
+            setActive(currentItem.name);
+        }
+    }, [location.pathname]);
 
     const moveIndicator = () => {
         const activeBtn = containerRef.current?.querySelector(
@@ -31,29 +44,33 @@ export default function MainNavBar() {
         return () => window.removeEventListener("resize", moveIndicator);
     }, [active]);
 
+    const handleClick = (item) => {
+        setActive(item.name);
+        navigate(item.path);
+    };
+
     return (
         <div className="w-full flex justify-center px-4 py-4">
             <div
                 ref={containerRef}
                 className="relative h-13 w-full max-w-4xl bg-[#37363661] rounded-full flex items-center">
-                {/* Centered Sliding Indicator */}
                 <span
                     ref={indicatorRef}
                     className="pointer-events-none absolute top-1/2 -translate-y-1/2 h-12 bg-white rounded-full transition-all duration-700 ease-out shadow-lg" />
 
                 {items.map((item) => (
                     <button
-                        key={item}
-                        data-item={item}
-                        onClick={() => setActive(item)}
+                        key={item.name}
+                        data-item={item.name}
+                        onClick={() => handleClick(item)}
                         className={`relative z-10 flex-1 h-full flex items-center justify-center font-semibold transition-all duration-200
-                ${active === item
+                ${active === item.name
                                 ? "text-black text-base"
                                 : "text-white/70 text-sm hover:text-white"
                             }
                 `}
                     >
-                        {item}
+                        {item.name}
                     </button>
                 ))}
             </div>

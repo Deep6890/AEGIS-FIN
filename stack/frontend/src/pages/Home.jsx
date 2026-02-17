@@ -1,25 +1,14 @@
-import React from "react";
 import MainNavBar from "../components/Navbar/MainNavBar";
 import BannerElementCard from "../components/Cards/BannerElementCard";
 import InstentUpdateBannerCard from "../components/Cards/InstentUpdateBannerCard";
 import ChartCard from "../components/Cards/ChartCard";
+import TopMsme from "../components/Table/TopMsme";
+import NeuralRiskTree from "../components/Cards/NeuralRiskTree";
+import AccountPanel from "../components/Cards/AccountPanel";
 
 export default function Home() {
     return (
         <div className="w-full min-h-screen bg-black rounded-2xl px-4 sm:px-6 py-4 flex flex-col">
-
-            {/* HEADER */}
-            <header className="w-full">
-                <div className="max-w-7xl mx-auto flex items-center gap-4">
-                    <h1 className="text-lg sm:text-3xl font-semibold text-white">
-                        SmartFlare
-                    </h1>
-
-                    <div className="flex-1 flex justify-center">
-                        <MainNavBar />
-                    </div>
-                </div>
-            </header>
 
             {/* HERO */}
             <section className="max-w-7xl mx-auto w-full mt-10 flex flex-col lg:flex-row gap-8 items-start">
@@ -66,7 +55,7 @@ export default function Home() {
             {/* {Quick Summary } */}
             <section className="max-w-7xl mx-auto w-full mt-10 flex-col">
                 <div className="text-3xl text-amber-50 my-5">
-                    <span className="font-bold"> Important</span> , summary of bank's data
+                    <span className="font-bold"> Important</span> summary of bank's data
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                     <InstentUpdateBannerCard header="Total Registration" value="120120" />
@@ -80,13 +69,35 @@ export default function Home() {
             {/* Chart section*/}
             <section className="max-w-7xl mx-auto w-full mt-10 flex flex-col">
                 <div className="text-3xl text-amber-50 my-5">
-                    <span className="font-bold"> Trend </span> , the stockMarket
+                    <span className="font-bold"> Trend </span> the stockMarket
                 </div>
                 <ChartCard header="Sector Stock Market Trend">
                     {/* Chart Component Goes Here */}
                 </ChartCard>
             </section>
 
+            <section className="max-w-7xl mx-auto w-full mt-10 flex flex-col">
+                <div className="text-3xl text-amber-50 my-5">
+                    <span className="font-bold"> Top Performer </span> msme dashbord
+                </div>
+                <TopMsme />
+            </section>
+            <section className="max-w-7xl mx-auto w-full mt-10 flex flex-col">
+                <div className="text-3xl text-amber-50 my-5">
+                    <span className="font-bold"> Risk Distribution </span>
+                </div>
+                <div className="w-full h-auto justify-between flex-row flex gap-3 items-center">
+                    <ChartCard width={"40%"} height={"200px"} />
+                    <ChartCard width={"60%"} height={"400px"} />
+                </div>
+            </section>
+
+            <section className="max-w-7xl mx-auto w-full mt-10 flex flex-col">
+                <div className="text-3xl text-amber-50 my-5">
+                    <span className="font-bold"> Neural Network </span> Risk Analysis
+                </div>
+                <NeuralRiskTree />
+            </section>
         </div>
     );
 }
