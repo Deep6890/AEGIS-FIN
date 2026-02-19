@@ -1,15 +1,28 @@
-# System
-AppData/
-NTUSER.*
-.vscode/
-node_modules/
-__pycache__/
-.env
-
 # Python
+venv/
+__pycache__/
 *.pyc
+*.pyo
+*.egg-info/
 .ipynb_checkpoints/
+
+# Node
+node_modules/
+package-lock.json
+
+# Build
+dist/
+build/
+*.ows
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
 
 # OS
 Thumbs.db
 desktop.ini
+.DS_Store
