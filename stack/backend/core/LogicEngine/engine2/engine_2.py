@@ -9,19 +9,20 @@ def load_company_data(ticker):
     data = data.reset_index()
     return data
 
+
 def engine_2(df: pd.DataFrame, company: str):
 
     df = df.copy()
     df['Date'] = pd.to_datetime(df['Date'])
     df = df.sort_values('Date').set_index('Date')
 
-    # Closers chnageing 
+    # Closers changing 
     df['ret'] = df['Close'].pct_change()
     df['vol_20'] = df['ret'].rolling(20).std()
     df['atr_14'] = (df['High'] - df['Low']).rolling(14).mean()
 
-    # stability scores 
-    vol_norm = df['vol_20'].iloc[-1] / df['vol_20'].mean()
+    # stability scores (FIXED → recent vs recent)
+    vol_norm = df['vol_20'].iloc[-1] / df['vol_20'].rolling(200).mean().iloc[-1]
     stability_score = np.clip((1 - vol_norm) * 4, -4, 4)
 
     # Trend direction
@@ -36,9 +37,10 @@ def engine_2(df: pd.DataFrame, company: str):
     else:
         trend_dir_score = 0
 
-    # Trend character
-    slope = np.polyfit(range(50), df['Close'].iloc[-50:], 1)[0]
-    noise = df['Close'].iloc[-50:].std()
+    # Trend character (FIXED → log scale)
+    log_price = np.log(df['Close'].iloc[-50:])
+    slope = np.polyfit(range(50), log_price, 1)[0]
+    noise = np.std(np.diff(log_price))
     trend_character_score = np.clip((slope / noise) * 2, -4, 4)
 
     # Trend duration score 
@@ -49,18 +51,19 @@ def engine_2(df: pd.DataFrame, company: str):
     extension = (df['Close'].iloc[-1] - df['ma100'].iloc[-1]) / df['ma100'].iloc[-1]
     potential_score = np.clip((1 - abs(extension)) * 4, -4, 4)
 
-    # Spick frequency score 
-    spike_days = (abs(df['ret']) > 2 * df['ret'].std()).sum()
-    spike_score = np.clip(-spike_days / len(df) * 40, -4, 4)
+    # Spike frequency score (FIXED → recent only)
+    recent = df['ret'].iloc[-250:]
+    spike_days = (abs(recent) > 2 * recent.std()).sum()
+    spike_score = np.clip(-spike_days / 250 * 40, -4, 4)
 
-    # Confusion scores 
-    df['cum_max'] = df['Close'].cummax()
-    df['dd'] = (df['Close'] - df['cum_max']) / df['cum_max']
-    max_dd = df['dd'].min()
+    # Drawdown (FIXED → rolling peak instead of ATH)
+    rolling_peak = df['Close'].rolling(252).max()
+    df['dd'] = (df['Close'] - rolling_peak) / rolling_peak
+    max_dd = df['dd'].iloc[-252:].min()
     drawdown_score = np.clip(max_dd * 10, -4, 4)
 
-    # Volumne intelligence
-    vol_confirm = df['Volume'].iloc[-20:].mean() / df['Volume'].mean()
+    # Volume intelligence (FIXED → recent vs recent)
+    vol_confirm = df['Volume'].iloc[-20:].mean() / df['Volume'].rolling(200).mean().iloc[-1]
     volume_score = np.clip((vol_confirm - 1) * 4, -4, 4)
 
     # Recovery scores
