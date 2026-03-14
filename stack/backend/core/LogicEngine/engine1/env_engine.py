@@ -111,7 +111,7 @@ def mainExe():
         df, hist_scores = engine_2(sector_data, nifty, sector_name)
         all_results[sector_name] = {"full_df": df, "historical_scores": hist_scores}
         print(f"{sector_name} processed. Sample metrics:")
-        print(df.tail(3))
+        # print(df.tail(3))
         print("Historical comparison:", hist_scores)
     
     return all_results
