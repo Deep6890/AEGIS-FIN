@@ -1,33 +1,71 @@
-import GraphCard from "../components/Cards/GraphCard";
-import HighHeaders from "../components/Cards/HighHeaders";
-import HeaderNav from "../components/Navbar/HeaderNav";
-import VerticalNav from "../components/Navbar/VerticalNav";
+import { useState } from 'react';
+import HeaderNav from '../components/Navbar/HeaderNav';
+import VerticalNav from '../components/Navbar/VerticalNav';
 
-const cards = [
-  { name: 'Unstable Sector', points: 72, tagScore: 'High Risk', sentence: 'Sector showing volatile movement' },
-  { name: 'Unstable Company', points: 58, tagScore: 'Medium Risk', sentence: 'Company cash flow irregular' },
-  { name: 'Environment Risk', points: 45, tagScore: 'Low Risk', sentence: 'Macro environment under pressure' },
-];
+import KpiStatCards        from '../components/dashboard/KpiStatCards';
+import LiveMarketChart     from '../components/dashboard/LiveMarketChart';
+import RiskDistributionRow from '../components/dashboard/RiskDistributionRow';
+import NewsFeed            from '../components/dashboard/NewsFeed';
+import SectorCompanyList   from '../components/dashboard/SectorCompanyList';
+
+import {
+  kpiStats,
+  allSectors,
+  intradayNSE,
+  intradayBSE,
+  marketInfo,
+  sectorRiskDonut,
+  vixCurrent,
+  vixSparkline,
+  newsFeed,
+  sectorCompanyList,
+} from '../data/dashboardData';
 
 export default function Home() {
+  const [selectedSectors, setSelectedSectors] = useState([]);
+
   return (
-    <div className="h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-slate-50">
 
       <HeaderNav />
 
       <div className="flex flex-1 overflow-hidden">
-
         <VerticalNav />
 
-        <div className="flex-1 bg-[#EAE9E3] px-6 overflow-y-auto flex flex-col gap-4">
-          <div className="grid grid-cols-3 gap-4">
-            {cards.map((c) => (
-              <HighHeaders key={c.name} name={c.name} points={c.points} tagScore={c.tagScore} sentence={c.sentence} />
-            ))}
-          </div>
-          <GraphCard title="Risk Trend Overview" subtitle="Sector · Company · Environment" />
-        </div>
+        <main className="flex-1 px-5 py-4 flex flex-col gap-4 overflow-y-auto">
 
+          {/* ── SECTION 1: KPI Stat Cards ─────────────────────────────── */}
+          <KpiStatCards
+            stats={kpiStats}
+            sectors={allSectors}
+            selectedSectors={selectedSectors}
+            onSectorChange={setSelectedSectors}
+          />
+
+          {/* ── SECTION 2: Live Market Chart ──────────────────────────── */}
+          <LiveMarketChart
+            nseData={intradayNSE}
+            bseData={intradayBSE}
+            marketInfo={marketInfo}
+          />
+
+          {/* ── SECTION 3: Risk Distribution (Donut + VIX) ────────────── */}
+          <RiskDistributionRow
+            sectorRiskDonut={sectorRiskDonut}
+            vixCurrent={vixCurrent}
+            vixSparkline={vixSparkline}
+          />
+
+          {/* ── SECTION 4: News Feed + Company List ───────────────────── */}
+          <div className="flex gap-4">
+            <NewsFeed news={newsFeed} />
+            <SectorCompanyList
+              data={sectorCompanyList}
+              selectedSectors={selectedSectors}
+            />
+          </div>
+
+        </main>
       </div>
 
     </div>

@@ -15,12 +15,14 @@
     "@mui/material": "^7.3.9",
     "@mui/x-charts": "^8.27.5",
     "@tailwindcss/vite": "^4.1.18",
+    "clsx": "^2.1.1",
     "lucide-react": "^0.564.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0",
     "reactflow": "^11.11.4",
     "recharts": "^3.8.0",
+    "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.1.18"
   },
   "devDependencies": {

@@ -1,45 +1,72 @@
-import { MoreHorizontal, TrendingDown, Building2, Wind, AlertTriangle, ShieldAlert, Activity } from 'lucide-react';
+import { Activity, Building2, Wind, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 const iconMap = {
-    'Unstable Sector': { icon: TrendingDown, bg: 'bg-purple-100', color: 'text-purple-300' },
-    'Unstable Company': { icon: Building2, bg: 'bg-[#f5efe6]', color: 'text-[#c9a97a]' },
-    'Environment Risk': { icon: Wind, bg: 'bg-green-50', color: 'text-green-300' },
-    'Market Stress': { icon: AlertTriangle, bg: 'bg-purple-100', color: 'text-purple-300' },
-    'Credit Alert': { icon: ShieldAlert, bg: 'bg-[#f5efe6]', color: 'text-[#c9a97a]' },
-    'Volatility Index': { icon: Activity, bg: 'bg-green-50', color: 'text-green-300' },
+  companies: { icon: Building2 },
+  alerts:    { icon: Activity },
+  watch:     { icon: Wind },
 };
 
-const badgeColor = (t) => {
-    if (!t) return 'bg-gray-100 text-gray-500';
-    if (t.startsWith('+')) return 'bg-green-100 text-green-700';
-    if (t.startsWith('-')) return 'bg-red-100 text-red-600';
-    return 'bg-gray-100 text-gray-500';
+const tagStyle = {
+  Monitored: 'bg-slate-100 text-slate-600 border-slate-200',
+  Critical:  'bg-indigo-50 text-indigo-600 border-indigo-200',
+  Caution:   'bg-sky-50 text-sky-600 border-sky-200',
 };
 
-export default function HighHeaders({ name, points, tagScore, sentence }) {
-    const entry = iconMap[name] ?? { icon: Activity, bg: 'bg-gray-100', color: 'text-gray-600' };
-    const Icon = entry.icon;
-    return (
-        <div className="w-full bg-white rounded-2xl p-5 flex flex-col gap-3 shadow-sm">
+const DeltaIcon = ({ delta }) => {
+  if (!delta) return null;
+  if (delta.startsWith('+')) return <TrendingUp size={12} className="text-indigo-500" />;
+  if (delta.startsWith('-')) return <TrendingDown size={12} className="text-sky-500" />;
+  return <Minus size={12} className="text-slate-400" />;
+};
 
-            {/* Top Row */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${entry.bg}`}>
-                        <Icon size={18} className={entry.color} />
-                    </div>
-                    <span className="text-[14px] font-medium text-gray-700">{name}</span>
-                </div>
-                <MoreHorizontal size={18} className="text-gray-400 cursor-pointer" />
-            </div>
+export default function HighHeaders({ id, name, tagline, points, delta, sub, tagScore }) {
+  const entry = iconMap[id] ?? { icon: Activity };
+  const Icon = entry.icon;
+  const badge = tagStyle[tagScore] ?? 'bg-slate-100 text-slate-500 border-slate-200';
 
-            {/* Bottom Row */}
-            <div className="flex items-center gap-3 flex-wrap mt-3">
-                <span className="text-3xl font-bold text-gray-900">{points}</span>
-                <span className={`text-[12px] px-2 py-1 rounded-full ${badgeColor(tagScore)}`}>{tagScore}</span>
-                <span className="text-[12px] text-gray-400">{sentence}</span>
-            </div>
+  return (
+    <div className="w-full bg-white rounded-2xl p-5 flex flex-col gap-4 border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-200">
 
+      {/* Top */}
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center">
+            <Icon size={16} className="text-slate-500" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[13px] font-semibold text-slate-800 leading-tight">{name}</span>
+            <span className="text-[11px] text-slate-400 mt-0.5">{tagline}</span>
+          </div>
         </div>
-    );
+        <span className={`text-[10px] font-medium px-2.5 py-1 rounded-full border ${badge}`}>{tagScore}</span>
+      </div>
+
+      {/* Divider */}
+      <div className="h-px bg-slate-100" />
+
+      {/* Bottom */}
+      <div className="flex items-end justify-between">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[36px] font-bold text-slate-900 leading-none tracking-tight">{points}</span>
+          <span className="text-[12px] text-slate-400 mb-1">units</span>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-1">
+            <DeltaIcon delta={delta} />
+            <span className="text-[13px] font-semibold text-slate-700">{delta}</span>
+          </div>
+          <span className="text-[10px] text-slate-400">{sub}</span>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full bg-indigo-400 transition-all duration-700"
+          style={{ width: `${Math.min(points, 100)}%` }}
+        />
+      </div>
+
+    </div>
+  );
 }
