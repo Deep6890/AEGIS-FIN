@@ -2,20 +2,20 @@ import { Activity, Building2, Wind, TrendingUp, TrendingDown, Minus } from 'luci
 
 const iconMap = {
   companies: { icon: Building2 },
-  alerts:    { icon: Activity },
-  watch:     { icon: Wind },
+  alerts: { icon: Activity },
+  watch: { icon: Wind },
 };
 
 const tagStyle = {
-  Monitored: 'bg-slate-100 text-slate-600 border-slate-200',
-  Critical:  'bg-indigo-50 text-indigo-600 border-indigo-200',
-  Caution:   'bg-sky-50 text-sky-600 border-sky-200',
+  Monitored: 'bg-[#f0fdf4] text-[#16a34a] border-[#bbf7d0]',
+  Critical: 'bg-[#f0fdf4] text-[#16a34a] border-[#bbf7d0]',
+  Caution: 'bg-[#f0fdf4] text-[#16a34a] border-[#bbf7d0]',
 };
 
 const DeltaIcon = ({ delta }) => {
   if (!delta) return null;
-  if (delta.startsWith('+')) return <TrendingUp size={12} className="text-indigo-500" />;
-  if (delta.startsWith('-')) return <TrendingDown size={12} className="text-sky-500" />;
+  if (delta.startsWith('+')) return <TrendingUp size={12} className="text-[#16a34a]" />;
+  if (delta.startsWith('-')) return <TrendingDown size={12} className="text-[#16a34a]" />;
   return <Minus size={12} className="text-slate-400" />;
 };
 
@@ -25,7 +25,7 @@ export default function HighHeaders({ id, name, tagline, points, delta, sub, tag
   const badge = tagStyle[tagScore] ?? 'bg-slate-100 text-slate-500 border-slate-200';
 
   return (
-    <div className="w-full bg-white rounded-2xl p-5 flex flex-col gap-4 border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+    <div className="w-full bg-[#2d6a4f] rounded-2xl p-5 flex flex-col gap-4 border border-[#2d6a4f] shadow-sm hover:shadow-md transition-shadow duration-200">
 
       {/* Top */}
       <div className="flex items-start justify-between">
@@ -62,7 +62,7 @@ export default function HighHeaders({ id, name, tagline, points, delta, sub, tag
       {/* Progress bar */}
       <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
         <div
-          className="h-full rounded-full bg-indigo-400 transition-all duration-700"
+          className="h-full rounded-full bg-[#16a34a] transition-all duration-700"
           style={{ width: `${Math.min(points, 100)}%` }}
         />
       </div>

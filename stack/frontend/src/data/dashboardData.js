@@ -118,6 +118,46 @@ export const newsFeed = [
   },
 ];
 
+// 7-day sector sentiment + Nifty correlation sparklines
+export const sectorSentimentData = [
+  {
+    sector: 'Banking', shortName: 'BANK',
+    sentiment: [0.3, 0.5, 0.4, 0.6, 0.7, 0.5, 0.8],
+    niftyCorr:  [0.4, 0.5, 0.5, 0.6, 0.65, 0.6, 0.7],
+    score: 0.8, trend: 'up', correlation: 0.87,
+  },
+  {
+    sector: 'IT', shortName: 'IT',
+    sentiment: [0.7, 0.8, 0.75, 0.9, 0.85, 0.88, 0.92],
+    niftyCorr:  [0.5, 0.55, 0.6, 0.7, 0.72, 0.75, 0.78],
+    score: 0.92, trend: 'up', correlation: 0.78,
+  },
+  {
+    sector: 'Auto', shortName: 'AUTO',
+    sentiment: [0.6, 0.5, 0.4, 0.35, 0.3, 0.4, 0.38],
+    niftyCorr:  [0.6, 0.55, 0.5, 0.45, 0.4, 0.42, 0.4],
+    score: 0.38, trend: 'down', correlation: 0.62,
+  },
+  {
+    sector: 'Pharma', shortName: 'PHARMA',
+    sentiment: [0.5, 0.55, 0.6, 0.65, 0.7, 0.72, 0.75],
+    niftyCorr:  [0.3, 0.35, 0.4, 0.42, 0.45, 0.5, 0.52],
+    score: 0.75, trend: 'up', correlation: 0.52,
+  },
+  {
+    sector: 'Metal', shortName: 'METAL',
+    sentiment: [0.5, 0.4, 0.35, 0.3, 0.25, 0.2, 0.22],
+    niftyCorr:  [0.55, 0.5, 0.45, 0.4, 0.38, 0.35, 0.33],
+    score: 0.22, trend: 'down', correlation: 0.33,
+  },
+  {
+    sector: 'Energy', shortName: 'ENRGY',
+    sentiment: [0.4, 0.45, 0.5, 0.48, 0.55, 0.6, 0.58],
+    niftyCorr:  [0.45, 0.48, 0.5, 0.52, 0.55, 0.58, 0.6],
+    score: 0.58, trend: 'up', correlation: 0.60,
+  },
+];
+
 // Sector-wise company list
 export const sectorCompanyList = [
   {
@@ -173,3 +213,62 @@ export const sectorCompanyList = [
     ],
   },
 ];
+
+// Total Assets data
+export const totalAssetsData = {
+  total: '₹7,780 Cr',
+  delta: '+14.2%',
+  deltaLabel: 'vs last year',
+  trend: [
+    { month: 'Jan', value: 820 }, { month: 'Feb', value: 940 },
+    { month: 'Mar', value: 880 }, { month: 'Apr', value: 1020 },
+    { month: 'May', value: 1150 }, { month: 'Jun', value: 1080 },
+    { month: 'Jul', value: 1240 }, { month: 'Aug', value: 1380 },
+  ],
+  breakdown: [
+    { label: 'Fixed Assets',   value: '₹4,820 Cr', share: 62 },
+    { label: 'Current Assets', value: '₹1,940 Cr', share: 25 },
+    { label: 'Investments',    value: '₹1,020 Cr', share: 13 },
+  ],
+  netWorth: '₹3,210 Cr',
+};
+
+// P&L data
+export const pnlData = [
+  { label: 'Revenue',    value: '₹680 Cr', delta: '+12.4%', up: true,  spark: [420,480,460,530,510,590,620,680] },
+  { label: 'Net Profit', value: '₹140 Cr', delta: '+18.6%', up: true,  spark: [80,95,88,110,102,125,118,140]   },
+  { label: 'EBITDA',     value: '₹210 Cr', delta: '+9.8%',  up: true,  spark: [140,160,152,178,170,195,188,210] },
+  { label: 'Net Margin', value: '20.6%',   delta: '-0.4%',  up: false, spark: [19,20,19,21,20,21,19,21]        },
+];
+
+// Cash flow data
+export const cashFlowData = {
+  quarterly: [
+    { qtr: 'Q1', inflow: 320, outflow: 210 },
+    { qtr: 'Q2', inflow: 380, outflow: 240 },
+    { qtr: 'Q3', inflow: 350, outflow: 260 },
+    { qtr: 'Q4', inflow: 430, outflow: 280 },
+  ],
+  summary: [
+    { label: 'Operating CF',   value: '₹430 Cr',  up: true  },
+    { label: 'Investing CF',   value: '−₹180 Cr', up: false },
+    { label: 'Financing CF',   value: '−₹100 Cr', up: false },
+    { label: 'Free Cash Flow', value: '₹250 Cr',  up: true  },
+  ],
+};
+
+// Ratios & Debt data
+export const ratiosData = {
+  ratios: [
+    { label: 'Debt-to-Equity', value: '0.42',  status: 'Healthy', bar: 42 },
+    { label: 'Current Ratio',  value: '1.84',  status: 'Strong',  bar: 84 },
+    { label: 'ROE',            value: '18.2%', status: 'Good',    bar: 72 },
+    { label: 'Interest Cover', value: '6.3x',  status: 'Safe',    bar: 63 },
+  ],
+  totalDebt: '₹1,820 Cr',
+  debtDelta: '−8.3% reduced YoY',
+  breakdown: [
+    { label: 'Long-term Debt',  value: '₹1,240 Cr', pct: 68 },
+    { label: 'Short-term Debt', value: '₹580 Cr',   pct: 32 },
+  ],
+};
