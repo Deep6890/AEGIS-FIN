@@ -123,7 +123,7 @@ export default function CompanyDetail() {
             </div>
           </div>
           
-          {/* BALANCE SHEET TILE - Mini */}
+  {/* BALANCE SHEET TILE - Mini */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-bold text-[#0f1f0f] text-lg">Balance Sheet Core (3-Yr Trend)</h3>
@@ -131,9 +131,9 @@ export default function CompanyDetail() {
             </div>
             <div className="grid grid-cols-4 gap-4">
               {[
-                { label: 'Revenue', val: '₹1.8L Cr', trend: '+14%' },
-                { label: 'Net Profit', val: '₹46k Cr', trend: '+22%' },
-                { label: 'D/E Ratio', val: '0.84', trend: '-0.12' },
+                { label: 'Revenue', val: companyData.stats?.revenue || '₹1.8L Cr', trend: '+14%' },
+                { label: 'Net Profit', val: companyData.stats?.netIncome || '₹46k Cr', trend: '+22%' },
+                { label: 'EPS', val: companyData.stats?.eps || '₹45.2', trend: '+18%' },
                 { label: 'NPA', val: '1.2%', trend: '-40bps' },
               ].map((m, i) => (
                 <div key={i} className="flex flex-col gap-1 p-3 bg-gray-50 rounded-xl border border-gray-100">
@@ -142,6 +142,32 @@ export default function CompanyDetail() {
                   <span className={`text-xs font-bold ${m.trend.includes('-') && !m.label.includes('NPA') && !m.label.includes('D/E') ? 'text-rose-500' : 'text-emerald-500'}`}>{m.trend} YoY</span>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* NEWS FLOW */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-[#0f1f0f] text-lg">Recent News & Catalysts</h3>
+            </div>
+            <div className="space-y-4">
+              {companyData.news?.map((n, i) => (
+                <div key={i} className="flex gap-4 items-start p-3 bg-gray-50 hover:bg-emerald-50 rounded-xl border border-gray-100 transition cursor-pointer">
+                  <div className={`w-2 h-2 mt-1.5 shrink-0 rounded-full ${n.sentiment === 'pos' ? 'bg-emerald-500' : n.sentiment === 'neg' ? 'bg-rose-500' : 'bg-amber-400'}`}></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-800 mb-1 leading-snug">{n.headline}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-400">{n.date}</span>
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${n.sentiment === 'pos' ? 'bg-emerald-100 text-emerald-700' : n.sentiment === 'neg' ? 'bg-rose-100 text-rose-700' : 'bg-gray-200 text-gray-600'}`}>
+                        {n.sentiment === 'pos' ? 'Positive' : n.sentiment === 'neg' ? 'Negative' : 'Neutral'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {(!companyData.news || companyData.news.length === 0) && (
+                <div className="text-sm text-gray-500 italic p-4 text-center">No recent major catalysts recorded.</div>
+              )}
             </div>
           </div>
 
