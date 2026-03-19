@@ -1,0 +1,117 @@
+[
+  {
+    "id": "sec-bnk",
+    "name": "Banking",
+    "marketWeight": "28.4%",
+    "performance": "+12.4%",
+    "trend": "up",
+    "score": 88,
+    "description": "Commercial and Private banking institutions",
+    "topConstituents": [
+      { "ticker": "HDFCBANK", "weight": "35%", "score": 82 },
+      { "ticker": "ICICIBANK", "weight": "28%", "score": 88 },
+      { "ticker": "SBIN", "weight": "15%", "score": 81 }
+    ],
+    "news": [
+      { "id": 1, "headline": "Credit growth continues to outpace deposit mobilization", "sentiment": "neutral" },
+      { "id": 2, "headline": "RBI monetary policy status quo maintains NIM trajectory", "sentiment": "pos" }
+    ],
+    "metrics": {
+      "avgPE": "14.2",
+      "avgROE": "15.8%",
+      "npaRatio": "1.2%"
+    }
+  },
+  {
+    "id": "sec-it",
+    "name": "IT Services",
+    "marketWeight": "14.2%",
+    "performance": "-4.2%",
+    "trend": "down",
+    "score": 65,
+    "description": "Software, Consulting and IT Outsourcing",
+    "topConstituents": [
+      { "ticker": "TCS", "weight": "42%", "score": 85 },
+      { "ticker": "INFY", "weight": "28%", "score": 72 },
+      { "ticker": "HCLTECH", "weight": "12%", "score": 76 }
+    ],
+    "news": [
+      { "id": 1, "headline": "Client discretionary spending remains muted in North America", "sentiment": "neg" },
+      { "id": 2, "headline": "AI pipeline showing strong early conversion", "sentiment": "pos" }
+    ],
+    "metrics": {
+      "avgPE": "25.4",
+      "avgROE": "28.4%",
+      "attrition": "14.2%"
+    }
+  },
+  {
+    "id": "sec-auto",
+    "name": "Automobile",
+    "marketWeight": "8.5%",
+    "performance": "+18.5%",
+    "trend": "up",
+    "score": 92,
+    "description": "Passenger, Commercial, 2W and Auto Ancillaries",
+    "topConstituents": [
+      { "ticker": "TATAMOTORS", "weight": "25%", "score": 91 },
+      { "ticker": "M&M", "weight": "22%", "score": 88 },
+      { "ticker": "MARUTI", "weight": "20%", "score": 84 }
+    ],
+    "news": [
+      { "id": 1, "headline": "SUV segment drives passenger vehicle volume growth", "sentiment": "pos" },
+      { "id": 2, "headline": "Rural recovery boosting 2-wheeler sales", "sentiment": "pos" }
+    ],
+    "metrics": {
+      "avgPE": "22.8",
+      "avgROE": "18.5%",
+      "volGrowth": "12%"
+    }
+  },
+  {
+    "id": "sec-fmcg",
+    "name": "FMCG",
+    "marketWeight": "9.2%",
+    "performance": "+2.1%",
+    "trend": "flat",
+    "score": 74,
+    "description": "Fast Moving Consumer Goods & Staples",
+    "topConstituents": [
+      { "ticker": "ITC", "weight": "32%", "score": 79 },
+      { "ticker": "HINDUNILVR", "weight": "28%", "score": 72 },
+      { "ticker": "NESTLEIND", "weight": "15%", "score": 81 }
+    ],
+    "news": [
+      { "id": 1, "headline": "Volume growth remains subdued despite price cuts", "sentiment": "neg" },
+      { "id": 2, "headline": "Gross margins expand on lower input commodity costs", "sentiment": "pos" }
+    ],
+    "metrics": {
+      "avgPE": "42.5",
+      "avgROE": "32.4%",
+      "volGrowth": "4%"
+    }
+  },
+  {
+    "id": "sec-egy",
+    "name": "Energy",
+    "marketWeight": "11.5%",
+    "performance": "+8.4%",
+    "trend": "up",
+    "score": 81,
+    "description": "Oil & Gas Exploration, Refining and Marketing",
+    "topConstituents": [
+      { "ticker": "RELIANCE", "weight": "65%", "score": 76 },
+      { "ticker": "ONGC", "weight": "12%", "score": 84 },
+      { "ticker": "IOC", "weight": "8%", "score": 82 }
+    ],
+    "news": [
+      { "id": 1, "headline": "GRMs holding steady above historical averages", "sentiment": "pos" },
+      { "id": 2, "headline": "OPEC+ cuts keeping crude prices supported", "sentiment": "neutral" }
+    ],
+    "metrics": {
+      "avgPE": "12.4",
+      "avgROE": "14.2%",
+      "dividendYld": "4.5%"
+    }
+  }
+]

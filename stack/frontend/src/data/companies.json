@@ -1,0 +1,282 @@
+[
+  {
+    "id": 1,
+    "ticker": "HDFCBANK",
+    "name": "HDFC Bank Ltd.",
+    "sector": "Banking",
+    "subSector": "Private Bank",
+    "marketCap": "₹12.4L Cr",
+    "price": "₹1,642.50",
+    "peRatio": "18.4",
+    "bookValue": "₹622.10",
+    "dividendYield": "1.15%",
+    "roe": "17.2%",
+    "trend": "+1.2%",
+    "compositeScore": 82,
+    "riskLevel": "Low",
+    "analystRating": "Strong Buy",
+    "cycle": "Late Expansion",
+    "description": "HDFC Bank is India's largest private sector bank by assets and market capitalization.",
+    "stats": {
+      "revenue": "₹2.04L Cr",
+      "netIncome": "₹45,997 Cr",
+      "eps": "₹82.1"
+    },
+    "news": [
+      { "date": "2024-03-12", "headline": "Q3 Results beat street estimates", "sentiment": "pos" },
+      { "date": "2024-03-05", "headline": "Merger synergies starting to reflect in NIMs", "sentiment": "pos" }
+    ]
+  },
+  {
+    "id": 2,
+    "ticker": "RELIANCE",
+    "name": "Reliance Industries Ltd.",
+    "sector": "Energy",
+    "subSector": "Refining & Marketing",
+    "marketCap": "₹19.8L Cr",
+    "price": "₹2,954.20",
+    "peRatio": "28.5",
+    "bookValue": "₹1,241.00",
+    "dividendYield": "0.3%",
+    "roe": "9.8%",
+    "trend": "+0.5%",
+    "compositeScore": 76,
+    "riskLevel": "Low",
+    "analystRating": "Buy",
+    "cycle": "Expansion",
+    "description": "Reliance Industries is an Indian multinational conglomerate company, headquartered in Mumbai. It has diverse businesses including energy, petrochemicals, natural gas, retail, telecommunications, mass media, and textiles.",
+    "stats": {
+      "revenue": "₹9.74L Cr",
+      "netIncome": "₹73,670 Cr",
+      "eps": "₹108.8"
+    },
+    "news": [
+      { "date": "2024-03-15", "headline": "Jio Financial demerger completed", "sentiment": "pos" },
+      { "date": "2024-03-10", "headline": "Retail arm expansion aggressively continues", "sentiment": "pos" }
+    ]
+  },
+  {
+    "id": 3,
+    "ticker": "TCS",
+    "name": "Tata Consultancy Services Ltd.",
+    "sector": "IT",
+    "subSector": "IT Services",
+    "marketCap": "₹14.2L Cr",
+    "price": "₹4,122.90",
+    "peRatio": "31.2",
+    "bookValue": "₹285.40",
+    "dividendYield": "1.8%",
+    "roe": "51.4%",
+    "trend": "-0.2%",
+    "compositeScore": 85,
+    "riskLevel": "Low",
+    "analystRating": "Hold",
+    "cycle": "Maturity",
+    "description": "TCS is an Indian multinational information technology services and consulting company.",
+    "stats": {
+      "revenue": "₹2.25L Cr",
+      "netIncome": "₹42,147 Cr",
+      "eps": "₹114.6"
+    },
+    "news": [
+      { "date": "2024-03-01", "headline": "New mega deal signed in UK market", "sentiment": "pos" },
+      { "date": "2024-02-15", "headline": "Management warns of near-term macro headwinds in BFSI", "sentiment": "neg" }
+    ]
+  },
+  {
+    "id": 4,
+    "ticker": "ICICIBANK",
+    "name": "ICICI Bank Ltd.",
+    "sector": "Banking",
+    "subSector": "Private Bank",
+    "marketCap": "₹7.5L Cr",
+    "price": "₹1,085.60",
+    "peRatio": "16.8",
+    "bookValue": "₹342.10",
+    "dividendYield": "0.8%",
+    "roe": "18.5%",
+    "trend": "+1.8%",
+    "compositeScore": 88,
+    "riskLevel": "Low",
+    "analystRating": "Strong Buy",
+    "cycle": "Expansion",
+    "description": "ICICI Bank is an Indian multinational bank and financial services company.",
+    "stats": {
+      "revenue": "₹1.85L Cr",
+      "netIncome": "₹31,896 Cr",
+      "eps": "₹45.6"
+    },
+    "news": [
+      { "date": "2024-03-14", "headline": "Asset quality improves significantly in current quarter", "sentiment": "pos" },
+      { "date": "2024-03-02", "headline": "Strong growth in retail credit portfolio", "sentiment": "pos" }
+    ]
+  },
+  {
+    "id": 5,
+    "ticker": "INFY",
+    "name": "Infosys Ltd.",
+    "sector": "IT",
+    "subSector": "IT Services",
+    "marketCap": "₹6.8L Cr",
+    "price": "₹1,642.10",
+    "peRatio": "26.4",
+    "bookValue": "₹210.50",
+    "dividendYield": "2.1%",
+    "roe": "31.8%",
+    "trend": "-1.1%",
+    "compositeScore": 72,
+    "riskLevel": "Medium",
+    "analystRating": "Hold",
+    "cycle": "Maturity",
+    "description": "Infosys Limited is an Indian multinational information technology company that provides business consulting, information technology and outsourcing services.",
+    "stats": {
+      "revenue": "₹1.46L Cr",
+      "netIncome": "₹24,095 Cr",
+      "eps": "₹57.8"
+    },
+    "news": [
+      { "date": "2024-03-08", "headline": "Top level management exits raise concerns", "sentiment": "neg" },
+      { "date": "2024-02-28", "headline": "Margin guidance slashed for FY25", "sentiment": "neg" }
+    ]
+  },
+  {
+    "id": 6,
+    "ticker": "ITC",
+    "name": "ITC Ltd.",
+    "sector": "FMCG",
+    "subSector": "Diversified",
+    "marketCap": "₹5.2L Cr",
+    "price": "₹415.30",
+    "peRatio": "24.5",
+    "bookValue": "₹68.40",
+    "dividendYield": "3.8%",
+    "roe": "29.2%",
+    "trend": "+0.4%",
+    "compositeScore": 79,
+    "riskLevel": "Low",
+    "analystRating": "Buy",
+    "cycle": "Maturity",
+    "description": "ITC Limited is an Indian conglomerate company headquartered in Kolkata. ITC has a diversified presence in FMCG, Hotels, Packaging, Paperboards & Specialty Papers, and Agri-Business.",
+    "stats": {
+      "revenue": "₹70,919 Cr",
+      "netIncome": "₹18,753 Cr",
+      "eps": "₹15.2"
+    },
+    "news": [
+      { "date": "2024-03-11", "headline": "FMCG margins improve on easing input costs", "sentiment": "pos" },
+      { "date": "2024-02-20", "headline": "BAT completes partial stake sale block deal", "sentiment": "neutral" }
+    ]
+  },
+  {
+    "id": 7,
+    "ticker": "SBIN",
+    "name": "State Bank of India",
+    "sector": "Banking",
+    "subSector": "Public Sector Bank",
+    "marketCap": "₹6.9L Cr",
+    "price": "₹768.90",
+    "peRatio": "10.2",
+    "bookValue": "₹421.50",
+    "dividendYield": "1.5%",
+    "roe": "16.8%",
+    "trend": "+2.5%",
+    "compositeScore": 81,
+    "riskLevel": "Medium",
+    "analystRating": "Buy",
+    "cycle": "Expansion",
+    "description": "State Bank of India is an Indian multinational public sector bank and financial services statutory body.",
+    "stats": {
+      "revenue": "₹3.68L Cr",
+      "netIncome": "₹50,232 Cr",
+      "eps": "₹56.4"
+    },
+    "news": [
+      { "date": "2024-03-09", "headline": "Record quarterly profits reported", "sentiment": "pos" },
+      { "date": "2024-02-25", "headline": "Electoral bonds database submission completed", "sentiment": "neutral" }
+    ]
+  },
+  {
+    "id": 8,
+    "ticker": "BHARTIARTL",
+    "name": "Bharti Airtel Ltd.",
+    "sector": "Telecom",
+    "subSector": "Wireless Telecom",
+    "marketCap": "₹7.1L Cr",
+    "price": "₹1,215.40",
+    "peRatio": "54.2",
+    "bookValue": "₹134.80",
+    "dividendYield": "0.3%",
+    "roe": "12.4%",
+    "trend": "+1.1%",
+    "compositeScore": 74,
+    "riskLevel": "Medium",
+    "analystRating": "Buy",
+    "cycle": "Expansion",
+    "description": "Bharti Airtel Limited is an Indian multinational telecommunications services company based in New Delhi.",
+    "stats": {
+      "revenue": "₹1.39L Cr",
+      "netIncome": "₹8,346 Cr",
+      "eps": "₹14.5"
+    },
+    "news": [
+      { "date": "2024-03-07", "headline": "Tariff hike expected post elections", "sentiment": "pos" },
+      { "date": "2024-02-18", "headline": "ARPU improvement continues steadily", "sentiment": "pos" }
+    ]
+  },
+  {
+    "id": 9,
+    "ticker": "L&T",
+    "name": "Larsen & Toubro Ltd.",
+    "sector": "Capital Goods",
+    "subSector": "Construction & Engineering",
+    "marketCap": "₹5.1L Cr",
+    "price": "₹3,724.80",
+    "peRatio": "38.6",
+    "bookValue": "₹654.20",
+    "dividendYield": "0.7%",
+    "roe": "14.5%",
+    "trend": "-0.5%",
+    "compositeScore": 86,
+    "riskLevel": "Low",
+    "analystRating": "Strong Buy",
+    "cycle": "Early Expansion",
+    "description": "Larsen & Toubro is an Indian multinational conglomerate, with business interests in engineering, construction, manufacturing, technology, and financial services.",
+    "stats": {
+      "revenue": "₹1.83L Cr",
+      "netIncome": "₹10,470 Cr",
+      "eps": "₹74.5"
+    },
+    "news": [
+      { "date": "2024-03-10", "headline": "Record order book reported for Middle East operations", "sentiment": "pos" },
+      { "date": "2024-02-22", "headline": "Execution delays in key domestic projects", "sentiment": "neg" }
+    ]
+  },
+  {
+    "id": 10,
+    "ticker": "TATAMOTORS",
+    "name": "Tata Motors Ltd.",
+    "sector": "Auto",
+    "subSector": "Automobiles",
+    "marketCap": "₹3.5L Cr",
+    "price": "₹985.40",
+    "peRatio": "16.4",
+    "bookValue": "₹145.20",
+    "dividendYield": "0.2%",
+    "roe": "22.8%",
+    "trend": "+3.4%",
+    "compositeScore": 91,
+    "riskLevel": "Medium",
+    "analystRating": "Buy",
+    "cycle": "Peak Growth",
+    "description": "Tata Motors Limited is an Indian multinational automotive manufacturing company, headquartered in Mumbai.",
+    "stats": {
+      "revenue": "₹3.45L Cr",
+      "netIncome": "₹2,414 Cr",
+      "eps": "₹6.8"
+    },
+    "news": [
+      { "date": "2024-03-04", "headline": "Demerger of commercial and passenger vehicles announced", "sentiment": "pos" },
+      { "date": "2024-02-12", "headline": "JLR margin guidance raised for Q4", "sentiment": "pos" }
+    ]
+  }
+]

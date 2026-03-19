@@ -1,33 +1,9 @@
-import { useState } from 'react';
-import HeaderNav from '../components/Navbar/HeaderNav';
-import VerticalNav from '../components/Navbar/VerticalNav';
+import { useState, useMemo } from 'react';
+import PageLayout from '../components/Layout/PageLayout';
 import { ResponsiveContainer, Treemap, Tooltip, AreaChart, Area } from 'recharts';
 import { Search, Filter, LayoutGrid, LayoutList, Heart, Star, TrendingUp, TrendingDown, Activity, ChevronRight, BarChart } from 'lucide-react';
-import { sectorCompanyList } from '../data/dashboardData';
-
-const COLORS = ['#2d6a4f', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
-
-// Flatten and add mock data for the treemap & cards
-const companies = sectorCompanyList.flatMap(s => 
-  s.companies.map(c => ({
-    ...c,
-    sector: s.sector,
-    marketCap: Math.floor(Math.random() * 500000) + 10000,
-    sentiment: Math.random() > 0.6 ? 'positive' : Math.random() > 0.3 ? 'neutral' : 'negative',
-    sparkline: Array.from({length: 10}, () => Math.random() * 100 + 50)
-  }))
-);
-
-const treemapData = [
-  ...sectorCompanyList.map(s => ({
-    name: s.sector,
-    children: s.companies.map(c => ({
-      name: c.name,
-      size: Math.floor(Math.random() * 500000) + 10000,
-      score: c.score,
-    })),
-  }))
-];
+import { useAppData } from '../context/AppDataContext';
+import { useNavigate } from 'react-router-dom';
 
 const getSentimentColor = (sentiment) => {
   if (sentiment === 'positive') return 'bg-emerald-500';
@@ -42,28 +18,9 @@ const CustomTreemapContent = (props) => {
     const color = score > 75 ? 'rgba(16, 185, 129, 0.8)' : score > 50 ? 'rgba(245, 158, 11, 0.8)' : 'rgba(239, 68, 68, 0.8)';
     return (
       <g>
-        <rect
-          x={x}
-          y={y}
-          width={width}
-          height={height}
-          style={{
-            fill: color,
-            stroke: '#fff',
-            strokeWidth: 2,
-            strokeOpacity: 0.5,
-          }}
-        />
-        {width > 50 && height > 30 && (
-          <text x={x + 8} y={y + 20} fill="#fff" fontSize={13} fontWeight="bold" className="drop-shadow-sm">
-            {name}
-          </text>
-        )}
-        {width > 50 && height > 50 && (
-          <text x={x + 8} y={y + 36} fill="#fff" fontSize={11} opacity={0.8} className="drop-shadow-sm">
-            Score: {score}
-          </text>
-        )}
+        <rect x={x} y={y} width={width} height={height} style={{ fill: color, stroke: '#fff', strokeWidth: 2, strokeOpacity: 0.5 }} />
+        {width > 50 && height > 30 && <text x={x + 8} y={y + 20} fill="#fff" fontSize={13} fontWeight="bold" className="drop-shadow-sm">{name}</text>}
+        {width > 50 && height > 50 && <text x={x + 8} y={y + 36} fill="#fff" fontSize={11} opacity={0.8} className="drop-shadow-sm">Score: {score}</text>}
       </g>
     );
   }
@@ -71,9 +28,34 @@ const CustomTreemapContent = (props) => {
 };
 
 export default function CompanyBrowser() {
+  const { dashboardData } = useAppData();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('All');
+
+  const companies = useMemo(() => {
+    return dashboardData.sectorCompanyList.flatMap(s => 
+      s.companies.map(c => ({
+        ...c,
+        sector: s.sector,
+        marketCap: Math.floor(Math.random() * 500000) + 10000,
+        sentiment: Math.random() > 0.6 ? 'positive' : Math.random() > 0.3 ? 'neutral' : 'negative',
+        sparkline: Array.from({length: 10}, () => Math.random() * 100 + 50)
+      }))
+    );
+  }, [dashboardData]);
+
+  const treemapData = useMemo(() => {
+    return dashboardData.sectorCompanyList.map(s => ({
+      name: s.sector,
+      children: s.companies.map(c => ({
+        name: c.name,
+        size: Math.floor(Math.random() * 500000) + 10000,
+        score: c.score,
+      })),
+    }));
+  }, [dashboardData]);
 
   const filteredCompanies = companies.filter(c => {
     if (selectedSector !== 'All' && c.sector !== selectedSector) return false;
@@ -82,14 +64,9 @@ export default function CompanyBrowser() {
   });
 
   return (
-    <div className="h-screen flex flex-col bg-[#f4f6f4] overflow-hidden">
-      <HeaderNav />
-      <div className="flex flex-1 min-h-0">
-        <VerticalNav />
-
-        <main className="flex-1 px-6 py-5 flex gap-6 overflow-y-auto">
-          
-          {/* LEFT SIDEBAR: Filters */}
+    <PageLayout>
+      <div className="flex gap-6 h-full">
+        {/* LEFT SIDEBAR: Filters */}
           <div className="w-[280px] shrink-0 flex flex-col gap-6">
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 flex flex-col gap-4">
               <h3 className="font-bold text-[#0f1f0f] flex items-center gap-2">
@@ -283,10 +260,8 @@ export default function CompanyBrowser() {
                 </ResponsiveContainer>
               </div>
             )}
-          </div>
-          
-        </main>
+        </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }

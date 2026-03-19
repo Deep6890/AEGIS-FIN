@@ -1,0 +1,59 @@
+[
+  {
+    "id": "u-dv01",
+    "name": "Deepak Verma",
+    "initials": "DV",
+    "role": "Senior Risk Analyst",
+    "department": "APAC Risk Division",
+    "company": "Standard Chartered Bank",
+    "email": "d.verma@sc.com",
+    "clearance": "Level 3 Clearance (Systemic Data)",
+    "watchlists": [
+      { "name": "High Volatility Midcaps", "count": 14, "alert": true },
+      { "name": "PSU Banks Tier 2", "count": 8, "alert": false },
+      { "name": "Core Infrastructure Long", "count": 22, "alert": false },
+      { "name": "Auto Sector EV Transition", "count": 6, "alert": true }
+    ],
+    "searches": [
+      { "term": "\"Adani Ports liquidity stress test\"", "time": "2 hours ago", "type": "search" },
+      { "term": "Compared HDFC vs ICICI metrics", "time": "Yesterday", "type": "favorite" },
+      { "term": "\"Fed rate hike impact on IT exports\"", "time": "3 days ago", "type": "search" }
+    ],
+    "appSettings": {
+      "theme": "light",
+      "currency": "INR (Colossal/Crores)",
+      "defaultSector": "Banking",
+      "emailAlerts": true,
+      "volatilityRatio": 1.50,
+      "sentimentZScore": -2.0,
+      "debtEquityRatio": 2.00
+    }
+  },
+  {
+    "id": "u-sj02",
+    "name": "Sarah Jones",
+    "initials": "SJ",
+    "role": "Quant Portfolio Manager",
+    "department": "Global Equities",
+    "company": "BlackRock",
+    "email": "sarah.jones@blackrock.com",
+    "clearance": "Level 4 Clearance (All Strategies)",
+    "watchlists": [
+      { "name": "Momentum Breakouts", "count": 45, "alert": true },
+      { "name": "Mean Reversion Value", "count": 12, "alert": false }
+    ],
+    "searches": [
+      { "term": "TCS correlation with crude oil", "time": "1 hour ago", "type": "search" },
+      { "term": "Automobile supply chain bottlenecks", "time": "Yesterday", "type": "search" }
+    ],
+    "appSettings": {
+      "theme": "dark",
+      "currency": "USD ($ Millions)",
+      "defaultSector": "IT - Software",
+      "emailAlerts": false,
+      "volatilityRatio": 1.20,
+      "sentimentZScore": -1.5,
+      "debtEquityRatio": 1.80
+    }
+  }
+]
