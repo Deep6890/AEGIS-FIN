@@ -11,39 +11,32 @@ import TotalAssetsRow from '../components/dashboard/TotalAssetsRow';
 import PnLSummaryRow from '../components/dashboard/PnLSummaryRow';
 import CashFlowRow from '../components/dashboard/CashFlowRow';
 import RatiosDebtRow from '../components/dashboard/RatiosDebtRow';
+import { useAppData } from '../context/AppDataContext';
 
-import {
-  kpiStats,
-  allSectors,
-  intradayNSE,
-  intradayBSE,
-  marketInfo,
-  sectorRiskDonut,
-  vixCurrent,
-  vixSparkline,
-  newsFeed,
-  sectorCompanyList,
-  sectorSentimentData,
-  totalAssetsData,
-  pnlData,
-  cashFlowData,
-  ratiosData,
-} from '../data/dashboardData';
 
 export default function Home() {
-  const [selectedSectors, setSelectedSectors] = useState([]);
+  // Collecting the Data
+  const {
+    kpiStats, allSectors, intradayNSE, intradayBSE, marketInfo, marketBreadth,
+    sectorRiskDonut, vixCurrent, vixSparkline, newsFeed,
+    sectorCompanyList, sectorSentimentData, totalAssetsData,
+    pnlData, cashFlowData, ratiosData,
+  } = useAppData();
 
+
+  const [selectedSectors, setSelectedSectors] = useState([]);
   return (
     <div className="h-screen flex flex-col bg-[#f4f6f4] overflow-hidden">
-
+      {/* Main horizontal header*/}
       <HeaderNav />
-
+      {/* Main vertical nav and content area */}
       <div className="flex flex-1 min-h-0">
         <VerticalNav />
+        {/* Main area of the componets */}
+        <main className="flex-1 px-4 md:px-5 py-4 pb-20 md:pb-4 flex flex-col gap-4 overflow-y-auto">
+          {/* Need to add more big header here*/}
 
-        <main className="flex-1 px-5 py-4 flex flex-col gap-4 overflow-y-auto">
-
-          {/* ── SECTION 1: KPI Stat Cards ─────────────────────────────── */}
+          {/*KPI Stat Cards shows the major global tag lines*/}
           <KpiStatCards
             stats={kpiStats}
             sectors={allSectors}
@@ -51,7 +44,7 @@ export default function Home() {
             onSectorChange={setSelectedSectors}
           />
 
-          {/* ── SECTION 2: Live Market Chart ──────────────────────────── */}
+          {/* Live Market Chart shows the nifty data and nifty's and sensex dirrections*/}
           <div className="mt-4 mb-1">
             <h2 className="text-[18px] font-bold text-[#0f1f0f] tracking-tight">Market Action</h2>
             <p className="text-[13px] text-[#8fa88f]">Live intraday movements and index breadth</p>
@@ -60,9 +53,10 @@ export default function Home() {
             nseData={intradayNSE}
             bseData={intradayBSE}
             marketInfo={marketInfo}
+            marketBreadth={marketBreadth}
           />
 
-          {/* ── SECTION 3: Risk Distribution (Donut + VIX) ────────────── */}
+          {/*Sector vise risk profile and vix sentiments for vix and sector distribution*/}
           <div className="mt-4 mb-1">
             <h2 className="text-[18px] font-bold text-[#0f1f0f] tracking-tight">Risk & Volatility</h2>
             <p className="text-[13px] text-[#8fa88f]">Market stress metrics and vulnerability mapping</p>
@@ -73,26 +67,28 @@ export default function Home() {
             vixSparkline={vixSparkline}
           />
 
-          {/* ── SECTION 4: News Sentiment & Risk Summary ──────────────── */}
+          {/* Sentiment section covers 7 days sectors dirift market new centiments and sector wise risk covers homany companies*/}
           <div className="mt-4 mb-1">
             <h2 className="text-[18px] font-bold text-[#0f1f0f] tracking-tight">Sentiment Analytics</h2>
             <p className="text-[13px] text-[#8fa88f]">AI-driven news pulse and sector risk ranking</p>
           </div>
           <SectorSentimentRow sectors={sectorSentimentData} />
+          {/* Need to edit this section to add some some good insgihst this gonna repetd again*/}
           <NewsAndRiskRow newsFeed={newsFeed} sectorCompanyList={sectorCompanyList} />
 
-          {/* ── SECTION 5: Total Assets & Balance Sheet ────────────── */}
+          {/* This is bassically for distribution of havving assest total for each given company how much data backeup there total given company from that we can find the over all valuations  also shows breack downs for assests distibutions*/}
           <div className="mt-4 mb-1">
             <h2 className="text-[18px] font-bold text-[#0f1f0f] tracking-tight">Total Assets</h2>
             <p className="text-[13px] text-[#8fa88f]">Balance sheet composition and asset growth</p>
           </div>
           <TotalAssetsRow data={totalAssetsData} />
 
-          {/* ── SECTION 6: P&L Summary ────────────────────────────────── */}
+          {/* Summary sections*/}
           <div className="mt-4 mb-1">
             <h2 className="text-[18px] font-bold text-[#0f1f0f] tracking-tight">Revenue & Profit</h2>
             <p className="text-[13px] text-[#8fa88f]">Quarterly P&L performance metrics</p>
           </div>
+          {/* THis is basically shows the revenu and statastical over alll portfolio summary*/}
           <PnLSummaryRow metrics={pnlData} />
 
           {/* ── SECTION 7: Cash Flow ──────────────────────────────────── */}
@@ -100,6 +96,7 @@ export default function Home() {
             <h2 className="text-[18px] font-bold text-[#0f1f0f] tracking-tight">Cash Flow</h2>
             <p className="text-[13px] text-[#8fa88f]">Operating, investing and financing activities</p>
           </div>
+          {/* THis shows given company by overflow that is basically portfolio out flow inflow calcculated manner*/}
           <CashFlowRow data={cashFlowData} />
 
           {/* ── SECTION 8: Ratios & Debt ──────────────────────────────── */}
@@ -107,6 +104,7 @@ export default function Home() {
             <h2 className="text-[18px] font-bold text-[#0f1f0f] tracking-tight">Ratios & Debt</h2>
             <p className="text-[13px] text-[#8fa88f]">Key financial health indicators and liabilities</p>
           </div>
+          {/* Summary and inflow outflow is there need to update that is all are reduendent and not carrying much informations */}
           <RatiosDebtRow data={ratiosData} />
 
         </main>

@@ -1,5 +1,6 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, AreaChart, Area, XAxis } from 'recharts';
 
+
 const DonutTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -22,28 +23,31 @@ const VixTooltip = ({ active, payload, label }) => {
 
 function vixLabel(v) {
   if (v < 15) return { text: 'Low Volatility', cls: 'bg-emerald-50 text-emerald-600 border-emerald-100' };
-  if (v < 20) return { text: 'Moderate',        cls: 'bg-amber-50 text-amber-600 border-amber-100'   };
-  if (v < 25) return { text: 'Elevated',         cls: 'bg-orange-50 text-orange-600 border-orange-100' };
-  return             { text: 'High Volatility',  cls: 'bg-rose-50 text-rose-500 border-rose-100'    };
+  if (v < 20) return { text: 'Moderate', cls: 'bg-amber-50 text-amber-600 border-amber-100' };
+  if (v < 25) return { text: 'Elevated', cls: 'bg-orange-50 text-orange-600 border-orange-100' };
+  return { text: 'High Volatility', cls: 'bg-rose-50 text-rose-500 border-rose-100' };
 }
 
 const CALM_GREENS = [
   '#2d6a4f', '#40916c', '#52b788', '#74c69d', '#95d5b2', '#b7e4c7', '#d8f3dc', '#1b4332'
 ];
 
+
+// Pie chart for sectors 
+// Need to take the data from the backend and show the donut chart for the sectors
 function SectorDonut({ data }) {
-  const total     = data.reduce((s, d) => s + d.count, 0);
-  const chartData = data.map((d, i) => ({ 
-    name: d.sector, 
-    value: d.count, 
-    color: CALM_GREENS[i % CALM_GREENS.length] 
+  const total = data.reduce((s, d) => s + d.count, 0);
+  const chartData = data.map((d, i) => ({
+    name: d.sector,
+    value: d.count,
+    color: CALM_GREENS[i % CALM_GREENS.length]
   }));
 
   return (
     <div className="w-full h-full bg-[#2d6a4f] rounded-3xl shadow-sm p-6 flex flex-col relative overflow-hidden">
       <div className="absolute -top-16 -left-16 w-56 h-56 bg-[#2d6a4f] opacity-20 blur-[70px] rounded-full pointer-events-none" />
       <div className="absolute -bottom-16 -right-16 w-48 h-48 bg-emerald-600 opacity-20 blur-[60px] rounded-full pointer-events-none" />
-      
+
       <div className="relative z-10 mb-5">
         <h3 className="text-[15px] font-bold text-white tracking-tight">Sector Risk Dist.</h3>
         <p className="text-[12px] text-[#8fa88f] mt-1">High-risk companies overview</p>
@@ -94,8 +98,9 @@ function SectorDonut({ data }) {
   );
 }
 
+// vix graph
 function VixWidget({ current, sparkline }) {
-  const lbl  = vixLabel(current);
+  const lbl = vixLabel(current);
   const prev = sparkline[sparkline.length - 2]?.v ?? current;
   const isUp = current > prev;
 
@@ -128,8 +133,8 @@ function VixWidget({ current, sparkline }) {
           <AreaChart data={sparkline} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="vixGradPremium" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor="#2d6a4f" stopOpacity={0.6} />
-                <stop offset="40%"  stopColor="#2d6a4f" stopOpacity={0.25} />
+                <stop offset="0%" stopColor="#2d6a4f" stopOpacity={0.6} />
+                <stop offset="40%" stopColor="#2d6a4f" stopOpacity={0.25} />
                 <stop offset="100%" stopColor="#2d6a4f" stopOpacity={0.02} />
               </linearGradient>
             </defs>
@@ -155,6 +160,7 @@ function VixWidget({ current, sparkline }) {
   );
 }
 
+// Main export componets
 export default function RiskDistributionRow({ sectorRiskDonut, vixCurrent, vixSparkline }) {
   return (
     <div className="flex flex-col lg:flex-row gap-5">

@@ -6,12 +6,14 @@ import { TrendingUp, TrendingDown } from 'lucide-react';
 
 const DAYS = ['M', 'T', 'W', 'T', 'F', 'M', 'T'];
 
+// Sentiment color based on score
 const sentimentColor = (score) => {
   if (score >= 0.7) return '#16a34a';
   if (score >= 0.45) return '#f59e0b';
   return '#ef4444';
 };
 
+// Graph hover tooltip
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -99,6 +101,7 @@ function SectorTile({ sector, shortName, sentiment, niftyCorr, score, trend, cor
   );
 }
 
+// Main component secctor analysis
 export default function SectorSentimentRow({ sectors = [] }) {
   return (
     <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">

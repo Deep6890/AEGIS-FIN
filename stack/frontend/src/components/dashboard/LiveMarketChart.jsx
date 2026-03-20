@@ -5,19 +5,25 @@ import {
 } from 'recharts';
 import { TrendingUp, TrendingDown, Activity, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
-function DirectionMatrix({ isNse }) {
+// Main direction matrix
+// Shows the direction matrix for the market
+// Many thing i want to take from the section prompts 
+
+function DirectionMatrix({ breadth = {} }) {
+  const { advances = '—', declines = '—', highs52w = '—', lows52w = '—', sentiment = 'Neutral' } = breadth;
   return (
     <div className="w-full h-full flex justify-between flex-col bg-[#2d6a4f] rounded-2xl p-6 text-white shadow-sm relative overflow-hidden">
       {/* Decorative premium elements */}
       <div className="absolute -top-16 -right-16 w-56 h-56 bg-[#2d6a4f] opacity-20 blur-[70px] rounded-full pointer-events-none" />
       <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-emerald-600 opacity-20 blur-[60px] rounded-full pointer-events-none" />
-      
+
+      {/* Content */}
       <div className="relative z-10 flex items-start justify-between mb-5">
         <div>
           <h3 className="text-[15px] font-bold text-white tracking-tight flex items-center gap-2">
             <Activity size={16} className="text-emerald-400" /> Direction Matrix
           </h3>
-          <p className="text-[12px] text-[#8fa88f] mt-1 pr-6">{isNse ? 'NSE' : 'BSE'} Market Breadth & Sentiment Analysis</p>
+          <p className="text-[12px] text-[#8fa88f] mt-1 pr-6">{breadth.exchange ?? ''} Market Breadth & Sentiment Analysis</p>
         </div>
         <div className="px-2.5 py-1 bg-white/5 rounded-full text-[10px] uppercase tracking-wider font-semibold text-white/90 border border-white/10 backdrop-blur-md">Live</div>
       </div>
@@ -30,9 +36,9 @@ function DirectionMatrix({ isNse }) {
             </div>
             <span className="text-[12px] font-medium text-white/70">Advances</span>
           </div>
-          <span className="text-3xl font-extrabold text-white tracking-tighter">{isNse ? '1,424' : '2,105'}</span>
+          <span className="text-3xl font-extrabold text-white tracking-tighter">{advances}</span>
         </div>
-        
+
         <div className="bg-white/[0.03] rounded-xl p-4 border border-white/5 backdrop-blur-sm flex flex-col justify-center transition-all hover:bg-white/[0.06]">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-6 h-6 rounded-full bg-rose-500/10 flex items-center justify-center border border-rose-500/20">
@@ -40,24 +46,25 @@ function DirectionMatrix({ isNse }) {
             </div>
             <span className="text-[12px] font-medium text-white/70">Declines</span>
           </div>
-          <span className="text-3xl font-extrabold text-white tracking-tighter">{isNse ? '642' : '1,280'}</span>
+          <span className="text-3xl font-extrabold text-white tracking-tighter">{declines}</span>
         </div>
-        
+
         <div className="bg-white/[0.03] rounded-xl px-4 py-3 border border-white/5 backdrop-blur-sm flex justify-between items-center transition-all hover:bg-white/[0.06]">
           <span className="text-[12px] font-medium text-white/70">52W Highs</span>
-          <span className="text-[15px] font-bold text-emerald-400 flex items-center gap-1"><ArrowUpRight size={14} strokeWidth={2.5}/>{isNse ? '84' : '124'}</span>
+          <span className="text-[15px] font-bold text-emerald-400 flex items-center gap-1"><ArrowUpRight size={14} strokeWidth={2.5} />{highs52w}</span>
         </div>
-        
+
+        {/* High and low values */}
         <div className="bg-white/[0.03] rounded-xl px-4 py-3 border border-white/5 backdrop-blur-sm flex justify-between items-center transition-all hover:bg-white/[0.06]">
           <span className="text-[12px] font-medium text-white/70">52W Lows</span>
-          <span className="text-[15px] font-bold text-rose-400 flex items-center gap-1"><ArrowDownRight size={14} strokeWidth={2.5}/>{isNse ? '12' : '29'}</span>
+          <span className="text-[15px] font-bold text-rose-400 flex items-center gap-1"><ArrowDownRight size={14} strokeWidth={2.5} />{lows52w}</span>
         </div>
       </div>
-      
+      {/* Market indicator */}
       <div className="relative z-10 flex items-center justify-between pt-4 border-t border-white/5 mt-auto">
         <span className="text-[12px] font-medium text-[#8fa88f]">Overall Market Sentiment</span>
         <span className="text-[12px] font-bold text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-3 py-1 rounded-lg flex items-center gap-1.5 ">
-          Bullish <Activity size={12}/>
+          {sentiment} <Activity size={12} />
         </span>
       </div>
     </div>
@@ -65,13 +72,13 @@ function DirectionMatrix({ isNse }) {
 }
 
 function getMarketState() {
-  const now  = new Date();
+  const now = new Date();
   const mins = now.getHours() * 60 + now.getMinutes();
   if (mins >= 540 && mins < 555)
-    return { label: 'Pre-Open',    dot: 'bg-amber-400', badge: 'bg-amber-50 text-amber-600',       pulse: false };
+    return { label: 'Pre-Open', dot: 'bg-amber-400', badge: 'bg-amber-50 text-amber-600', pulse: false };
   if (mins >= 555 && mins < 930)
-    return { label: 'Market Open', dot: 'bg-[#2d6a4f]', badge: 'bg-[#edf7f2] text-[#2d6a4f]',     pulse: true  };
-  return       { label: 'Closed',  dot: 'bg-rose-400',  badge: 'bg-rose-50 text-rose-500',          pulse: false };
+    return { label: 'Market Open', dot: 'bg-[#2d6a4f]', badge: 'bg-[#edf7f2] text-[#2d6a4f]', pulse: true };
+  return { label: 'Closed', dot: 'bg-rose-400', badge: 'bg-rose-50 text-rose-500', pulse: false };
 }
 
 const ChartTooltip = ({ active, payload, label }) => {
@@ -84,21 +91,24 @@ const ChartTooltip = ({ active, payload, label }) => {
   );
 };
 
-export default function LiveMarketChart({ nseData, bseData, marketInfo }) {
+export default function LiveMarketChart({ nseData, bseData, marketInfo, marketBreadth = {} }) {
   const [exchange, setExchange] = useState('NSE');
-  const data   = exchange === 'NSE' ? nseData : bseData;
-  const info   = marketInfo[exchange] ?? {};
-  const state  = getMarketState();
-  const isUp   = info.change?.startsWith('+');
-  const last   = data[data.length - 1]?.v ?? 0;
-  const first  = data[0]?.v ?? 0;
+  const data = exchange === 'NSE' ? nseData : bseData;
+  const info = marketInfo[exchange] ?? {};
+  const breadth = marketBreadth[exchange] ?? {};
+  const state = getMarketState();
+  const isUp = info.change?.startsWith('+');
+  const last = data[data.length - 1]?.v ?? 0;
+  const first = data[0]?.v ?? 0;
   const domain = [Math.floor(first * 0.998), Math.ceil(last * 1.002)];
   const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
   return (
+    // Main export function that is shows graph and matrix
     <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col lg:flex-row gap-6">
 
       {/* 60% Width for Chart */}
+      {/* main header  */}
       <div className="flex-1 lg:w-[60%] flex flex-col gap-4">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1">
@@ -122,6 +132,7 @@ export default function LiveMarketChart({ nseData, bseData, marketInfo }) {
             </span>
           </div>
 
+          {/* Change Exchange Button */}
           <div className="flex items-center gap-0.5 p-1 bg-[#f3f7f4] rounded-2xl">
             {['NSE', 'BSE'].map(ex => (
               <button
@@ -138,12 +149,14 @@ export default function LiveMarketChart({ nseData, bseData, marketInfo }) {
           </div>
         </div>
 
+        {/* Chart Container */}
+        {/* Responible chart for live market  */}
         <ResponsiveContainer width="100%" height={260}>
           <AreaChart data={data} margin={{ top: 12, right: 4, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="mktGradPremium" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor="#2d6a4f" stopOpacity={0.6} />
-                <stop offset="40%"  stopColor="#2d6a4f" stopOpacity={0.25} />
+                <stop offset="0%" stopColor="#2d6a4f" stopOpacity={0.6} />
+                <stop offset="40%" stopColor="#2d6a4f" stopOpacity={0.25} />
                 <stop offset="100%" stopColor="#2d6a4f" stopOpacity={0.02} />
               </linearGradient>
             </defs>
@@ -159,7 +172,7 @@ export default function LiveMarketChart({ nseData, bseData, marketInfo }) {
 
       {/* 40% Width for Direction Matrix */}
       <div className="w-full lg:w-[40%] flex min-h-[280px]">
-         <DirectionMatrix isNse={exchange === 'NSE'} />
+        <DirectionMatrix breadth={breadth} />
       </div>
     </div>
   );

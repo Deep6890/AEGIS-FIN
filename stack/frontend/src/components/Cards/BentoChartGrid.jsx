@@ -5,8 +5,8 @@ import BasicPie from '../libAssests/PieChart';
 // ── VIX Chart Card ──────────────────────────────────────────────────────────
 function VixCard({ vixData }) {
   const latest = vixData[vixData.length - 1];
-  const prev   = vixData[vixData.length - 2];
-  const up     = latest?.v > prev?.v;
+  const prev = vixData[vixData.length - 2];
+  const up = latest?.v > prev?.v;
 
   return (
     <div className="col-span-2 bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-4 shadow-sm">
@@ -66,16 +66,16 @@ function RiskPieCard({ riskDistribution }) {
 // ── Sector Trend Calendar ───────────────────────────────────────────────────
 const trendStyle = {
   negative: {
-    bar:    'bg-indigo-500',
-    badge:  'bg-indigo-50 text-indigo-600 border-indigo-200',
-    dot:    'bg-indigo-400',
-    label:  'Negative Trend',
+    bar: 'bg-indigo-500',
+    badge: 'bg-indigo-50 text-indigo-600 border-indigo-200',
+    dot: 'bg-indigo-400',
+    label: 'Negative Trend',
   },
   positive: {
-    bar:    'bg-sky-400',
-    badge:  'bg-sky-50 text-sky-600 border-sky-200',
-    dot:    'bg-sky-400',
-    label:  'Positive Trend',
+    bar: 'bg-sky-400',
+    badge: 'bg-sky-50 text-sky-600 border-sky-200',
+    dot: 'bg-sky-400',
+    label: 'Positive Trend',
   },
 };
 

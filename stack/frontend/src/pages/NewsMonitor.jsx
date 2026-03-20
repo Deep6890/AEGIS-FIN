@@ -19,7 +19,7 @@ export default function NewsMonitor() {
 
   return (
     <PageLayout>
-      <div className="flex justify-between items-end mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-extrabold text-[#0f1f0f] tracking-tight">News Monitor</h1>
           <p className="text-gray-500 mt-2 flex items-center gap-2">
@@ -27,7 +27,7 @@ export default function NewsMonitor() {
           </p>
         </div>
         
-        <div className="bg-white px-1 py-1 rounded-xl shadow-sm border border-emerald-100 flex gap-1">
+        <div className="bg-white px-1 py-1 rounded-xl shadow-sm border border-emerald-100 flex gap-1 flex-wrap w-full md:w-auto overflow-x-auto">
           {['All', 'Banking', 'Auto', 'IT', 'Macro'].map(f => (
             <button 
               key={f}
@@ -58,8 +58,8 @@ export default function NewsMonitor() {
                 <div key={news.id} className="group p-5 bg-white border border-gray-100 hover:border-emerald-300 rounded-xl shadow-sm hover:shadow-md transition cursor-pointer relative overflow-hidden">
                   <div className={`absolute top-0 left-0 w-1 h-full ${style.bg.replace('100', '500')}`}></div>
                   
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-3">
+                  <div className="flex flex-col md:flex-row justify-between items-start mb-2 gap-2 md:gap-0">
+                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
                       <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${style.bg} ${style.text}`}>
                         {news.sentiment} {style.icon}
                       </span>

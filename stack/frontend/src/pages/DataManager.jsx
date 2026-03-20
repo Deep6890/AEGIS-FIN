@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import PageLayout from '../components/Layout/PageLayout';
 import { Database, UploadCloud, FileText, CheckCircle2, History, RotateCw, AlertTriangle, Settings2, Link2 } from 'lucide-react';
+import { useAppData } from '../context/AppDataContext';
 
 export default function DataManager() {
+  const { dataManager } = useAppData();
   const [dragActive, setDragActive] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState('idle'); // idle, mapped, uploaded
+  const [uploadStatus, setUploadStatus] = useState('idle');
 
   return (
     <PageLayout>
-      <div className="flex justify-between items-end mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-extrabold text-[#0f1f0f] tracking-tight">Data Manager</h1>
           <p className="text-gray-500 mt-2 flex items-center gap-2">
@@ -16,7 +18,7 @@ export default function DataManager() {
           </p>
         </div>
         
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-2 md:gap-4 w-full md:w-auto">
           <button className="flex items-center gap-2 bg-white px-4 py-2 border border-emerald-100 rounded-xl shadow-sm hover:bg-emerald-50 text-emerald-700 font-bold text-sm transition transition">
             <Link2 size={16} /> API Keys
           </button>
@@ -59,7 +61,8 @@ export default function DataManager() {
                   <Settings2 size={18} className="text-[#2d6a4f]" /> Schema Column Mapping
                 </h4>
                 
-                <div className="grid grid-cols-[1fr,auto,1fr] gap-4 items-center">
+                <div className="overflow-x-auto w-full">
+                <div className="grid grid-cols-[1fr,auto,1fr] gap-4 items-center min-w-[500px]">
                   <div className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Source CSV</div>
                   <div></div>
                   <div className="text-sm font-bold text-[#2d6a4f] uppercase tracking-wider mb-2">System Schema</div>
@@ -89,6 +92,7 @@ export default function DataManager() {
                       </div>
                     </div>
                   ))}
+                </div>
                 </div>
                 
                 <div className="mt-6 flex justify-end">
@@ -126,12 +130,7 @@ export default function DataManager() {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
             <h3 className="font-bold text-lg mb-4 text-gray-800">Data Freshness</h3>
             <div className="space-y-4">
-              {[
-                { name: 'Live Market Index (NSE)', time: 'Under 1s', status: 'optimal' },
-                { name: 'Global News Sentiment', time: '12m ago', status: 'optimal' },
-                { name: 'Company Fundamentals', time: '24h ago', status: 'warning' },
-                { name: 'RBI Regulatory Feeds', time: '3d ago', status: 'alert' },
-              ].map((s, i) => (
+              {dataManager.freshness.map((s, i) => (
                 <div key={i} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
                   <div>
                     <div className="font-bold text-sm text-gray-800">{s.name}</div>
@@ -148,21 +147,19 @@ export default function DataManager() {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
             <h3 className="font-bold text-lg mb-4 text-gray-800">Recent Sync Logs</h3>
             <div className="space-y-0">
-              <div className="relative pl-6 pb-6 border-l-2 border-emerald-200 last:border-0 last:pb-0">
-                <div className="absolute left-[-9px] top-0 w-4 h-4 bg-emerald-500 rounded-full border-4 border-white shadow-sm"></div>
-                <p className="font-bold text-sm text-gray-800">Portfolio Update.csv</p>
-                <p className="text-xs text-gray-500 mt-1">Manual upload by user • 2,410 entities parsed</p>
-              </div>
-              <div className="relative pl-6 pb-6 border-l-2 border-emerald-200 last:border-0 last:pb-0">
-                <div className="absolute left-[-9px] top-0 w-4 h-4 bg-emerald-500 rounded-full border-4 border-white shadow-sm"></div>
-                <p className="font-bold text-sm text-gray-800">Bloomberg API Webhook</p>
-                <p className="text-xs text-gray-500 mt-1">Automated sync • 0 anomalies</p>
-              </div>
-              <div className="relative pl-6 pb-6 border-l-2 border-rose-200 last:border-0 last:pb-0">
-                <div className="absolute left-[-9px] top-0 w-4 h-4 bg-rose-500 rounded-full border-4 border-white shadow-sm"></div>
-                <p className="font-bold text-sm text-gray-800">BSE Intraday Fallback</p>
-                <p className="text-xs text-rose-500 mt-1">Connection timeout, retried successfully after 4m</p>
-              </div>
+              {dataManager.syncLogs.map((log, i) => (
+                <div key={i} className={`relative pl-6 pb-6 last:pb-0 ${
+                  i < dataManager.syncLogs.length - 1
+                    ? (log.status === 'error' ? 'border-l-2 border-rose-200' : 'border-l-2 border-emerald-200')
+                    : ''
+                }`}>
+                  <div className={`absolute left-[-9px] top-0 w-4 h-4 rounded-full border-4 border-white shadow-sm ${
+                    log.status === 'error' ? 'bg-rose-500' : 'bg-emerald-500'
+                  }`}></div>
+                  <p className="font-bold text-sm text-gray-800">{log.title}</p>
+                  <p className={`text-xs mt-1 ${log.status === 'error' ? 'text-rose-500' : 'text-gray-500'}`}>{log.desc}</p>
+                </div>
+              ))}
             </div>
             <button className="w-full text-center text-sm font-bold text-emerald-600 hover:text-emerald-800 transition mt-4 py-2 opacity-80 hover:opacity-100 hover:bg-emerald-50 rounded-lg">
               View full history

@@ -12,17 +12,18 @@ const getStatusColor = (status) => {
 
 export default function BalanceSheetHub() {
   const { balanceSheetHub } = useAppData();
-  const statementData = balanceSheetHub;
   const [activeTab, setActiveTab] = useState('income');
   const [expandedInfo, setExpandedInfo] = useState({});
 
-  const toggleInfo = (idx) => {
-    setExpandedInfo(prev => ({ ...prev, [idx]: !prev[idx] }));
-  };
+  const tabData = { income: balanceSheetHub.income, balance: balanceSheetHub.balance, cashflow: balanceSheetHub.cashflow };
+  const rows = tabData[activeTab] ?? [];
+  const { aiDiagnostic, keyRatios } = balanceSheetHub;
+
+  const toggleInfo = (idx) => setExpandedInfo(prev => ({ ...prev, [idx]: !prev[idx] }));
 
   return (
     <PageLayout>
-      <div className="flex justify-between items-end mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-extrabold text-[#0f1f0f] tracking-tight">Balance Sheet Hub</h1>
           <p className="text-gray-500 mt-2 flex items-center gap-2">
@@ -30,10 +31,10 @@ export default function BalanceSheetHub() {
           </p>
         </div>
         
-        <div className="flex gap-4 items-center">
+        <div className="flex gap-4 items-center w-full md:w-auto">
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input type="text" placeholder="Search company (e.g. RELIANCE)" className="w-64 bg-white border border-emerald-100 rounded-xl py-2 pl-9 pr-4 shadow-sm focus:ring-2 focus:ring-emerald-500/20 font-bold outline-none" defaultValue="HDFCBANK" />
+            <input type="text" placeholder="Search company (e.g. RELIANCE)" className="w-full md:w-64 bg-white border border-emerald-100 rounded-xl py-2 pl-9 pr-4 shadow-sm focus:ring-2 focus:ring-emerald-500/20 font-bold outline-none" defaultValue="HDFCBANK" />
           </div>
         </div>
       </div>
@@ -45,8 +46,8 @@ export default function BalanceSheetHub() {
           
           {/* Tabs */}
           <div className="flex border-b border-gray-100 p-1">
-            {['Income Statement', 'Balance Sheet', 'Cash Flow'].map((t, i) => {
-              const val = t.split(' ')[0].toLowerCase();
+            {['Income Statement', 'Balance Sheet', 'Cash Flow'].map((t) => {
+              const val = t === 'Income Statement' ? 'income' : t === 'Balance Sheet' ? 'balance' : 'cashflow';
               return (
                 <button 
                   key={val}
@@ -60,7 +61,8 @@ export default function BalanceSheetHub() {
           </div>
 
           {/* Table Body */}
-          <div className="flex-1 p-6">
+          <div className="flex-1 p-4 md:p-6 overflow-x-auto">
+            <div className="min-w-[800px]">
             <div className="flex justify-between items-center text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 px-4">
               <div className="w-1/3">Line Item (FY24)</div>
               <div className="w-1/6 text-right">Value (Cr)</div>
@@ -70,7 +72,7 @@ export default function BalanceSheetHub() {
             </div>
 
             <div className="space-y-3">
-              {statementData.income.map((row, idx) => (
+              {rows.map((row, idx) => (
                 <div key={idx} className="bg-gray-50 hover:bg-emerald-50/50 rounded-xl border border-transparent hover:border-emerald-100 transition p-4">
                   <div className="flex items-center justify-between">
                     
@@ -127,6 +129,7 @@ export default function BalanceSheetHub() {
                 </div>
               ))}
             </div>
+            </div>
           </div>
         </div>
 
@@ -144,15 +147,11 @@ export default function BalanceSheetHub() {
             </div>
             
             <div className="space-y-4 relative z-10 text-emerald-50 text-sm leading-relaxed">
-              <p>
-                <strong>Summary:</strong> Core revenue growth is robust at <span className="text-emerald-400 font-bold">+11.2% YoY</span>, but profitability is being dragged down by a sharp <span className="text-rose-400 font-bold">50% spike in interest expenses</span>.
-              </p>
-              <p>
-                <strong>Sector Context:</strong> While EBITDA margin remains healthy at ~37%, the company is slipping in operational efficiency compared to peers. COGS rose 17.3%, significantly outpacing revenue growth, indicating lack of pricing power or supply chain stress.
-              </p>
+              <p><strong>Summary:</strong> {aiDiagnostic.summary}</p>
+              <p><strong>Sector Context:</strong> {aiDiagnostic.context}</p>
               <div className="bg-emerald-900/50 p-3 flex gap-3 border border-emerald-700/50 rounded-lg">
                 <CheckCircle2 size={16} className="text-emerald-400 mt-1 shrink-0" />
-                <p className="text-xs">No immediate liquidity concern (Current Ratio stable), but rising debt costs warrant close monitoring next quarter.</p>
+                <p className="text-xs">{aiDiagnostic.note}</p>
               </div>
             </div>
           </div>
@@ -162,26 +161,25 @@ export default function BalanceSheetHub() {
               <Building2 size={18} className="text-emerald-600" /> Key Ratio Highlights
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex flex-col items-center text-center">
-                <span className="text-2xl font-black text-emerald-600 mb-1">18.2%</span>
-                <span className="text-xs font-bold text-gray-500 uppercase">ROE</span>
-                <span className="text-[10px] text-emerald-600 mt-1 font-bold">+120 bps YoY</span>
-              </div>
-              <div className="p-4 bg-rose-50 rounded-xl border border-rose-100 flex flex-col items-center text-center">
-                <span className="text-2xl font-black text-rose-600 mb-1">1.8x</span>
-                <span className="text-xs font-bold text-gray-500 uppercase">Debt/Equity</span>
-                <span className="text-[10px] text-rose-600 mt-1 font-bold">Trending Up ↑</span>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex flex-col items-center text-center">
-                <span className="text-2xl font-black text-emerald-600 mb-1">2.1x</span>
-                <span className="text-xs font-bold text-gray-500 uppercase">Current Rat.</span>
-                <span className="text-[10px] text-emerald-600 mt-1 font-bold">Stable</span>
-              </div>
-              <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex flex-col items-center text-center">
-                <span className="text-2xl font-black text-amber-600 mb-1">3.5x</span>
-                <span className="text-xs font-bold text-gray-500 uppercase">Int. Cover</span>
-                <span className="text-[10px] text-amber-600 mt-1 font-bold">Declining ↓</span>
-              </div>
+              {keyRatios.map((r, i) => (
+                <div key={i} className={`p-4 rounded-xl border flex flex-col items-center text-center ${
+                  r.theme === 'green' ? 'bg-gray-50 border-gray-100' :
+                  r.theme === 'red'   ? 'bg-rose-50 border-rose-100' :
+                  'bg-amber-50 border-amber-100'
+                }`}>
+                  <span className={`text-2xl font-black mb-1 ${
+                    r.theme === 'green' ? 'text-emerald-600' :
+                    r.theme === 'red'   ? 'text-rose-600' :
+                    'text-amber-600'
+                  }`}>{r.value}</span>
+                  <span className="text-xs font-bold text-gray-500 uppercase">{r.label}</span>
+                  <span className={`text-[10px] mt-1 font-bold ${
+                    r.theme === 'green' ? 'text-emerald-600' :
+                    r.theme === 'red'   ? 'text-rose-600' :
+                    'text-amber-600'
+                  }`}>{r.delta}</span>
+                </div>
+              ))}
             </div>
             <button className="mt-4 w-full py-2 hover:bg-emerald-50 text-emerald-700 font-bold rounded-xl text-sm transition">
               Download Full Excel Model

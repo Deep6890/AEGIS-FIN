@@ -65,9 +65,9 @@ export default function CompanyBrowser() {
 
   return (
     <PageLayout>
-      <div className="flex gap-6 h-full">
+      <div className="flex flex-col md:flex-row gap-6 h-full">
         {/* LEFT SIDEBAR: Filters */}
-          <div className="w-[280px] shrink-0 flex flex-col gap-6">
+          <div className="w-full md:w-[280px] shrink-0 flex flex-col gap-6">
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 flex flex-col gap-4">
               <h3 className="font-bold text-[#0f1f0f] flex items-center gap-2">
                 <Filter size={18} className="text-[#2d6a4f]" />

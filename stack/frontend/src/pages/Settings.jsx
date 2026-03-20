@@ -34,7 +34,7 @@ export default function Settings() {
 
   return (
     <PageLayout>
-      <div className="flex justify-between items-end mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-extrabold text-[#0f1f0f] tracking-tight">System Settings</h1>
           <p className="text-gray-500 mt-2 flex items-center gap-2">
@@ -47,10 +47,10 @@ export default function Settings() {
         </button>
       </div>
 
-      <div className="flex gap-8 flex-1 min-h-0">
+      <div className="flex flex-col md:flex-row gap-8 flex-1 min-h-0">
         
         {/* L COL: Tabs */}
-        <div className="w-64 shrink-0 flex flex-col gap-2">
+        <div className="w-full md:w-64 shrink-0 flex flex-col gap-2">
           {[
             { id: 'alerts', label: 'Alert Thresholds', icon: <Bell size={18} /> },
             { id: 'display', label: 'Display & Theme', icon: <Palette size={18} /> },
@@ -81,7 +81,7 @@ export default function Settings() {
               </div>
               
               <div className="space-y-6">
-                <div className="grid grid-cols-[1fr,150px] gap-6 items-center">
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr,150px] gap-2 sm:gap-6 items-start sm:items-center">
                   <div>
                     <label className="font-bold text-gray-700 block mb-1">Volatility Ratio Spike</label>
                     <p className="text-xs text-gray-500">Trigger critical alert when IV/HV ratio exceeds threshold (Standard: 1.5x)</p>
@@ -92,7 +92,7 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-[1fr,150px] gap-6 items-center">
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr,150px] gap-2 sm:gap-6 items-start sm:items-center">
                   <div>
                     <label className="font-bold text-gray-700 block mb-1">Sentiment Divergence</label>
                     <p className="text-xs text-gray-500">Flag when price moves UP but AI sentiment score drops below threshold</p>
@@ -103,7 +103,7 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-[1fr,150px] gap-6 items-center">
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr,150px] gap-2 sm:gap-6 items-start sm:items-center">
                   <div>
                     <label className="font-bold text-gray-700 block mb-1">Debt/Equity Redline</label>
                     <p className="text-xs text-gray-500">Global flag across all sectors except Financials when D/E breaks limit</p>

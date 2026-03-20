@@ -7,7 +7,7 @@ import EvidencePanel from '../components/chat/EvidencePanel';
 import DailyHighlights from '../components/chat/DailyHighlights';
 import PromptSuggestions from '../components/chat/PromptSuggestions';
 import { Send, RefreshCw, Sparkles, PanelRight } from 'lucide-react';
-import { suggestedPrompts, dailyHighlights, getRAGResponse } from '../data/chatData';
+import { useAppData } from '../context/AppDataContext';
 
 const now = () => new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
@@ -19,6 +19,7 @@ const WELCOME = {
 };
 
 export default function ChatPage() {
+  const { suggestedPrompts, dailyHighlights, getRAGResponse } = useAppData();
   const [messages, setMessages]         = useState([WELCOME]);
   const [input, setInput]               = useState('');
   const [typing, setTyping]             = useState(false);
@@ -69,10 +70,10 @@ export default function ChatPage() {
       <div className="flex flex-1 min-h-0">
         <VerticalNav />
 
-        <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-1 min-h-0 overflow-hidden relative">
 
           {/* COL 1 — Daily highlights sidebar */}
-          <div className="w-[272px] shrink-0 flex flex-col bg-white border-r border-[#e4ebe4] overflow-hidden">
+          <div className="hidden lg:flex w-[272px] shrink-0 flex-col bg-white border-r border-[#e4ebe4] overflow-hidden">
             <div className="px-4 pt-4 pb-3 border-b border-[#f0f5f0]">
               <h2 className="text-[13px] font-black text-[#1a2e1a]">AI Insights</h2>
               <p className="text-[11px] text-[#9ab09a] mt-0.5">Live risk signals · updated daily</p>
@@ -158,10 +159,13 @@ export default function ChatPage() {
 
           {/* COL 3 — Evidence panel (toggleable) */}
           {showEvidence && (
-            <div className="w-[340px] shrink-0 flex flex-col bg-white border-l border-[#e4ebe4] overflow-hidden">
-              <div className="px-4 pt-4 pb-3 border-b border-[#f0f5f0]">
-                <h2 className="text-[13px] font-black text-[#1a2e1a]">Evidence</h2>
-                <p className="text-[11px] text-[#9ab09a] mt-0.5">Charts, tables &amp; data citations</p>
+            <div className="absolute inset-y-0 right-0 z-20 md:static w-full md:w-[340px] shrink-0 flex flex-col bg-white border-l border-[#e4ebe4] overflow-hidden shadow-2xl md:shadow-none">
+              <div className="px-4 pt-4 pb-3 border-b border-[#f0f5f0] flex justify-between items-center">
+                <div>
+                  <h2 className="text-[13px] font-black text-[#1a2e1a]">Evidence</h2>
+                  <p className="text-[11px] text-[#9ab09a] mt-0.5">Charts, tables &amp; data citations</p>
+                </div>
+                <button className="md:hidden text-gray-500 font-bold" onClick={() => setShowEvidence(false)}>Close</button>
               </div>
               <div className="flex-1 overflow-hidden">
                 <EvidencePanel evidenceCards={evidence.cards} citations={evidence.citations} />
@@ -169,6 +173,9 @@ export default function ChatPage() {
             </div>
           )}
 
+          {showEvidence && (
+            <div className="md:hidden fixed inset-0 z-10 bg-black/20" onClick={() => setShowEvidence(false)}></div>
+          )}
         </div>
       </div>
     </div>

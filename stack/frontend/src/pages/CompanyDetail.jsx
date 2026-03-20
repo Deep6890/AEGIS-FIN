@@ -24,8 +24,8 @@ export default function CompanyDetail() {
           <ChevronLeft size={16} /> Back to Universe
         </button>
         
-        <div className="flex justify-between items-start">
-          <div className="flex gap-5 items-end">
+        <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+          <div className="flex gap-4 md:gap-5 items-end">
             <div className="w-16 h-16 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-2xl flex items-center justify-center text-emerald-800 font-black text-xl shadow-sm border border-emerald-300">
               {companyData.name.substring(0,2)}
             </div>
@@ -43,8 +43,8 @@ export default function CompanyDetail() {
           </div>
 
           {/* Rings */}
-          <div className="flex gap-6 items-center">
-            <div className="flex flex-col items-end mr-4">
+          <div className="flex gap-4 md:gap-6 items-center flex-wrap md:flex-nowrap w-full md:w-auto">
+            <div className="flex flex-col items-end mr-0 md:mr-4">
               <span className="text-xs text-gray-500">Composite Risk</span>
               <span className="text-3xl font-black text-amber-500 delay-100 transition-all">{100 - companyData.compositeScore}</span>
             </div>
@@ -129,12 +129,12 @@ export default function CompanyDetail() {
               <h3 className="font-bold text-[#0f1f0f] text-lg">Balance Sheet Core (3-Yr Trend)</h3>
               <button onClick={() => navigate('/balance-sheet')} className="text-[#2d6a4f] text-sm font-bold hover:underline">Full Statement &rarr;</button>
             </div>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'Revenue', val: companyData.stats?.revenue || '₹1.8L Cr', trend: '+14%' },
-                { label: 'Net Profit', val: companyData.stats?.netIncome || '₹46k Cr', trend: '+22%' },
-                { label: 'EPS', val: companyData.stats?.eps || '₹45.2', trend: '+18%' },
-                { label: 'NPA', val: '1.2%', trend: '-40bps' },
+                { label: 'Revenue',    val: companyData.stats?.revenue,   trend: '+14%'  },
+                { label: 'Net Profit', val: companyData.stats?.netIncome, trend: '+22%'  },
+                { label: 'EPS',        val: companyData.stats?.eps,       trend: '+18%'  },
+                { label: 'P/E Ratio',  val: companyData.peRatio,          trend: 'Stable'},
               ].map((m, i) => (
                 <div key={i} className="flex flex-col gap-1 p-3 bg-gray-50 rounded-xl border border-gray-100">
                   <span className="text-xs text-gray-500 uppercase tracking-wide font-semibold">{m.label}</span>

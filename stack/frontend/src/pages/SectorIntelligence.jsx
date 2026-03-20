@@ -5,7 +5,7 @@ import { Target, TrendingUp, TrendingDown, BookOpen, AlertTriangle, ShieldCheck,
 import { useAppData } from '../context/AppDataContext';
 
 export default function SectorIntelligence() {
-  const { sectorIntelligence, sectors, companies } = useAppData();
+  const { sectorIntelligence, sectors } = useAppData();
   const [selectedSectorId, setSelectedSectorId] = useState('sec-bnk');
   
   const selectedSector = useMemo(() => {
@@ -14,7 +14,7 @@ export default function SectorIntelligence() {
 
   return (
     <PageLayout>
-      <div className="flex justify-between items-end mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-extrabold text-[#0f1f0f] tracking-tight">Sector Intelligence</h1>
           <p className="text-gray-500 mt-2 flex items-center gap-2">
@@ -22,7 +22,7 @@ export default function SectorIntelligence() {
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap md:flex-nowrap overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
           {sectors.map(s => (
             <button 
               key={s.id} 
@@ -41,13 +41,13 @@ export default function SectorIntelligence() {
         <div className="xl:col-span-2 space-y-6">
           
           {/* Overview & Cycle */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100 flex gap-6">
+          <div className="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-emerald-100 flex flex-col md:flex-row gap-6">
             <div className="flex-1">
               <h3 className="font-bold text-xl mb-2">{selectedSector.name} Sector Overview</h3>
               <p className="text-sm text-gray-500 mb-4 leading-relaxed">
                 {selectedSector.description}
               </p>
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <div className="bg-emerald-50 px-3 py-2 border border-emerald-100 rounded-lg flex items-center gap-2 text-sm text-emerald-800 font-bold">
                   {selectedSector.trend === 'up' ? <TrendingUp size={16} /> : <TrendingDown size={16} />} Performance: {selectedSector.performance}
                 </div>
@@ -56,7 +56,7 @@ export default function SectorIntelligence() {
                 </div>
               </div>
             </div>
-            <div className="w-1/3 flex flex-col items-center justify-center border-l border-gray-100 pl-6 relative">
+            <div className="w-full md:w-1/3 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-gray-100 pt-6 md:pt-0 pl-0 md:pl-6 relative">
               <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Sector Cycle Clock</h4>
               <div className="relative w-24 h-24 rounded-full border-4 border-gray-100 flex items-center justify-center">
                 <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-blue-100 rounded-tr-full"></div>

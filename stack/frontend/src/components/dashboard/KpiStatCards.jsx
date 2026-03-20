@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Building2, Layers, AlertTriangle, ChevronDown, X, ArrowUpRight } from 'lucide-react';
 
+// Establishing the cards with icons and values
 function StatCard({ icon: Icon, label, value, delta, sub, highlight, description }) {
   const isUp = delta?.startsWith('+') && delta !== '+0';
 
+  // This is the first card that is shown first any where we can use this 
   return (
     <div className={[
       'group flex-1 rounded-3xl p-5 flex flex-col gap-4 transition-all duration-300',
@@ -53,53 +55,8 @@ function StatCard({ icon: Icon, label, value, delta, sub, highlight, description
   );
 }
 
-function SectorFilter({ sectors, selected, onChange }) {
-  const [open, setOpen] = useState(false);
-  const toggle = s => onChange(selected.includes(s) ? selected.filter(x => x !== s) : [...selected, s]);
-  const clearAll = () => onChange([]);
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white shadow-sm text-[12px] font-medium text-[#4a6a4a] transition-all"
-      >
-        <Layers size={13} />
-        {selected.length === 0 ? 'All Sectors' : `${selected.length} Selected`}
-        <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="absolute top-full right-0 mt-2 z-50 bg-white rounded-3xl shadow-sm p-4 w-64">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-medium text-[#8fa88f]">Filter by sector</span>
-            {selected.length > 0 && (
-              <button onClick={clearAll} className="text-[11px] text-[#2d6a4f] font-medium flex items-center gap-1 hover:opacity-70">
-                <X size={10} /> Clear
-              </button>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {sectors.map(s => (
-              <button
-                key={s}
-                onClick={() => toggle(s)}
-                className={`px-3 py-1 rounded-xl text-[11px] font-medium transition-all
-                  ${selected.includes(s)
-                    ? 'bg-[#2d6a4f] text-white shadow-sm'
-                    : 'bg-[#f3f7f4] text-[#4a6a4a] hover:bg-[#e8f2ec]'}`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default function KpiStatCards({ stats, sectors, selectedSectors, onSectorChange }) {
+// Asstablishing the rows
+export default function KpiStatCards({ stats }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-end justify-between">
@@ -107,10 +64,9 @@ export default function KpiStatCards({ stats, sectors, selectedSectors, onSector
           <h1 className="text-[22px] font-semibold text-[#0f1f0f] tracking-tight">Dashboard</h1>
           <p className="text-[13px] text-[#8fa88f] mt-0.5">Monitor and manage your financial insights</p>
         </div>
-        <SectorFilter sectors={sectors} selected={selectedSectors} onChange={onSectorChange} />
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex flex-col lg:flex-row gap-4">
         <StatCard
           icon={Building2}
           label="Total Companies"
