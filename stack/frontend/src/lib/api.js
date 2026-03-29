@@ -1,0 +1,171 @@
+import { supabase } from "./supabase";
+
+// ── Companies ─────────────────────────────────────────────────────────────────
+export const fetchCompanies = () =>
+  supabase.from("companies").select("*").order("name");
+
+export const fetchCompanyById = (id) =>
+  supabase.from("companies").select("*").eq("id", id).single();
+
+// ── Sectors ───────────────────────────────────────────────────────────────────
+export const fetchSectors = () =>
+  supabase.from("sectors").select("*").order("name");
+
+// ── Sector Metrics ────────────────────────────────────────────────────────────
+export const fetchLatestSectorMetrics = () =>
+  supabase
+    .from("sector_metrics")
+    .select("*, sectors(name, ticker)")
+    .order("date", { ascending: false })
+    .limit(120); // ~10 sectors × last 10 days
+
+export const fetchSectorMetricsHistory = (sectorId, days = 90) =>
+  supabase
+    .from("sector_metrics")
+    .select("*")
+    .eq("sector_id", sectorId)
+    .order("date", { ascending: true })
+    .limit(days);
+
+// ── Sector Health ─────────────────────────────────────────────────────────────
+export const fetchLatestSectorHealth = () =>
+  supabase
+    .from("sector_health")
+    .select("*, sectors(name)")
+    .order("date", { ascending: false })
+    .limit(120);
+
+export const fetchSectorHealthHistory = (sectorId, days = 90) =>
+  supabase
+    .from("sector_health")
+    .select("*")
+    .eq("sector_id", sectorId)
+    .order("date", { ascending: true })
+    .limit(days);
+
+// ── Company Metrics ───────────────────────────────────────────────────────────
+export const fetchLatestCompanyMetrics = (companyId) =>
+  supabase
+    .from("company_metrics")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false })
+    .limit(90);
+
+// ── Correlation ───────────────────────────────────────────────────────────────
+export const fetchStaticCorr = (companyId) =>
+  supabase
+    .from("static_corr")
+    .select("*, sectors(name)")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false })
+    .limit(50);
+
+export const fetchRollingCorr = (companyId, windowDays = 60) =>
+  supabase
+    .from("rolling_corr")
+    .select("*, sectors(name)")
+    .eq("company_id", companyId)
+    .eq("window_days", windowDays)
+    .order("date", { ascending: true })
+    .limit(200);
+
+export const fetchTopSectors = (companyId) =>
+  supabase
+    .from("top_sectors")
+    .select("*, sectors(name)")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false })
+    .order("rank", { ascending: true })
+    .limit(20);
+
+// ── Balance Sheet ─────────────────────────────────────────────────────────────
+export const fetchBalanceSheet = (companyId) =>
+  supabase
+    .from("balance_sheet")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false })
+    .limit(100);
+
+export const fetchBalanceSheetHistory = (companyId, ratio) =>
+  supabase
+    .from("balance_sheet_history")
+    .select("*")
+    .eq("company_id", companyId)
+    .eq("ratio", ratio)
+    .order("date", { ascending: true })
+    .limit(40);
+
+// ── Holding Metrics ───────────────────────────────────────────────────────────
+export const fetchHoldingMetrics = (companyId) =>
+  supabase
+    .from("holding_metrics")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false })
+    .limit(50);
+
+// ── ML Predictions ────────────────────────────────────────────────────────────
+export const fetchMlPredictions = (companyId) =>
+  supabase
+    .from("ml_predictions")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false })
+    .limit(30);
+
+export const fetchAllMlPredictions = () =>
+  supabase
+    .from("ml_predictions")
+    .select("*, companies(name, ticker)")
+    .order("date", { ascending: false })
+    .limit(600);
+
+// ── Feature Store ─────────────────────────────────────────────────────────────
+export const fetchFeatureStore = (companyId) =>
+  supabase
+    .from("feature_store")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false })
+    .limit(30);
+
+// ── Macro Overlay ─────────────────────────────────────────────────────────────
+export const fetchMacroOverlay = (days = 90) =>
+  supabase
+    .from("macro_overlay")
+    .select("*")
+    .order("date", { ascending: true })
+    .limit(days);
+
+export const fetchLatestMacro = () =>
+  supabase
+    .from("macro_overlay")
+    .select("*")
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+// ── Portfolio Summary (aggregated) ───────────────────────────────────────────
+export const fetchPortfolioSummary = () =>
+  supabase
+    .from("ml_predictions")
+    .select("survival_score, distress_probability, companies(name)")
+    .order("date", { ascending: false })
+    .limit(600);
+
+// ── Pipeline Log ──────────────────────────────────────────────────────────────
+export const fetchPipelineLog = (limit = 100) =>
+  supabase
+    .from("pipeline_log")
+    .select("*")
+    .order("run_at", { ascending: false })
+    .limit(limit);
+
+export const fetchPipelineStats = () =>
+  supabase
+    .from("pipeline_log")
+    .select("status, company, run_at")
+    .order("run_at", { ascending: false })
+    .limit(500);
