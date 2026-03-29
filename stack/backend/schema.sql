@@ -373,3 +373,24 @@ CREATE TABLE macro_overlay (
 );
 CREATE INDEX idx_macro_overlay_date   ON macro_overlay (date);
 CREATE INDEX idx_macro_overlay_regime ON macro_overlay (macro_regime);
+
+-- =============================================================================
+-- SCHEMA PATCH v2.2  — Pipeline run log table
+-- =============================================================================
+DROP TABLE IF EXISTS pipeline_log CASCADE;
+CREATE TABLE pipeline_log (
+    id           BIGSERIAL   PRIMARY KEY,
+    run_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    company      TEXT        NOT NULL,
+    ticker       TEXT,
+    status       TEXT        NOT NULL,   -- ok / error / running
+    error_msg    TEXT,
+    layers_json  TEXT,                   -- JSON of per-layer status
+    duration_s   FLOAT8
+);
+CREATE INDEX idx_pipeline_log_company ON pipeline_log (company);
+CREATE INDEX idx_pipeline_log_run_at  ON pipeline_log (run_at DESC);
+CREATE INDEX idx_pipeline_log_status  ON pipeline_log (status);
+
+-- Allow anon read for frontend monitor
+CREATE POLICY "allow_public_read" ON pipeline_log FOR SELECT USING (true);

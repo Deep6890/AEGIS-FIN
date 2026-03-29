@@ -1,48 +1,26 @@
 """
-supabase_gateway.py
--------------------
-Translates every layer DataFrame from aegis_pipeline.run_full_pipeline()
-into the normalized Supabase schema.
-
-Flow
-----
-  1. Upsert company + sector lookup rows  -> get integer IDs
-  2. Write each layer to its target table using those IDs
-  3. Raw OHLCV data is intentionally NOT pushed (as per design)
-
-Usage
------
-  from db.supabase_gateway import AegisGateway
-
-  gw     = AegisGateway()
-  result = run_full_pipeline(ticker="TCS.NS", display_name="TCS")
-  gw.push(result)
+supabase_gateway.py  v3.0
+--------------------------
+- Upserts all pipeline layers (no duplicates via conflict keys)
+- Enforces 3-year data retention (auto-deletes rows older than 3 years)
+- Sector data pushed correctly (sector_id resolved from name)
+- Null-safe for all float fields
 """
 
-import os
-import math
+import os, math
+from datetime import datetime, timezone, timedelta
 from typing import Optional
-
 import pandas as pd
 from supabase import create_client, Client
 
+THREE_YEARS_AGO = (datetime.now(timezone.utc) - timedelta(days=3*365)).strftime("%Y-%m-%d")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Client factory
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _get_client() -> Client:
-    url = os.environ["SUPABASE_URL"]
-    key = os.environ["SUPABASE_SERVICE_KEY"]
-    return create_client(url, key)
+    return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _clean(val):
-    """Convert NaN / Inf to None so Supabase accepts the JSON payload."""
     if val is None:
         return None
     try:
@@ -54,25 +32,29 @@ def _clean(val):
 
 
 def _date(row, col="Date", fallback="") -> str:
-    return str(row.get(col, fallback))[:10]
+    v = row.get(col, fallback)
+    if v is None:
+        return fallback
+    return str(v)[:10]
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Gateway
-# ─────────────────────────────────────────────────────────────────────────────
 
 class AegisGateway:
-    """
-    Single entry-point for writing all pipeline layers to Supabase.
-    Instantiate once; call push(result) per pipeline run.
-    """
-
     def __init__(self, client: Optional[Client] = None):
         self.db: Client = client or _get_client()
         self._company_cache: dict = {}
         self._sector_cache:  dict = {}
+        # Pre-load sector cache
+        self._load_sectors()
 
-    # ── Lookup helpers ────────────────────────────────────────────────────────
+    def _load_sectors(self):
+        try:
+            res = self.db.table("sectors").select("id,name").execute()
+            for row in (res.data or []):
+                self._sector_cache[row["name"]] = row["id"]
+        except Exception:
+            pass
+
+    # ── Lookup ────────────────────────────────────────────────────────────────
 
     def _company_id(self, name: str, ticker: str = None) -> int:
         if name in self._company_cache:
@@ -80,63 +62,63 @@ class AegisGateway:
         payload = {"name": name}
         if ticker:
             payload["ticker"] = ticker
-        res = (
-            self.db.table("companies")
-            .upsert(payload, on_conflict="name")
-            .execute()
-        )
+        res = self.db.table("companies").upsert(payload, on_conflict="name").execute()
         cid = res.data[0]["id"]
         self._company_cache[name] = cid
         return cid
 
-    def _sector_id(self, name: str) -> int:
+    def _sector_id(self, name: str) -> Optional[int]:
         if name in self._sector_cache:
             return self._sector_cache[name]
-        res = (
-            self.db.table("sectors")
-            .select("id")
-            .eq("name", name)
-            .single()
-            .execute()
-        )
-        sid = res.data["id"]
-        self._sector_cache[name] = sid
-        return sid
+        try:
+            res = self.db.table("sectors").select("id").eq("name", name).single().execute()
+            sid = res.data["id"]
+            self._sector_cache[name] = sid
+            return sid
+        except Exception:
+            return None
 
-    # ── Upsert helper ─────────────────────────────────────────────────────────
+    # ── Upsert + dedup ────────────────────────────────────────────────────────
 
     def _upsert(self, table: str, records: list, conflict: str):
         if not records:
             return
-        # Deduplicate on the conflict key columns before sending
-        # (same-batch duplicates cause Postgres error 21000)
-        seen = set()
         keys = [k.strip() for k in conflict.split(",")]
-        deduped = []
+        seen, deduped = set(), []
         for rec in records:
             sig = tuple(rec.get(k) for k in keys)
             if sig not in seen:
                 seen.add(sig)
                 deduped.append(rec)
-        # Batch in chunks of 500 to stay within Supabase request size limits
         for i in range(0, len(deduped), 500):
-            self.db.table(table).upsert(
-                deduped[i:i + 500], on_conflict=conflict
-            ).execute()
+            self.db.table(table).upsert(deduped[i:i+500], on_conflict=conflict).execute()
+
+    # ── 3-year retention ──────────────────────────────────────────────────────
+
+    def _prune(self, table: str, date_col: str = "date"):
+        """Delete rows older than 3 years."""
+        try:
+            self.db.table(table).delete().lt(date_col, THREE_YEARS_AGO).execute()
+        except Exception as e:
+            print(f"  [prune] {table}: {e}")
 
     # ── Layer 1: sector_metrics ───────────────────────────────────────────────
 
     def _push_sector_metrics(self, run_at: str, sector_metrics: dict):
         records = []
         for sector_name, df in sector_metrics.items():
-            if df is None or df.empty:
+            if df is None or (hasattr(df, "empty") and df.empty):
                 continue
             sid = self._sector_id(sector_name)
-            for _, row in df.iterrows():
+            if sid is None:
+                continue
+            tmp = df.reset_index() if "Date" not in df.columns else df.copy()
+            for _, row in tmp.iterrows():
+                d = _date(row)
+                if not d or d < THREE_YEARS_AGO:
+                    continue
                 records.append({
-                    "run_at":                run_at,
-                    "sector_id":             sid,
-                    "date":                  _date(row),
+                    "run_at": run_at, "sector_id": sid, "date": d,
                     "close":                 _clean(row.get("Close")),
                     "sector_return_1d":      _clean(row.get("sector_return_1d")),
                     "sector_return_5d":      _clean(row.get("sector_return_5d")),
@@ -146,29 +128,33 @@ class AegisGateway:
                     "sector_drawdown_20d":   _clean(row.get("sector_drawdown_20d")),
                     "sector_volume_ratio":   _clean(row.get("sector_volume_ratio")),
                     "sector_momentum":       _clean(row.get("sector_momentum")),
-                    "sector_trend":          row.get("sector_trend"),
+                    "sector_trend":          row.get("sector_trend") or row.get("Sector_trend"),
                 })
         self._upsert("sector_metrics", records, "sector_id,date")
+        self._prune("sector_metrics")
 
     # ── Layer 2: sector_health ────────────────────────────────────────────────
 
     def _push_sector_health(self, run_at: str, health_dfs: dict):
         records = []
         for sector_name, df in health_dfs.items():
-            if df is None or df.empty:
+            if df is None or (hasattr(df, "empty") and df.empty):
                 continue
             sid = self._sector_id(sector_name)
+            if sid is None:
+                continue
             tmp = df.reset_index() if "Date" not in df.columns else df.copy()
             for _, row in tmp.iterrows():
+                d = _date(row)
+                if not d or d < THREE_YEARS_AGO:
+                    continue
                 records.append({
-                    "run_at":       run_at,
-                    "sector_id":    sid,
-                    "date":         _date(row),
+                    "run_at": run_at, "sector_id": sid, "date": d,
                     "close":        _clean(row.get("Close")),
                     "daily_return": _clean(row.get("daily_return")),
                     "ema_short":    _clean(row.get("ema_short")),
                     "ema_long":     _clean(row.get("ema_long")),
-                    "trend":        row.get("trend"),
+                    "trend":        str(row.get("trend", "")) or None,
                     "spike_up":     bool(row.get("spike_up", False)),
                     "spike_down":   bool(row.get("spike_down", False)),
                     "ret_z":        _clean(row.get("ret_z")),
@@ -177,23 +163,48 @@ class AegisGateway:
                     "slope_z":      _clean(row.get("slope_z")),
                     "composite":    _clean(row.get("composite")),
                     "health_score": _clean(row.get("health_score")),
-                    "signal":       row.get("signal"),
-                    "regime":       row.get("regime"),
-                    "market_phase": row.get("market_phase"),
+                    "signal":       str(row.get("signal", "INSUFFICIENT_DATA")) or "INSUFFICIENT_DATA",
+                    "regime":       str(row.get("regime", "NEUTRAL")) or "NEUTRAL",
+                    "market_phase": str(row.get("market_phase", "")) or None,
                 })
         self._upsert("sector_health", records, "sector_id,date")
+        self._prune("sector_health")
+
+    # ── Macro overlay ─────────────────────────────────────────────────────────
+
+    def _push_macro_overlay(self, run_at: str, df: pd.DataFrame):
+        if df is None or (hasattr(df, "empty") and df.empty):
+            return
+        records = []
+        for _, row in df.iterrows():
+            d = _date(row)
+            if not d or d < THREE_YEARS_AGO:
+                continue
+            records.append({
+                "run_at": run_at, "date": d,
+                "macro_regime":    row.get("macro_regime", "NEUTRAL"),
+                "macro_score":     _clean(row.get("macro_score")),
+                "vix_z":           _clean(row.get("India VIX")),
+                "usd_z":           _clean(row.get("USD-INR")),
+                "gold_z":          _clean(row.get("Gold")),
+                "crude_z":         _clean(row.get("Crude Oil")),
+                "macro_narrative": row.get("macro_narrative"),
+            })
+        self._upsert("macro_overlay", records, "date")
+        self._prune("macro_overlay")
 
     # ── Layer 3: company_metrics ──────────────────────────────────────────────
 
     def _push_company_metrics(self, run_at: str, company_id: int, df: pd.DataFrame):
-        if df is None or df.empty:
+        if df is None or (hasattr(df, "empty") and df.empty):
             return
         records = []
         for _, row in df.iterrows():
+            d = _date(row)
+            if not d or d < THREE_YEARS_AGO:
+                continue
             records.append({
-                "run_at":                 run_at,
-                "company_id":             company_id,
-                "date":                   _date(row),
+                "run_at": run_at, "company_id": company_id, "date": d,
                 "close":                  _clean(row.get("Close")),
                 "company_return_1d":      _clean(row.get("company_return_1d")),
                 "company_return_5d":      _clean(row.get("company_return_5d")),
@@ -203,30 +214,29 @@ class AegisGateway:
                 "company_drawdown_20d":   _clean(row.get("company_drawdown_20d")),
                 "company_volume_ratio":   _clean(row.get("company_volume_ratio")),
                 "company_momentum":       _clean(row.get("company_momentum")),
-                "company_trend":          row.get("company_trend"),
+                "company_trend":          str(row.get("company_trend", "")) or None,
             })
         self._upsert("company_metrics", records, "company_id,date")
+        self._prune("company_metrics")
 
     # ── Layer 4a: static_corr ─────────────────────────────────────────────────
 
     def _push_static_corr(self, run_at: str, company_id: int, df: pd.DataFrame):
-        if df is None or df.empty:
+        if df is None or (hasattr(df, "empty") and df.empty):
             return
         records = []
         for _, row in df.iterrows():
-            # static_corr df has sector names in the index or a 'Sector'/'index' column
             sector_name = row.get("Sector") or row.get("index") or row.get("sector")
             if not sector_name:
                 continue
-            try:
-                sid = self._sector_id(str(sector_name))
-            except Exception:
+            sid = self._sector_id(str(sector_name))
+            if sid is None:
+                continue
+            d = _date(row)
+            if not d:
                 continue
             records.append({
-                "run_at":         run_at,
-                "company_id":     company_id,
-                "sector_id":      sid,
-                "date":           _date(row),
+                "run_at": run_at, "company_id": company_id, "sector_id": sid, "date": d,
                 "return_1d":      _clean(row.get("return_1d")),
                 "return_5d":      _clean(row.get("return_5d")),
                 "return_20d":     _clean(row.get("return_20d")),
@@ -241,23 +251,22 @@ class AegisGateway:
     # ── Layer 4b: rolling_corr ────────────────────────────────────────────────
 
     def _push_rolling_corr(self, run_at: str, company_id: int, df: pd.DataFrame):
-        if df is None or df.empty:
+        if df is None or (hasattr(df, "empty") and df.empty):
             return
         records = []
         for _, row in df.iterrows():
             sector_name = row.get("Sector")
             if not sector_name:
                 continue
-            try:
-                sid = self._sector_id(str(sector_name))
-            except Exception:
+            sid = self._sector_id(str(sector_name))
+            if sid is None:
+                continue
+            d = _date(row)
+            if not d or d < THREE_YEARS_AGO:
                 continue
             records.append({
-                "run_at":         run_at,
-                "company_id":     company_id,
-                "sector_id":      sid,
-                "date":           _date(row),
-                "window_days":    int(row.get("Window", 0)),
+                "run_at": run_at, "company_id": company_id, "sector_id": sid,
+                "date": d, "window_days": int(row.get("Window", 0)),
                 "return_1d":      _clean(row.get("return_1d")),
                 "return_5d":      _clean(row.get("return_5d")),
                 "return_20d":     _clean(row.get("return_20d")),
@@ -268,11 +277,12 @@ class AegisGateway:
                 "momentum":       _clean(row.get("momentum")),
             })
         self._upsert("rolling_corr", records, "company_id,sector_id,date,window_days")
+        self._prune("rolling_corr")
 
     # ── Layer 5: top_sectors ──────────────────────────────────────────────────
 
     def _push_top_sectors(self, run_at: str, company_id: int, df: pd.DataFrame):
-        if df is None or df.empty:
+        if df is None or (hasattr(df, "empty") and df.empty):
             return
         date_val = str(df["Date"].iloc[0])[:10] if "Date" in df.columns else run_at[:10]
         records = []
@@ -280,43 +290,46 @@ class AegisGateway:
             sector_name = row.get("sector")
             if not sector_name:
                 continue
-            try:
-                sid = self._sector_id(str(sector_name))
-            except Exception:
+            sid = self._sector_id(str(sector_name))
+            if sid is None:
                 continue
             records.append({
-                "run_at":     run_at,
-                "company_id": company_id,
-                "sector_id":  sid,
-                "date":       date_val,
-                "rank":       int(row.get("rank", 0)),
+                "run_at": run_at, "company_id": company_id,
+                "sector_id": sid, "date": date_val,
+                "rank": int(row.get("rank", 0)),
             })
         self._upsert("top_sectors", records, "company_id,date,rank")
 
     # ── Layer 6: balance_sheet ────────────────────────────────────────────────
 
     def _push_balance_sheet(self, run_at: str, company_id: int, df: pd.DataFrame):
-        if df is None or df.empty:
+        if df is None or (hasattr(df, "empty") and df.empty):
             return
         date_val = str(df["Date"].iloc[0])[:10] if "Date" in df.columns else run_at[:10]
         records = []
         for _, row in df.iterrows():
+            ratio = row.get("Ratio")
+            if not ratio:
+                continue
+            # Skip rows where both value and value_str are null
+            val     = _clean(row.get("Value"))
+            val_str = row.get("ValueStr")
+            if val is None and not val_str:
+                continue
             records.append({
-                "run_at":              run_at,
-                "company_id":          company_id,
-                "date":                date_val,
-                "ratio":               row.get("Ratio"),
-                "value":               _clean(row.get("Value")),
-                "value_str":           row.get("ValueStr"),
+                "run_at": run_at, "company_id": company_id, "date": date_val,
+                "ratio":               ratio,
+                "value":               val,
+                "value_str":           val_str,
                 "yoy_pct":             _clean(row.get("YoY_pct")),
                 "hist_pct_rank":       _clean(row.get("HistPctRank")),
-                "status":              row.get("Status"),
+                "status":              row.get("Status") or "gray",
                 "trend":               row.get("Trend"),
                 "description":         row.get("Description"),
                 "category":            row.get("Category"),
                 "sector_pressure":     _clean(row.get("SectorPressure")),
                 "sector_pressure_pct": _clean(row.get("SectorPressurePct")),
-                "adjusted_status":     row.get("AdjustedStatus"),
+                "adjusted_status":     row.get("AdjustedStatus") or row.get("Status") or "gray",
                 "sector_narrative":    row.get("SectorNarrative"),
             })
         self._upsert("balance_sheet", records, "company_id,date,ratio")
@@ -324,93 +337,81 @@ class AegisGateway:
     # ── Layer 6b: balance_sheet_history ──────────────────────────────────────
 
     def _push_balance_sheet_history(self, run_at: str, company_id: int, df: pd.DataFrame):
-        if df is None or df.empty:
+        if df is None or (hasattr(df, "empty") and df.empty):
             return
         records = []
         for _, row in df.iterrows():
+            d = _date(row)
+            if not d or d < THREE_YEARS_AGO:
+                continue
+            val = _clean(row.get("Value"))
+            if val is None:
+                continue
             records.append({
-                "run_at":     run_at,
-                "company_id": company_id,
-                "date":       _date(row),
-                "ratio":      row.get("Ratio"),
-                "value":      _clean(row.get("Value")),
+                "run_at": run_at, "company_id": company_id,
+                "date": d, "ratio": row.get("Ratio"), "value": val,
             })
         self._upsert("balance_sheet_history", records, "company_id,date,ratio")
+        self._prune("balance_sheet_history")
 
     # ── Layer 7: holding_metrics ──────────────────────────────────────────────
 
     def _push_holding_metrics(self, run_at: str, company_id: int, df: pd.DataFrame):
-        if df is None or df.empty:
+        if df is None or (hasattr(df, "empty") and df.empty):
             return
         date_val = str(df["Date"].iloc[0])[:10] if "Date" in df.columns else run_at[:10]
         records = []
         for _, row in df.iterrows():
+            metric = row.get("Metric")
+            if not metric:
+                continue
             records.append({
-                "run_at":              run_at,
-                "company_id":          company_id,
-                "date":                date_val,
-                "metric":              row.get("Metric"),
+                "run_at": run_at, "company_id": company_id, "date": date_val,
+                "metric":              metric,
                 "value":               _clean(row.get("Value")),
-                "status":              row.get("Status"),
+                "status":              row.get("Status") or "gray",
                 "trend":               row.get("Trend"),
                 "description":         row.get("Description"),
                 "category":            row.get("Category"),
                 "sector_pressure":     _clean(row.get("SectorPressure")),
                 "sector_pressure_pct": _clean(row.get("SectorPressurePct")),
                 "sector_signal":       row.get("SectorSignal"),
-                "adjusted_status":     row.get("AdjustedStatus"),
+                "adjusted_status":     row.get("AdjustedStatus") or row.get("Status") or "gray",
             })
         self._upsert("holding_metrics", records, "company_id,date,metric")
-
-    # ── Macro overlay ─────────────────────────────────────────────────────────
-
-    def _push_macro_overlay(self, run_at: str, df: pd.DataFrame):
-        if df is None or df.empty:
-            return
-        records = []
-        for _, row in df.iterrows():
-            records.append({
-                "run_at":          run_at,
-                "date":            _date(row),
-                "macro_regime":    row.get("macro_regime", "NEUTRAL"),
-                "macro_score":     _clean(row.get("macro_score")),
-                "vix_z":           _clean(row.get("India VIX")),
-                "usd_z":           _clean(row.get("USD-INR")),
-                "gold_z":          _clean(row.get("Gold")),
-                "crude_z":         _clean(row.get("Crude Oil")),
-                "macro_narrative": row.get("macro_narrative"),
-            })
-        self._upsert("macro_overlay", records, "date")
 
     # ── Layer 8: ml_predictions ───────────────────────────────────────────────
 
     def _push_ml_predictions(self, run_at: str, company_id: int, df: pd.DataFrame):
-        if df is None or df.empty:
+        if df is None or (hasattr(df, "empty") and df.empty):
             return
         records = []
         for _, row in df.iterrows():
+            d = _date(row)
+            if not d:
+                continue
             records.append({
-                "run_at":               run_at,
-                "company_id":           company_id,
-                "date":                 _date(row),
+                "run_at": run_at, "company_id": company_id, "date": d,
                 "model_version":        row.get("model_version", "v1.0"),
                 "survival_score":       _clean(row.get("SurvivalScore")),
                 "distress_probability": _clean(row.get("DistressProbability")),
                 "explanation_json":     row.get("ExplanationJSON"),
             })
+        # One row per company per date per model — no duplicates
         self._upsert("ml_predictions", records, "company_id,date,model_version")
 
     # ── Layer 9: feature_store ────────────────────────────────────────────────
 
     def _push_feature_store(self, run_at: str, company_id: int, df: pd.DataFrame):
-        if df is None or df.empty:
+        if df is None or (hasattr(df, "empty") and df.empty):
             return
         records = []
         for _, row in df.iterrows():
+            d = _date(row)
+            if not d:
+                continue
             records.append({
-                "run_at":                 run_at,
-                "company_id":             company_id,
-                "date":                   _date(row),
+                "run_at": run_at, "company_id": company_id, "date": d,
                 "debt_to_equity":         _clean(row.get("DebtToEquity")),
                 "current_ratio":          _clean(row.get("CurrentRatio")),
                 "revenue_growth":         _clean(row.get("RevenueGrowth")),
@@ -420,17 +421,11 @@ class AegisGateway:
                 "institutional_holding":  _clean(row.get("InstitutionalHolding")),
             })
         self._upsert("feature_store", records, "company_id,date")
+        self._prune("feature_store")
 
     # ── Master push ───────────────────────────────────────────────────────────
 
     def push(self, result: dict) -> dict:
-        """
-        Write all layers from run_full_pipeline() result to Supabase.
-
-        Returns
-        -------
-        dict { layer_name: "ok" | "skipped" | "error: <msg>" }
-        """
         run_at       = result["run_at"]
         display_name = result["company"]
         ticker       = result.get("ticker", "")
@@ -438,39 +433,63 @@ class AegisGateway:
 
         company_id = self._company_id(display_name, ticker)
 
-        _layers = [
-            ("layer1_sector_metrics",  "layer1_sector_metrics",  lambda: self._push_sector_metrics(run_at, result["layer1_sector_metrics"])),
-            ("layer2_macro_overlay",   "layer2_macro_overlay",   lambda: self._push_macro_overlay(run_at, result["layer2_macro_overlay"])),
-            ("layer2_health_dfs",      "layer2_sector_health",   lambda: self._push_sector_health(run_at, result["layer2_health_dfs"])),
-            ("layer3_company",         "layer3_company_metrics", lambda: self._push_company_metrics(run_at, company_id, result["layer3_company"])),
-            ("layer4_static_corr",     "layer4_static_corr",     lambda: self._push_static_corr(run_at, company_id, result["layer4_static_corr"])),
-            ("layer4_rolling_corr",    "layer4_rolling_corr",    lambda: self._push_rolling_corr(run_at, company_id, result["layer4_rolling_corr"])),
-            ("layer5_top_sectors",     "layer5_top_sectors",     lambda: self._push_top_sectors(run_at, company_id, result["layer5_top_sectors"])),
-            ("layer6_balance_sheet",   "layer6_balance_sheet",   lambda: self._push_balance_sheet(run_at, company_id, result["layer6_balance_sheet"])),
-            ("layer6b_historical_ratios", "layer6b_bs_history",  lambda: self._push_balance_sheet_history(run_at, company_id, result["layer6b_historical_ratios"])),
-            ("layer7_holding",         "layer7_holding_metrics", lambda: self._push_holding_metrics(run_at, company_id, result["layer7_holding"])),
-            ("layer8_ml_predictions",  "layer8_ml_predictions",  lambda: self._push_ml_predictions(run_at, company_id, result["layer8_ml_predictions"])),
-            ("layer9_feature_store",   "layer9_feature_store",   lambda: self._push_feature_store(run_at, company_id, result["layer9_feature_store"])),
+        layers = [
+            ("layer1_sector_metrics",     lambda: self._push_sector_metrics(run_at, result["layer1_sector_metrics"])),
+            ("layer2_macro_overlay",      lambda: self._push_macro_overlay(run_at, result["layer2_macro_overlay"])),
+            ("layer2_sector_health",      lambda: self._push_sector_health(run_at, result["layer2_health_dfs"])),
+            ("layer3_company_metrics",    lambda: self._push_company_metrics(run_at, company_id, result["layer3_company"])),
+            ("layer4_static_corr",        lambda: self._push_static_corr(run_at, company_id, result["layer4_static_corr"])),
+            ("layer4_rolling_corr",       lambda: self._push_rolling_corr(run_at, company_id, result["layer4_rolling_corr"])),
+            ("layer5_top_sectors",        lambda: self._push_top_sectors(run_at, company_id, result["layer5_top_sectors"])),
+            ("layer6_balance_sheet",      lambda: self._push_balance_sheet(run_at, company_id, result["layer6_balance_sheet"])),
+            ("layer6b_bs_history",        lambda: self._push_balance_sheet_history(run_at, company_id, result["layer6b_historical_ratios"])),
+            ("layer7_holding_metrics",    lambda: self._push_holding_metrics(run_at, company_id, result["layer7_holding"])),
+            ("layer8_ml_predictions",     lambda: self._push_ml_predictions(run_at, company_id, result["layer8_ml_predictions"])),
+            ("layer9_feature_store",      lambda: self._push_feature_store(run_at, company_id, result["layer9_feature_store"])),
         ]
 
-        for result_key, status_key, fn in _layers:
-            data = result.get(result_key)
-            is_empty = data is None or (isinstance(data, dict) and not data) or (hasattr(data, "empty") and data.empty)
+        for key, fn in layers:
+            data = result.get(key.replace("layer2_sector_health", "layer2_health_dfs")
+                               .replace("layer3_company_metrics", "layer3_company")
+                               .replace("layer4_static_corr", "layer4_static_corr")
+                               .replace("layer6b_bs_history", "layer6b_historical_ratios")
+                               .replace("layer7_holding_metrics", "layer7_holding")
+                               .replace("layer8_ml_predictions", "layer8_ml_predictions")
+                               .replace("layer9_feature_store", "layer9_feature_store"))
+            # Map display key to result key
+            result_key_map = {
+                "layer1_sector_metrics":  "layer1_sector_metrics",
+                "layer2_macro_overlay":   "layer2_macro_overlay",
+                "layer2_sector_health":   "layer2_health_dfs",
+                "layer3_company_metrics": "layer3_company",
+                "layer4_static_corr":     "layer4_static_corr",
+                "layer4_rolling_corr":    "layer4_rolling_corr",
+                "layer5_top_sectors":     "layer5_top_sectors",
+                "layer6_balance_sheet":   "layer6_balance_sheet",
+                "layer6b_bs_history":     "layer6b_historical_ratios",
+                "layer7_holding_metrics": "layer7_holding",
+                "layer8_ml_predictions":  "layer8_ml_predictions",
+                "layer9_feature_store":   "layer9_feature_store",
+            }
+            rk   = result_key_map[key]
+            data = result.get(rk)
+            is_empty = (data is None or
+                        (isinstance(data, dict) and not data) or
+                        (hasattr(data, "empty") and data.empty))
             if is_empty:
-                status[status_key] = "skipped"
+                status[key] = "skipped"
                 continue
             try:
                 fn()
-                status[status_key] = "ok"
+                status[key] = "ok"
             except Exception as e:
-                status[status_key] = f"error: {e}"
+                status[key] = f"error: {e}"
+                print(f"  [gateway] {key}: {e}")
 
         ok      = sum(1 for v in status.values() if v == "ok")
         skipped = sum(1 for v in status.values() if v == "skipped")
         errors  = [(k, v) for k, v in status.items() if v.startswith("error")]
-
-        print(f"\n[AegisGateway] {display_name} ({run_at})  ok={ok}  skipped={skipped}  errors={len(errors)}")
+        print(f"  [gateway] {display_name}: ok={ok} skipped={skipped} errors={len(errors)}")
         for k, v in errors:
-            print(f"  ✘ {k}: {v}")
-
+            print(f"    ✘ {k}: {v}")
         return status

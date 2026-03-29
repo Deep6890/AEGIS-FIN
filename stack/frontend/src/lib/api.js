@@ -154,3 +154,18 @@ export const fetchPortfolioSummary = () =>
     .select("survival_score, distress_probability, companies(name)")
     .order("date", { ascending: false })
     .limit(600);
+
+// ── Pipeline Log ──────────────────────────────────────────────────────────────
+export const fetchPipelineLog = (limit = 100) =>
+  supabase
+    .from("pipeline_log")
+    .select("*")
+    .order("run_at", { ascending: false })
+    .limit(limit);
+
+export const fetchPipelineStats = () =>
+  supabase
+    .from("pipeline_log")
+    .select("status, company, run_at")
+    .order("run_at", { ascending: false })
+    .limit(500);
