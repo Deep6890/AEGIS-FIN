@@ -215,6 +215,39 @@ def compute_sector_health(
     )
     out["regime"] = regime
 
+    # ── Market phase: resolves the STRONG+BEAR / WEAK+BULL paradox ────────────
+    # Combines signal (momentum health) with regime (price trend direction).
+    # This gives a single interpretable label the UI can display directly.
+    #
+    #   STRONG + BULL   → Confirmed Uptrend   (momentum & price agree)
+    #   STRONG + BEAR   → Distribution Phase  (momentum fading, price still falling)
+    #   STRONG + NEUTRAL→ Consolidation       (momentum recovering, no trend yet)
+    #   NEUTRAL + BULL  → Steady Climb        (moderate health, price rising)
+    #   NEUTRAL + BEAR  → Slow Bleed          (moderate health, price drifting down)
+    #   WATCH  + BULL   → Bull Exhaustion     (weakening momentum despite rising price)
+    #   WATCH  + BEAR   → Confirmed Downtrend (weak momentum + falling price)
+    #   WEAK   + BULL   → Dead-Cat Bounce     (very weak health, price briefly up)
+    #   WEAK   + BEAR   → Capitulation        (worst case — both agree on decline)
+    #   *      + NEUTRAL→ Transition          (price direction unclear)
+    _phase_map = {
+        ("STRONG",  "BULL"):    "Confirmed Uptrend",
+        ("STRONG",  "BEAR"):    "Distribution Phase",
+        ("STRONG",  "NEUTRAL"): "Consolidation",
+        ("NEUTRAL", "BULL"):    "Steady Climb",
+        ("NEUTRAL", "BEAR"):    "Slow Bleed",
+        ("NEUTRAL", "NEUTRAL"): "Transition",
+        ("WATCH",   "BULL"):    "Bull Exhaustion",
+        ("WATCH",   "BEAR"):    "Confirmed Downtrend",
+        ("WATCH",   "NEUTRAL"): "Transition",
+        ("WEAK",    "BULL"):    "Dead-Cat Bounce",
+        ("WEAK",    "BEAR"):    "Capitulation",
+        ("WEAK",    "NEUTRAL"): "Transition",
+    }
+    out["market_phase"] = [
+        _phase_map.get((str(s), str(r)), "Transition")
+        for s, r in zip(out["signal"], out["regime"])
+    ]
+
     # ── Date stamp ───────────────────────────────────────────────────────────
     out["date_flag"] = out.index.strftime("%Y-%m-%d")
 
@@ -283,14 +316,14 @@ def rolling_health_matrix(
     """
     Concatenate all sector health DataFrames into a LONG-format matrix.
 
-        Date | Sector | signal | health_score | trend | regime | …
+        Date | Sector | signal | health_score | trend | regime | market_phase | …
 
     No day is missing beyond the initial warm-up window.
     """
     default_cols = [
         "Sector", "Close", "daily_return",
         "trend", "spike_up", "spike_down",
-        "composite", "health_score", "signal", "regime", "date_flag",
+        "composite", "health_score", "signal", "regime", "market_phase", "date_flag",
     ]
     keep = cols or default_cols
 
@@ -308,3 +341,164 @@ def rolling_health_matrix(
     result = pd.concat(frames, ignore_index=True)
     result["Date"] = pd.to_datetime(result["Date"])
     return result.sort_values(["Date", "Sector"]).reset_index(drop=True)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Macro overlay
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Sectors that are risk-sensitive (fall in risk-off) vs defensive (rise in risk-off)
+_RISK_OFF_SENSITIVE  = {"IT Sector", "Auto Sector", "Realty Sector", "Metal Sector", "Energy Sector"}
+_RISK_OFF_DEFENSIVE  = {"FMCG Sector", "Pharma Sector", "Gold"}
+_MACRO_SECTORS       = {"India VIX", "USD-INR", "Gold", "Crude Oil"}
+
+
+def compute_macro_overlay(
+    health_dfs: Dict[str, pd.DataFrame],
+    window: int = 20,
+) -> pd.DataFrame:
+    """
+    Derive a daily macro risk regime from VIX, USD-INR, Gold, and Crude Oil
+    and annotate each sector with a macro_signal and macro_narrative.
+
+    Logic (all data-driven — thresholds from each series' own rolling history)
+    --------------------------------------------------------------------------
+    1. VIX rising   (ret_z > 0)  → risk-off pressure
+       VIX falling  (ret_z < 0)  → risk-on
+    2. USD-INR rising (ret_z > 0) → INR weakening → additional risk-off for India
+    3. Gold rising   (ret_z > 0)  → flight-to-safety → confirms risk-off
+    4. Crude rising  (ret_z > 0)  → input cost pressure → headwind for consumers
+
+    Composite macro score = mean of the four z-scores (sign-adjusted):
+        vix_z is INVERTED (high VIX = bad for risk assets)
+        usd_z is INVERTED (weak INR = bad for importers)
+        gold_z is INVERTED (gold rally = fear)
+        crude_z is INVERTED (crude rally = cost pressure)
+
+    macro_regime:
+        score < -0.5  → RISK_OFF   (multiple macro headwinds active)
+        score >  0.5  → RISK_ON    (macro tailwinds)
+        else          → NEUTRAL
+
+    Returns
+    -------
+    pd.DataFrame  columns: Date | macro_regime | macro_score |
+                           vix_z | usd_z | gold_z | crude_z |
+                           macro_narrative
+    """
+    macro_frames = {}
+    for name in ("India VIX", "USD-INR", "Gold", "Crude Oil"):
+        if name in health_dfs and not health_dfs[name].empty:
+            df = health_dfs[name]
+            if "ret_z" in df.columns:
+                macro_frames[name] = df["ret_z"].rename(name)
+
+    if not macro_frames:
+        return pd.DataFrame()
+
+    combined = pd.concat(macro_frames.values(), axis=1).sort_index()
+
+    vix_z   = combined.get("India VIX",  pd.Series(dtype=float))
+    usd_z   = combined.get("USD-INR",    pd.Series(dtype=float))
+    gold_z  = combined.get("Gold",       pd.Series(dtype=float))
+    crude_z = combined.get("Crude Oil",  pd.Series(dtype=float))
+
+    # Invert all: high reading = bad for risk assets
+    components = []
+    for s in (vix_z, usd_z, gold_z, crude_z):
+        if not s.empty:
+            components.append(-s)
+
+    if not components:
+        return pd.DataFrame()
+
+    macro_score = pd.concat(components, axis=1).mean(axis=1)
+
+    regime = np.where(macro_score < -0.5, "RISK_OFF",
+             np.where(macro_score >  0.5, "RISK_ON", "NEUTRAL"))
+
+    # Build narrative per row
+    def _narrative(row):
+        parts = []
+        vix  = row.get("India VIX",  np.nan)
+        usd  = row.get("USD-INR",    np.nan)
+        gold = row.get("Gold",       np.nan)
+        crude= row.get("Crude Oil",  np.nan)
+        if not pd.isna(vix)  and vix  > 0.5:  parts.append("VIX ↑ (fear rising)")
+        if not pd.isna(vix)  and vix  < -0.5: parts.append("VIX ↓ (fear easing)")
+        if not pd.isna(usd)  and usd  > 0.5:  parts.append("USD-INR ↑ (INR weak)")
+        if not pd.isna(gold) and gold > 0.5:  parts.append("Gold ↑ (flight-to-safety)")
+        if not pd.isna(crude)and crude> 0.5:  parts.append("Crude ↑ (cost pressure)")
+        if not pd.isna(crude)and crude<-0.5:  parts.append("Crude ↓ (cost relief)")
+        return "; ".join(parts) if parts else "Macro neutral"
+
+    out = combined.copy()
+    out.columns = ["India VIX", "USD-INR", "Gold", "Crude Oil"][:len(out.columns)]
+    out["macro_score"]     = macro_score
+    out["macro_regime"]    = regime
+    out["macro_narrative"] = out.apply(_narrative, axis=1)
+    out = out.reset_index().rename(columns={"index": "Date", "Date": "Date"})
+    out["Date"] = pd.to_datetime(out["Date"])
+    return out[["Date", "macro_regime", "macro_score",
+                "India VIX", "USD-INR", "Gold", "Crude Oil",
+                "macro_narrative"]].sort_values("Date").reset_index(drop=True)
+
+
+def apply_macro_to_sector(
+    sector_name:   str,
+    sector_health: pd.DataFrame,
+    macro_df:      pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Merge macro_regime onto a sector health DataFrame and add macro_adjusted_signal.
+
+    Rules
+    -----
+    RISK_OFF + sector in _RISK_OFF_SENSITIVE  → downgrade signal one level
+    RISK_OFF + sector in _RISK_OFF_DEFENSIVE  → upgrade signal one level
+    RISK_ON  + sector in _RISK_OFF_SENSITIVE  → upgrade signal one level
+    RISK_ON  + sector in _RISK_OFF_DEFENSIVE  → downgrade signal one level
+    NEUTRAL  → no change
+
+    Returns
+    -------
+    sector_health with added columns: macro_regime, macro_narrative, macro_adjusted_signal
+    """
+    if macro_df.empty:
+        out = sector_health.copy()
+        out["macro_regime"]           = "NEUTRAL"
+        out["macro_narrative"]        = ""
+        out["macro_adjusted_signal"]  = out["signal"]
+        return out
+
+    _order = ["WEAK", "WATCH", "NEUTRAL", "STRONG"]
+
+    def _shift(sig, direction):
+        if sig not in _order:
+            return sig
+        idx = _order.index(sig)
+        new_idx = max(0, min(len(_order) - 1, idx + direction))
+        return _order[new_idx]
+
+    tmp = sector_health.reset_index() if "Date" not in sector_health.columns else sector_health.copy()
+    tmp["Date"] = pd.to_datetime(tmp["Date"])
+    merged = tmp.merge(macro_df[["Date", "macro_regime", "macro_narrative"]], on="Date", how="left")
+    merged["macro_regime"]    = merged["macro_regime"].fillna("NEUTRAL")
+    merged["macro_narrative"] = merged["macro_narrative"].fillna("")
+
+    is_sensitive  = sector_name in _RISK_OFF_SENSITIVE
+    is_defensive  = sector_name in _RISK_OFF_DEFENSIVE
+
+    def _adjust(row):
+        sig    = row["signal"]
+        regime = row["macro_regime"]
+        if regime == "RISK_OFF":
+            if is_sensitive:  return _shift(sig, -1)
+            if is_defensive:  return _shift(sig, +1)
+        elif regime == "RISK_ON":
+            if is_sensitive:  return _shift(sig, +1)
+            if is_defensive:  return _shift(sig, -1)
+        return sig
+
+    merged["macro_adjusted_signal"] = merged.apply(_adjust, axis=1)
+    return merged

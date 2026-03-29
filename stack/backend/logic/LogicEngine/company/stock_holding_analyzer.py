@@ -42,6 +42,17 @@ warnings.filterwarnings("ignore")
 # Layer 1 — Fetch
 # ─────────────────────────────────────────────────────────────────────────────
 
+import time
+
+def retry_yf_fetch(fn, retries=3, delay=1.0):
+    for attempt in range(retries):
+        try:
+            return fn()
+        except Exception as e:
+            if attempt == retries - 1:
+                return None
+            time.sleep(delay * (2 ** attempt))
+
 def fetch_holder_data(ticker: str) -> dict:
     """
     Pull all available shareholding data for a ticker from yfinance.
@@ -54,24 +65,24 @@ def fetch_holder_data(ticker: str) -> dict:
     t = yf.Ticker(ticker)
 
     def _safe(fn):
-        try:
-            r = fn()
-            return r if r is not None else pd.DataFrame()
-        except Exception:
-            return pd.DataFrame()
+        res = retry_yf_fetch(fn)
+        return res if res is not None else pd.DataFrame()
 
     institutional = _safe(lambda: t.institutional_holders)
     major         = _safe(lambda: t.major_holders)
     insider_trans = _safe(lambda: t.insider_transactions)
 
     try:
-        info = t.info
+        info_res = retry_yf_fetch(lambda: t.info)
+        info = info_res if info_res is not None else {}
     except Exception:
         info = {}
 
     price_history = _safe(lambda: yf.download(
         ticker, period="5y", auto_adjust=True, progress=False
-    ).reset_index())
+    ))
+    if not price_history.empty:
+        price_history = price_history.reset_index()
 
     if not price_history.empty and isinstance(price_history.columns, pd.MultiIndex):
         price_history.columns = [c[0] for c in price_history.columns]
@@ -101,7 +112,8 @@ def _hhi(weights: pd.Series) -> float:
     w = weights.dropna()
     if w.empty:
         return np.nan
-    w = w / w.sum()
+    # Use exact percentages without summing to 1. 
+    # This prevents artificially inflating a single 3% holder to 100%.
     return float((w ** 2).sum())
 
 

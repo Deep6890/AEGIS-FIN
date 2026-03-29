@@ -1,32 +1,30 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import ChatPage from "./pages/ChatPage";
-import CompanyBrowser from "./pages/CompanyBrowser";
+import React from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AppDataProvider } from "./context/AppDataContext";
+import Dashboard     from "./pages/Dashboard";
+import Companies     from "./pages/Companies";
 import CompanyDetail from "./pages/CompanyDetail";
-import BalanceSheetHub from "./pages/BalanceSheetHub";
-import SectorIntelligence from "./pages/SectorIntelligence";
-import Profile from "./pages/Profile";
-import Settings from "./pages/Settings";
-import NewsMonitor from "./pages/NewsMonitor";
-import DataManager from "./pages/DataManager";
+import Sectors       from "./pages/Sectors";
+import Correlation   from "./pages/Correlation";
+import RiskEngine    from "./pages/RiskEngine";
+import MacroOverlay  from "./pages/MacroOverlay";
+import BalanceSheet  from "./pages/BalanceSheet";
 
-function App() {
+export default function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/chat" element={<ChatPage />} />
-        <Route path="/companies" element={<CompanyBrowser />} />
-        <Route path="/company/:id" element={<CompanyDetail />} />
-        <Route path="/balance-sheet" element={<BalanceSheetHub />} />
-        <Route path="/sectors" element={<SectorIntelligence />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/news" element={<NewsMonitor />} />
-        <Route path="/data" element={<DataManager />} />
-      </Routes>
-    </Router>
+    <BrowserRouter>
+      <AppDataProvider>
+        <Routes>
+          <Route path="/"                  element={<Dashboard />}     />
+          <Route path="/companies"         element={<Companies />}     />
+          <Route path="/companies/:id"     element={<CompanyDetail />} />
+          <Route path="/sectors"           element={<Sectors />}       />
+          <Route path="/correlation"       element={<Correlation />}   />
+          <Route path="/risk-engine"       element={<RiskEngine />}    />
+          <Route path="/macro"             element={<MacroOverlay />}  />
+          <Route path="/balance"           element={<BalanceSheet />}  />
+        </Routes>
+      </AppDataProvider>
+    </BrowserRouter>
   );
 }
-
-export default App;

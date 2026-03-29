@@ -46,6 +46,17 @@ warnings.filterwarnings("ignore")
 # Layer 1 — Raw fetch
 # ─────────────────────────────────────────────────────────────────────────────
 
+import time
+
+def retry_yf_fetch(fn, retries=3, delay=1.0):
+    for attempt in range(retries):
+        try:
+            return fn()
+        except Exception as e:
+            if attempt == retries - 1:
+                return None
+            time.sleep(delay * (2 ** attempt))
+
 def fetch_balance_sheet(ticker: str, audit_window: int = 20) -> dict:
     """
     Fetch quarterly financial statements from Yahoo Finance.
@@ -68,12 +79,21 @@ def fetch_balance_sheet(ticker: str, audit_window: int = 20) -> dict:
         df.index = pd.to_datetime(df.index)
         return df.sort_index(ascending=False).head(audit_window)
 
-    income   = _tidy(t.quarterly_financials)
-    balance  = _tidy(t.quarterly_balance_sheet)
-    cashflow = _tidy(t.quarterly_cashflow)
+    def _safe(fn):
+        res = retry_yf_fetch(fn)
+        return res if res is not None else None
+
+    income_raw = _safe(lambda: t.quarterly_financials)
+    balance_raw = _safe(lambda: t.quarterly_balance_sheet)
+    cashflow_raw = _safe(lambda: t.quarterly_cashflow)
+
+    income   = _tidy(income_raw)
+    balance  = _tidy(balance_raw)
+    cashflow = _tidy(cashflow_raw)
 
     try:
-        info = t.info
+        info_res = retry_yf_fetch(lambda: t.info)
+        info = info_res if info_res is not None else {}
     except Exception:
         info = {}
 
@@ -116,6 +136,16 @@ def _yoy(cur, prev):
         return np.nan
     return (cur - prev) / abs(prev) * 100
 
+def _yoy_hist(series: pd.Series) -> pd.Series:
+    """Year-over-Year growth history using exact same-quarter-prior-year (shift 4)."""
+    s = series.dropna()
+    if len(s) < 5:
+        return pd.Series(dtype=float)
+    yoy_vals = []
+    for i in range(len(s) - 4):
+        yoy_vals.append(_yoy(float(s.iloc[i]), float(s.iloc[i + 4])))
+    return pd.Series([v for v in yoy_vals if not pd.isna(v)], dtype=float)
+
 
 def _percentile_status(current_val: float, historical_series: pd.Series) -> str:
     """
@@ -148,8 +178,9 @@ def compute_financial_ratios(bs_data: dict) -> pd.DataFrame:
 
     Returns
     -------
-    pd.DataFrame  columns:
-        Ratio | Value | YoY_pct | HistPctRank | Status | Trend | Description | Category
+    tuple:
+      pd.DataFrame: Current snapshot of ratios
+      pd.DataFrame: Full historical time-series of all ratios (Date, Ratio, Value)
     """
     inc = bs_data.get("income",   pd.DataFrame())
     bal = bs_data.get("balance",  pd.DataFrame())
@@ -157,27 +188,46 @@ def compute_financial_ratios(bs_data: dict) -> pd.DataFrame:
 
     # ── Helper to build a ratio time-series across all available quarters ─────
     def _ratio_series(num_col, den_col, src_num, src_den, scale=1.0, inv=False):
-        """Build the full historical Series of num/den for all quarters."""
+        """Build the full historical Series of num/den aligned on the SAME quarter date."""
         n = _col_series(src_num, num_col)
         d = _col_series(src_den, den_col)
+        # Align strictly on matching quarter-end dates so cross-statement ratios
+        # (e.g. income vs balance) don't mix mismatched periods.
         shared = sorted(set(n.index) & set(d.index), reverse=True)
-        vals = []
-        for i in shared:
-            v = _safe_div(float(n[i]), float(d[i]))
+        vals, dates = [], []
+        for dt in shared:
+            v = _safe_div(float(n[dt]), float(d[dt]))
             if not pd.isna(v):
                 vals.append(v * scale * (-1 if inv else 1))
-        return pd.Series(vals) if vals else pd.Series(dtype=float)
+                dates.append(dt)
+        return pd.Series(vals, index=dates, dtype=float) if vals else pd.Series(dtype=float)
 
-    # ── Shortcuts for latest two ──────────────────────────────────────────────
+    # ── Shortcuts for latest vs 1 year ago ────────────────────────────────────
     def _get(col, src):
         s = _col_series(src, col)
-        return _latest(s), _prior(s), s
+        val_cur = _latest(s)
+        val_py = float(s.iloc[4]) if len(s.dropna()) >= 5 else np.nan
+        return val_cur, val_py, s
 
     rev_cur,  rev_p,  rev_s  = _get("Total Revenue",                         inc)
+
     ni_cur,   ni_p,   ni_s   = _get("Net Income",                             inc)
     ebit_cur, ebit_p, ebit_s = _get("EBIT",                                   inc)
     gross_c,  gross_p, gross_s= _get("Gross Profit",                          inc)
+    # EBITDA: yfinance sometimes reports a single-quarter anomaly; use TTM fallback
     ebitda_c, _,      _       = _get("EBITDA",                                inc)
+    # If EBITDA looks implausibly small vs revenue (< 1% margin), recompute from EBIT+DA
+    if not pd.isna(ebitda_c) and not pd.isna(rev_cur) and rev_cur > 0:
+        ebitda_margin = ebitda_c / rev_cur
+        if abs(ebitda_margin) < 0.01:          # < 1% is a data artefact
+            da_c = np.nan
+            for da_col in ("Depreciation And Amortization", "Reconciled Depreciation"):
+                _da_s = _col_series(cf, da_col)
+                if not _da_s.empty:
+                    da_c = abs(float(_da_s.iloc[0]))
+                    break
+            if not pd.isna(ebit_cur) and not pd.isna(da_c):
+                ebitda_c = ebit_cur + da_c
     int_exp_c, _,     _       = _get("Interest Expense",                      inc)
     int_exp_c = abs(int_exp_c) if not pd.isna(int_exp_c) else np.nan
 
@@ -199,9 +249,10 @@ def compute_financial_ratios(bs_data: dict) -> pd.DataFrame:
 
     # ── Ratio builder ─────────────────────────────────────────────────────────
     ratios = []
+    history_records = []
 
     def add(name, val, y_cur, y_prev, hist_series, desc, cat):
-        yoy      = _yoy(y_cur, y_prev)
+        yoy      = _yoy(y_cur, y_prev)  # Now y_prev corresponds to 1 yr ago
         hist_pct = float(np.mean(hist_series.dropna() <= val) * 100) \
                    if (not pd.isna(val) and len(hist_series.dropna()) >= 4) else np.nan
         status   = _percentile_status(val, hist_series)
@@ -216,6 +267,20 @@ def compute_financial_ratios(bs_data: dict) -> pd.DataFrame:
             "Description":  desc,
             "Category":     cat,
         })
+        
+        # Accumulate the full historical time-series for ML/AI DB storage
+        for dt, h_val in hist_series.dropna().items():
+            # dt is a Timestamp when _ratio_series built the index from shared dates
+            # Skip integer positional indices (no real date available)
+            if not hasattr(dt, "strftime") or pd.isnull(dt):
+                continue
+            dt_str = dt.strftime("%Y-%m-%d")
+            if "Growth" not in name:
+                history_records.append({
+                    "Date":  dt_str,
+                    "Ratio": name,
+                    "Value": round(h_val, 4)
+                })
 
     # ── Profitability ─────────────────────────────────────────────────────────
     add("Gross Margin %",
@@ -283,10 +348,14 @@ def compute_financial_ratios(bs_data: dict) -> pd.DataFrame:
             _col_series(bal, "Current Debt")
         )
     ])
+    eq_vals = eq_s.values[:len(debt_hist)]
+    de_hist = pd.Series(
+        [_safe_div(d, e) for d, e in zip(debt_hist.values, eq_vals)]
+    ) if not eq_s.empty else pd.Series(dtype=float)
     add("Debt/Equity",
         _safe_div(total_debt, eq_c),
         total_debt, np.nan,
-        debt_hist / eq_s.reindex(range(len(debt_hist))).fillna(np.nan) if not eq_s.empty else pd.Series(dtype=float),
+        de_hist,
         "Total Debt / Equity.  Higher = greater financial leverage.",
         "Leverage")
 
@@ -343,20 +412,12 @@ def compute_financial_ratios(bs_data: dict) -> pd.DataFrame:
 
     # ── Growth (YoY is the value; compare vs own history of that growth rate) ─
     rev_growth = _yoy(rev_cur, rev_p)
-    rev_growth_hist = pd.Series([
-        _yoy(float(rev_s.iloc[i]), float(rev_s.iloc[i+1]))
-        for i in range(len(rev_s) - 1)
-        if not (pd.isna(rev_s.iloc[i]) or pd.isna(rev_s.iloc[i+1]))
-    ])
+    rev_growth_hist = _yoy_hist(rev_s)
     add("Revenue Growth %", rev_growth, rev_cur, rev_p, rev_growth_hist,
         "Y-o-Y quarterly revenue growth.", "Growth")
 
     ni_growth = _yoy(ni_cur, ni_p)
-    ni_growth_hist = pd.Series([
-        _yoy(float(ni_s.iloc[i]), float(ni_s.iloc[i+1]))
-        for i in range(len(ni_s) - 1)
-        if not (pd.isna(ni_s.iloc[i]) or pd.isna(ni_s.iloc[i+1]))
-    ])
+    ni_growth_hist = _yoy_hist(ni_s)
     add("Net Income Growth %", ni_growth, ni_cur, ni_p, ni_growth_hist,
         "Y-o-Y quarterly net income growth.", "Growth")
 
@@ -368,11 +429,7 @@ def compute_financial_ratios(bs_data: dict) -> pd.DataFrame:
         "Equity as % of total assets. Higher = more self-funded.", "Capital Structure")
 
     eq_growth = _yoy(eq_c, eq_p)
-    eq_growth_hist = pd.Series([
-        _yoy(float(eq_s.iloc[i]), float(eq_s.iloc[i+1]))
-        for i in range(len(eq_s) - 1)
-        if not (pd.isna(eq_s.iloc[i]) or pd.isna(eq_s.iloc[i+1]))
-    ])
+    eq_growth_hist = _yoy_hist(eq_s)
     add("Equity Growth %", eq_growth, eq_c, eq_p, eq_growth_hist,
         "Y-o-Y growth in shareholders' equity. Reflects retained earnings build-up.",
         "Capital Structure")
@@ -381,7 +438,9 @@ def compute_financial_ratios(bs_data: dict) -> pd.DataFrame:
     df_out["ValueStr"] = df_out["Value"].apply(
         lambda v: f"{v:,.2f}" if (v is not None and not pd.isna(v)) else "N/A"
     )
-    return df_out
+    
+    df_hist = pd.DataFrame(history_records)
+    return df_out, df_hist
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -499,7 +558,7 @@ def run_balance_sheet_analysis(
     bs_data = fetch_balance_sheet(ticker, audit_window)
 
     print(f"  Computing financial ratios (self-referential status)...")
-    ratios = compute_financial_ratios(bs_data)
+    ratios, ratios_history = compute_financial_ratios(bs_data)
 
     print(f"  Applying data-driven sector overlay ({', '.join(top_sectors)})...")
     full_ratios = sector_overlay(ratios, health_dfs, top_sectors, sector_window)
@@ -514,6 +573,7 @@ def run_balance_sheet_analysis(
                             if k not in ("info", "ticker")},
         "ratios":          ratios,
         "full_ratios":     full_ratios,
+        "historical_ratios": ratios_history,
         "top_sectors":     top_sectors,
         "sector_pressure": pressure,
     }

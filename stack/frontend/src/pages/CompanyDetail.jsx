@@ -1,264 +1,389 @@
-import { useParams, useNavigate } from 'react-router-dom';
-import PageLayout from '../components/Layout/PageLayout';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import { BrainCircuit, AlertTriangle, TrendingUp, TrendingDown, Target, Building2, ChevronLeft } from 'lucide-react';
-import { useAppData } from '../context/AppDataContext';
+import React, { useEffect, useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import {
+  ArrowLeft, Activity, BarChart2, Building2, Brain,
+  TrendingUp, Users, ShieldAlert
+} from "lucide-react";
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Cell, LineChart, Line, Legend
+} from "recharts";
+import PageLayout from "../components/Layout/PageLayout";
+import SignalBadge from "../components/ui/SignalBadge";
+import LoadingSpinner from "../components/ui/LoadingSpinner";
+import EmptyState from "../components/ui/EmptyState";
+import {
+  fetchCompanyById, fetchLatestCompanyMetrics, fetchBalanceSheet,
+  fetchHoldingMetrics, fetchMlPredictions, fetchTopSectors, fetchFeatureStore
+} from "../lib/api";
+
+const TAB_ICONS = {
+  metrics: Activity, balance: BarChart2, holdings: Users,
+  ml: Brain, sectors: TrendingUp, features: ShieldAlert
+};
 
 export default function CompanyDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
-  const { companyDetail, companies } = useAppData();
-  
-  const companyKey = id?.toUpperCase() || 'HDFCBANK';
-  const companyData = companies.find(c => c.ticker === companyKey) || companies[0];
-  
-  const mockPriceData = companyDetail.priceData;
-  const mockPeers = companyDetail.peers;
-  const rings = companyDetail.rings;
+  const [company, setCompany]     = useState(null);
+  const [metrics, setMetrics]     = useState([]);
+  const [balance, setBalance]     = useState([]);
+  const [holdings, setHoldings]   = useState([]);
+  const [ml, setMl]               = useState([]);
+  const [topSec, setTopSec]       = useState([]);
+  const [features, setFeatures]   = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [tab, setTab]             = useState("metrics");
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    Promise.all([
+      fetchCompanyById(id),
+      fetchLatestCompanyMetrics(id),
+      fetchBalanceSheet(id),
+      fetchHoldingMetrics(id),
+      fetchMlPredictions(id),
+      fetchTopSectors(id),
+      fetchFeatureStore(id),
+    ]).then(([c, m, b, h, ml_, ts, fs]) => {
+      setCompany(c.data);
+      setMetrics((m.data || []).reverse());
+      setBalance(b.data || []);
+      setHoldings(h.data || []);
+      setMl((ml_.data || []).reverse());
+      setTopSec(ts.data || []);
+      setFeatures((fs.data || []).reverse());
+    }).finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) return <PageLayout title="Company Detail"><LoadingSpinner /></PageLayout>;
+  if (!company) return <PageLayout title="Company Detail"><EmptyState title="Company not found" /></PageLayout>;
+
+  const latestMl = ml[ml.length - 1];
+  const score = latestMl?.survival_score;
+  const scoreColor = score >= 70 ? "text-emerald-600" : score >= 40 ? "text-amber-600" : "text-red-600";
+
+  const tabs = ["metrics","balance","holdings","ml","sectors","features"];
+
+  // Balance sheet by category
+  const bsCategories = [...new Set(balance.map(r => r.category))].filter(Boolean);
+  const latestBs = {};
+  balance.forEach(r => { if (!latestBs[r.ratio]) latestBs[r.ratio] = r; });
 
   return (
-    <PageLayout>
-      {/* HEADER SECTION */}
-      <div className="bg-white border-b border-emerald-100 px-8 py-6 -mx-8 -mt-6 mb-6">
-        <button onClick={() => navigate('/companies')} className="flex items-center gap-1 text-sm text-[#8fa88f] hover:text-[#2d6a4f] transition mb-4 font-medium">
-          <ChevronLeft size={16} /> Back to Universe
-        </button>
-        
-        <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-          <div className="flex gap-4 md:gap-5 items-end">
-            <div className="w-16 h-16 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-2xl flex items-center justify-center text-emerald-800 font-black text-xl shadow-sm border border-emerald-300">
-              {companyData.name.substring(0,2)}
-            </div>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-extrabold text-[#0f1f0f] tracking-tight">{companyData.name}</h1>
-                <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs font-bold rounded tracking-wide uppercase">{companyData.sector}</span>
-              </div>
-              <div className="flex items-end gap-3 mt-1">
-                <span className="text-3xl font-black text-gray-800 tracking-tight">{companyData.price}</span>
-                <span className="text-emerald-600 font-bold mb-1">{companyData.trend}</span>
-                <span className="text-gray-400 text-xs mb-1.5 ml-2">Market Cap: {companyData.marketCap}</span>
-              </div>
-            </div>
-          </div>
+    <PageLayout title={company.name}>
+      <div className="space-y-5">
 
-          {/* Rings */}
-          <div className="flex gap-4 md:gap-6 items-center flex-wrap md:flex-nowrap w-full md:w-auto">
-            <div className="flex flex-col items-end mr-0 md:mr-4">
-              <span className="text-xs text-gray-500">Composite Risk</span>
-              <span className="text-3xl font-black text-amber-500 delay-100 transition-all">{100 - companyData.compositeScore}</span>
-            </div>
-            <div className="h-12 w-px bg-gray-200"></div>
-            {rings.map((r, i) => (
-              <div key={i} className="flex flex-col items-center">
-                <div className="relative w-12 h-12 flex items-center justify-center">
-                  <svg className="w-12 h-12 transform -rotate-90">
-                    <circle cx="24" cy="24" r="20" stroke="#f1f5f9" strokeWidth="4" fill="none" />
-                    <circle cx="24" cy="24" r="20" stroke={r.color} strokeWidth="4" fill="none" strokeDasharray={`${(r.val/100)*125} 125`} className="transition-all duration-1000 ease-out" strokeLinecap="round" />
-                  </svg>
-                  <span className="absolute text-[10px] font-bold text-gray-700">{r.val}</span>
+        {/* Back + Header */}
+        <div className="flex items-start gap-4">
+          <Link to="/companies" className="flex items-center gap-1 text-sm text-gray-400 hover:text-orange-500 mt-1">
+            <ArrowLeft size={15} /> Back
+          </Link>
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                <Building2 size={20} className="text-orange-500" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">{company.name}</h2>
+                <p className="text-xs text-gray-400">{company.ticker} · {company.exchange || "NSE"}</p>
+              </div>
+              {score != null && (
+                <div className="ml-auto text-right">
+                  <p className={`text-3xl font-bold ${scoreColor}`}>{score.toFixed(0)}</p>
+                  <p className="text-xs text-gray-400">Survival Score</p>
                 </div>
-                <span className="text-[10px] text-gray-500 mt-1 uppercase font-semibold">{r.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* L COLUMN */}
-        <div className="lg:col-span-2 flex flex-col gap-6">
-          
-          {/* PRICE CHART */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-[#0f1f0f] text-lg">Price & Volume Structure</h3>
-              <div className="flex gap-2">
-                {['1D', '1W', '1M', '3M', '1Y', 'ALL'].map(t => (
-                  <button key={t} className={`text-xs px-3 py-1.5 rounded-lg border font-medium ${t === '3M' ? 'bg-[#2d6a4f] text-white border-[#2d6a4f]' : 'text-gray-500 border-gray-200 hover:bg-gray-50'}`}>
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="80%">
-                <AreaChart data={mockPriceData}>
-                  <defs>
-                    <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="day" hide />
-                  <YAxis domain={['auto', 'auto']} hide />
-                  <Tooltip contentStyle={{ borderRadius: '12px', borderColor: '#e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                  <Area type="monotone" dataKey="price" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" />
-                </AreaChart>
-              </ResponsiveContainer>
-              <ResponsiveContainer width="100%" height="20%">
-                <BarChart data={mockPriceData}>
-                  <Bar dataKey="volume" fill="#cbd5e1" radius={[2, 2, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* SENTIMENT TIMELINE */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
-            <h3 className="font-bold text-[#0f1f0f] text-lg mb-6">News Sentiment & Divergence (90D)</h3>
-            <div className="h-[140px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockPriceData}>
-                  <Tooltip cursor={{fill: 'transparent'}} />
-                  <Bar dataKey="sentiment">
-                    {mockPriceData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.sentiment > 0.5 ? '#10b981' : entry.sentiment < -0.5 ? '#f43f5e' : '#fbbf24'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-          
-  {/* BALANCE SHEET TILE - Mini */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-[#0f1f0f] text-lg">Balance Sheet Core (3-Yr Trend)</h3>
-              <button onClick={() => navigate('/balance-sheet')} className="text-[#2d6a4f] text-sm font-bold hover:underline">Full Statement &rarr;</button>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: 'Revenue',    val: companyData.stats?.revenue,   trend: '+14%'  },
-                { label: 'Net Profit', val: companyData.stats?.netIncome, trend: '+22%'  },
-                { label: 'EPS',        val: companyData.stats?.eps,       trend: '+18%'  },
-                { label: 'P/E Ratio',  val: companyData.peRatio,          trend: 'Stable'},
-              ].map((m, i) => (
-                <div key={i} className="flex flex-col gap-1 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <span className="text-xs text-gray-500 uppercase tracking-wide font-semibold">{m.label}</span>
-                  <span className="text-lg font-black text-gray-800">{m.val}</span>
-                  <span className={`text-xs font-bold ${m.trend.includes('-') && !m.label.includes('NPA') && !m.label.includes('D/E') ? 'text-rose-500' : 'text-emerald-500'}`}>{m.trend} YoY</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* NEWS FLOW */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-[#0f1f0f] text-lg">Recent News & Catalysts</h3>
-            </div>
-            <div className="space-y-4">
-              {companyData.news?.map((n, i) => (
-                <div key={i} className="flex gap-4 items-start p-3 bg-gray-50 hover:bg-emerald-50 rounded-xl border border-gray-100 transition cursor-pointer">
-                  <div className={`w-2 h-2 mt-1.5 shrink-0 rounded-full ${n.sentiment === 'pos' ? 'bg-emerald-500' : n.sentiment === 'neg' ? 'bg-rose-500' : 'bg-amber-400'}`}></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-gray-800 mb-1 leading-snug">{n.headline}</p>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-400">{n.date}</span>
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${n.sentiment === 'pos' ? 'bg-emerald-100 text-emerald-700' : n.sentiment === 'neg' ? 'bg-rose-100 text-rose-700' : 'bg-gray-200 text-gray-600'}`}>
-                        {n.sentiment === 'pos' ? 'Positive' : n.sentiment === 'neg' ? 'Negative' : 'Neutral'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {(!companyData.news || companyData.news.length === 0) && (
-                <div className="text-sm text-gray-500 italic p-4 text-center">No recent major catalysts recorded.</div>
               )}
             </div>
           </div>
-
         </div>
 
-        {/* R COLUMN */}
-        <div className="flex flex-col gap-6">
-          
-          {/* AI RISK PANEL */}
-          <div className="bg-gradient-to-br from-[#0f1f0f] to-[#1a3322] rounded-2xl p-6 shadow-lg border border-[#2d6a4f] text-white relative overflow-hidden">
-            <BrainCircuit className="absolute top-4 right-4 text-emerald-500/20 w-32 h-32" />
-            <div className="flex items-center gap-2 mb-4 relative z-10">
-              <BrainCircuit className="text-emerald-400" size={20} />
-              <h3 className="font-bold text-lg text-emerald-50">AI Risk Thesis</h3>
+        {/* ML Summary Cards */}
+        {latestMl && (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="card p-4 border-l-4 border-orange-400">
+              <p className="stat-label">Survival Score</p>
+              <p className={`text-2xl font-bold mt-1 ${scoreColor}`}>{latestMl.survival_score?.toFixed(1)}</p>
             </div>
-            <div className="space-y-4 relative z-10 text-emerald-100 text-sm leading-relaxed">
-              <p>
-                <span className="text-emerald-400 font-bold">Stable Outlook:</span> The system detects <strong>low probability of systemic failure</strong> in the next quarter. 
-              </p>
-              <p>
-                <AlertTriangle size={14} className="inline text-amber-400 mr-1 pb-1" />
-                <strong>Elevated Drawdown Risk:</strong> Relative to banking peers over the last 45 days, coinciding with a <em>neutral-to-negative</em> earnings sentiment cluster detected last week.
-              </p>
-              <p>
-                Management guidance on margin compression was penalized 12% more severely by the sentiment model than historical equivalents (2018 cycle).
-              </p>
+            <div className="card p-4 border-l-4 border-red-300">
+              <p className="stat-label">Distress Probability</p>
+              <p className="text-2xl font-bold mt-1 text-red-600">{latestMl.distress_probability?.toFixed(1)}%</p>
             </div>
-            <button className="mt-6 w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-bold transition shadow-md flex items-center justify-center gap-2">
-              <Target size={16} /> Generate deep-dive report
-            </button>
-          </div>
-
-          {/* RISK FACTORS */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
-            <h3 className="font-bold text-[#0f1f0f] text-lg mb-4">Risk Pulse</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center group cursor-pointer hover:bg-gray-50 p-2 -mx-2 rounded-lg transition">
-                <div>
-                  <div className="text-sm font-bold text-gray-800 flex items-center gap-1">Rel. Drawdown <InfoIcon /></div>
-                  <div className="text-xs text-gray-400">-12.4% vs Nifty Bank</div>
-                </div>
-                <div className="h-6 w-16 bg-rose-100 rounded text-rose-600 font-bold text-xs flex items-center justify-center border border-rose-200">Alert</div>
-              </div>
-              <div className="flex justify-between items-center group cursor-pointer hover:bg-gray-50 p-2 -mx-2 rounded-lg transition">
-                <div>
-                  <div className="text-sm font-bold text-gray-800 flex items-center gap-1">Volatility <InfoIcon /></div>
-                  <div className="text-xs text-gray-400">22.1% Ann.</div>
-                </div>
-                <div className="h-6 w-16 bg-emerald-100 rounded text-emerald-600 font-bold text-xs flex items-center justify-center border border-emerald-200">Stable</div>
-              </div>
-              <div className="flex justify-between items-center group cursor-pointer hover:bg-gray-50 p-2 -mx-2 rounded-lg transition">
-                <div>
-                  <div className="text-sm font-bold text-gray-800 flex items-center gap-1">Sector Correlation <InfoIcon /></div>
-                  <div className="text-xs text-gray-400">R2: 0.89</div>
-                </div>
-                <div className="h-6 w-16 bg-gray-100 rounded text-gray-600 font-bold text-xs flex items-center justify-center border border-gray-200">0.89</div>
-              </div>
+            <div className="card p-4 border-l-4 border-blue-300">
+              <p className="stat-label">Model Version</p>
+              <p className="text-2xl font-bold mt-1 text-gray-700">{latestMl.model_version || "—"}</p>
             </div>
           </div>
+        )}
 
-          {/* PEERS */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
-            <h3 className="font-bold text-[#0f1f0f] text-lg mb-4 flex justify-between items-end">
-              Peer Comparison
-              <span onClick={() => navigate('/sectors')} className="text-xs font-normal text-emerald-600 flex items-center gap-1 cursor-pointer hover:underline"><Building2 size={12}/> Sector Hub</span>
-            </h3>
-            <div className="space-y-3">
-              <div className="grid grid-cols-4 text-xs font-bold text-gray-400 border-b border-gray-100 pb-2">
-                <div className="col-span-2">Company</div>
-                <div className="text-right">P/E</div>
-                <div className="text-right">Risk</div>
+        {/* Tabs */}
+        <div className="flex gap-1 border-b border-gray-100 overflow-x-auto">
+          {tabs.map(t => {
+            const Icon = TAB_ICONS[t];
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium capitalize whitespace-nowrap border-b-2 transition-all ${
+                  tab === t ? "border-orange-500 text-orange-600" : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <Icon size={13} /> {t === "ml" ? "ML Predictions" : t === "balance" ? "Balance Sheet" : t}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tab Content */}
+        {tab === "metrics" && (
+          <div className="space-y-4">
+            {metrics.length ? (
+              <>
+                <div className="card p-5">
+                  <p className="section-title mb-4">Price History (Close)</p>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <AreaChart data={metrics}>
+                      <defs>
+                        <linearGradient id="closeGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%"  stopColor="#f97316" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#f97316" stopOpacity={0}   />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                      <Area type="monotone" dataKey="close" stroke="#f97316" strokeWidth={2} fill="url(#closeGrad)" dot={false} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="card p-5">
+                  <p className="section-title mb-4">Returns & Volatility</p>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <LineChart data={metrics}>
+                      <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Line type="monotone" dataKey="company_return_1d"      stroke="#f97316" dot={false} name="Return 1d"  />
+                      <Line type="monotone" dataKey="company_volatility_20d" stroke="#6366f1" dot={false} name="Vol 20d"    />
+                      <Line type="monotone" dataKey="company_momentum"       stroke="#10b981" dot={false} name="Momentum"   />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* Latest metrics table */}
+                {metrics.length > 0 && (() => {
+                  const latest = metrics[metrics.length - 1];
+                  const fields = [
+                    ["Return 1d",    latest.company_return_1d,      "%"],
+                    ["Return 5d",    latest.company_return_5d,      "%"],
+                    ["Return 20d",   latest.company_return_20d,     "%"],
+                    ["Volatility",   latest.company_volatility_20d, ""],
+                    ["ATR",          latest.company_atr,            ""],
+                    ["Drawdown 20d", latest.company_drawdown_20d,   "%"],
+                    ["Volume Ratio", latest.company_volume_ratio,   "x"],
+                    ["Momentum",     latest.company_momentum,       ""],
+                    ["Trend",        latest.company_trend,          ""],
+                  ];
+                  return (
+                    <div className="card p-5">
+                      <p className="section-title mb-4">Latest Snapshot · {latest.date}</p>
+                      <div className="grid grid-cols-3 gap-3">
+                        {fields.map(([label, val, unit]) => (
+                          <div key={label} className="bg-gray-50 rounded-xl p-3">
+                            <p className="stat-label">{label}</p>
+                            <p className="text-base font-semibold text-gray-900 mt-1">
+                              {val != null ? `${typeof val === "number" ? val.toFixed(3) : val}${unit}` : "—"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </>
+            ) : <EmptyState title="No metrics data" />}
+          </div>
+        )}
+
+        {tab === "balance" && (
+          <div className="space-y-4">
+            {Object.keys(latestBs).length ? (
+              bsCategories.map(cat => {
+                const rows = Object.values(latestBs).filter(r => r.category === cat);
+                return (
+                  <div key={cat} className="card p-5">
+                    <p className="section-title mb-3">{cat}</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-100">
+                            {["Ratio","Value","YoY %","Hist Rank","Status","Trend","Sector Pressure","Adj Status"].map(h => (
+                              <th key={h} className="text-left py-2 px-3 stat-label">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map(r => (
+                            <tr key={r.id} className="border-b border-gray-50 hover:bg-orange-50/20">
+                              <td className="py-2 px-3 font-medium text-gray-800 text-xs">{r.ratio}</td>
+                              <td className="py-2 px-3 text-xs">{r.value_str || r.value?.toFixed(2) || "—"}</td>
+                              <td className="py-2 px-3 text-xs">{r.yoy_pct != null ? `${r.yoy_pct.toFixed(1)}%` : "—"}</td>
+                              <td className="py-2 px-3 text-xs">{r.hist_pct_rank != null ? `${r.hist_pct_rank.toFixed(0)}p` : "—"}</td>
+                              <td className="py-2 px-3"><SignalBadge value={r.status} /></td>
+                              <td className="py-2 px-3 text-xs">{r.trend || "—"}</td>
+                              <td className="py-2 px-3 text-xs">{r.sector_pressure?.toFixed(2) ?? "—"}</td>
+                              <td className="py-2 px-3"><SignalBadge value={r.adjusted_status} /></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })
+            ) : <EmptyState title="No balance sheet data" />}
+          </div>
+        )}
+
+        {tab === "holdings" && (
+          <div className="card p-5">
+            {holdings.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      {["Metric","Value","Status","Trend","Category","Sector Signal","Adj Status"].map(h => (
+                        <th key={h} className="text-left py-2 px-3 stat-label">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {holdings.map(r => (
+                      <tr key={r.id} className="border-b border-gray-50 hover:bg-orange-50/20">
+                        <td className="py-2.5 px-3 font-medium text-gray-800 text-xs">{r.metric}</td>
+                        <td className="py-2.5 px-3 text-xs">{r.value?.toFixed(3) ?? "—"}</td>
+                        <td className="py-2.5 px-3"><SignalBadge value={r.status} /></td>
+                        <td className="py-2.5 px-3 text-xs">{r.trend || "—"}</td>
+                        <td className="py-2.5 px-3 text-xs text-gray-500">{r.category || "—"}</td>
+                        <td className="py-2.5 px-3 text-xs">{r.sector_signal || "—"}</td>
+                        <td className="py-2.5 px-3"><SignalBadge value={r.adjusted_status} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              {mockPeers.map((p, i) => (
-                <div key={i} className="grid grid-cols-4 text-sm items-center py-2 border-b border-gray-50 last:border-0 hover:bg-gray-50 -mx-2 px-2 rounded cursor-pointer transition">
-                  <div className="col-span-2 font-bold text-gray-800 truncate">{p.name}</div>
-                  <div className="text-right font-medium text-gray-600">{p.pe}</div>
-                  <div className="text-right">
-                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${p.risk < 40 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{p.risk}</span>
+            ) : <EmptyState title="No holding metrics" />}
+          </div>
+        )}
+
+        {tab === "ml" && (
+          <div className="space-y-4">
+            {ml.length ? (
+              <>
+                <div className="card p-5">
+                  <p className="section-title mb-4">Survival Score History</p>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <AreaChart data={ml}>
+                      <defs>
+                        <linearGradient id="survGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%"  stopColor="#10b981" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}   />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                      <Area type="monotone" dataKey="survival_score"       stroke="#10b981" strokeWidth={2} fill="url(#survGrad)" dot={false} name="Survival" />
+                      <Area type="monotone" dataKey="distress_probability" stroke="#ef4444" strokeWidth={1.5} fill="none" dot={false} name="Distress %" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="card p-5">
+                  <p className="section-title mb-3">Prediction Log</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          {["Date","Model","Survival Score","Distress %"].map(h => (
+                            <th key={h} className="text-left py-2 px-3 stat-label">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...ml].reverse().map(r => (
+                          <tr key={r.id} className="border-b border-gray-50 hover:bg-orange-50/20">
+                            <td className="py-2 px-3 text-xs text-gray-600">{r.date}</td>
+                            <td className="py-2 px-3 text-xs font-mono">{r.model_version}</td>
+                            <td className="py-2 px-3">
+                              <span className={`text-sm font-bold ${r.survival_score >= 70 ? "text-emerald-600" : r.survival_score >= 40 ? "text-amber-600" : "text-red-600"}`}>
+                                {r.survival_score?.toFixed(1)}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 text-xs text-red-500">{r.distress_probability?.toFixed(1)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              ))}
-            </div>
+              </>
+            ) : <EmptyState title="No ML predictions" sub="Run the ML pipeline to generate survival scores." />}
           </div>
+        )}
 
-        </div>
+        {tab === "sectors" && (
+          <div className="card p-5">
+            <p className="section-title mb-4">Top Correlated Sectors</p>
+            {topSec.length ? (
+              <div className="space-y-2">
+                {topSec.slice(0, 10).map(r => (
+                  <div key={r.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <span className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 text-xs font-bold flex items-center justify-center">
+                      {r.rank}
+                    </span>
+                    <span className="text-sm font-medium text-gray-800">{r.sectors?.name || `Sector ${r.sector_id}`}</span>
+                    <span className="ml-auto text-xs text-gray-400">{r.date}</span>
+                  </div>
+                ))}
+              </div>
+            ) : <EmptyState title="No top sectors data" />}
+          </div>
+        )}
+
+        {tab === "features" && (
+          <div className="card p-5">
+            <p className="section-title mb-4">ML Feature Store</p>
+            {features.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      {["Date","D/E Ratio","Current Ratio","Rev Growth","Corr 60d","Health Score","HHI","Inst. Holding"].map(h => (
+                        <th key={h} className="text-left py-2 px-3 stat-label">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {features.map(r => (
+                      <tr key={r.id} className="border-b border-gray-50 hover:bg-orange-50/20">
+                        <td className="py-2 px-3 text-xs text-gray-600">{r.date}</td>
+                        <td className="py-2 px-3 text-xs">{r.debt_to_equity?.toFixed(2) ?? "—"}</td>
+                        <td className="py-2 px-3 text-xs">{r.current_ratio?.toFixed(2) ?? "—"}</td>
+                        <td className="py-2 px-3 text-xs">{r.revenue_growth != null ? `${(r.revenue_growth*100).toFixed(1)}%` : "—"}</td>
+                        <td className="py-2 px-3 text-xs">{r.sector_correlation_60d?.toFixed(3) ?? "—"}</td>
+                        <td className="py-2 px-3 text-xs">{r.sector_health_score?.toFixed(1) ?? "—"}</td>
+                        <td className="py-2 px-3 text-xs">{r.hhi_concentration?.toFixed(3) ?? "—"}</td>
+                        <td className="py-2 px-3 text-xs">{r.institutional_holding != null ? `${(r.institutional_holding*100).toFixed(1)}%` : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <EmptyState title="No feature store data" />}
+          </div>
+        )}
 
       </div>
     </PageLayout>
   );
-}
-
-function InfoIcon() {
-  return <div className="w-3 h-3 rounded-full border border-gray-300 flex items-center justify-center text-[8px] text-gray-400 font-bold ml-1">i</div>;
 }

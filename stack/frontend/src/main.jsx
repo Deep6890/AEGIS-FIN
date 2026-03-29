@@ -1,10 +1,10 @@
-import { createRoot } from 'react-dom/client'
-import './styles/index.css'
-import App from './App.jsx'
-import { AppDataProvider } from './context/AppDataContext.jsx'
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./index.css";
 
-createRoot(document.getElementById('root')).render(
-  <AppDataProvider>
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
     <App />
-  </AppDataProvider>
-)
+  </React.StrictMode>
+);
