@@ -17,7 +17,7 @@ export const fetchLatestSectorMetrics = () =>
     .from("sector_metrics")
     .select("*, sectors(name, ticker)")
     .order("date", { ascending: false })
-    .limit(120); // ~10 sectors × last 10 days
+    .limit(60); // ~10 sectors × last 6 days
 
 export const fetchSectorMetricsHistory = (sectorId, days = 90) =>
   supabase
@@ -25,7 +25,7 @@ export const fetchSectorMetricsHistory = (sectorId, days = 90) =>
     .select("*")
     .eq("sector_id", sectorId)
     .order("date", { ascending: true })
-    .limit(days);
+    .limit(60); // Reduced from 90 to 60 days
 
 // ── Sector Health ─────────────────────────────────────────────────────────────
 export const fetchLatestSectorHealth = () =>
@@ -33,7 +33,7 @@ export const fetchLatestSectorHealth = () =>
     .from("sector_health")
     .select("*, sectors(name)")
     .order("date", { ascending: false })
-    .limit(120);
+    .limit(60); // Reduced from 120
 
 export const fetchSectorHealthHistory = (sectorId, days = 90) =>
   supabase
@@ -41,7 +41,7 @@ export const fetchSectorHealthHistory = (sectorId, days = 90) =>
     .select("*")
     .eq("sector_id", sectorId)
     .order("date", { ascending: true })
-    .limit(days);
+    .limit(60); // Reduced from 90 to 60 days
 
 // ── Company Metrics ───────────────────────────────────────────────────────────
 export const fetchLatestCompanyMetrics = (companyId) =>
@@ -50,7 +50,7 @@ export const fetchLatestCompanyMetrics = (companyId) =>
     .select("*")
     .eq("company_id", companyId)
     .order("date", { ascending: false })
-    .limit(90);
+    .limit(60); // Reduced from 90 to 60 days
 
 // ── Correlation ───────────────────────────────────────────────────────────────
 export const fetchStaticCorr = (companyId) =>
@@ -68,7 +68,7 @@ export const fetchRollingCorr = (companyId, windowDays = 60) =>
     .eq("company_id", companyId)
     .eq("window_days", windowDays)
     .order("date", { ascending: true })
-    .limit(200);
+    .limit(100); // Reduced from 200 to 100
 
 export const fetchTopSectors = (companyId) =>
   supabase
@@ -86,7 +86,7 @@ export const fetchBalanceSheet = (companyId) =>
     .select("*")
     .eq("company_id", companyId)
     .order("date", { ascending: false })
-    .limit(100);
+    .limit(50); // Reduced from 100 to 50
 
 export const fetchBalanceSheetHistory = (companyId, ratio) =>
   supabase
@@ -120,7 +120,7 @@ export const fetchAllMlPredictions = () =>
     .from("ml_predictions")
     .select("*, companies(name, ticker)")
     .order("date", { ascending: false })
-    .limit(600);
+    .limit(300); // Reduced from 600 to 300
 
 // ── Feature Store ─────────────────────────────────────────────────────────────
 export const fetchFeatureStore = (companyId) =>
@@ -153,7 +153,7 @@ export const fetchPortfolioSummary = () =>
     .from("ml_predictions")
     .select("survival_score, distress_probability, companies(name)")
     .order("date", { ascending: false })
-    .limit(600);
+    .limit(300); // Reduced from 600 to 300
 
 // ── Pipeline Log ──────────────────────────────────────────────────────────────
 export const fetchPipelineLog = (limit = 100) =>
@@ -168,4 +168,4 @@ export const fetchPipelineStats = () =>
     .from("pipeline_log")
     .select("status, company, run_at")
     .order("run_at", { ascending: false })
-    .limit(500);
+    .limit(200); // Reduced from 500 to 200

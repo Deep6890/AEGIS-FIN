@@ -1,8 +1,8 @@
 """
-supabase_gateway.py  v3.0
+supabase_gateway.py  v3.1
 --------------------------
 - Upserts all pipeline layers (no duplicates via conflict keys)
-- Enforces 3-year data retention (auto-deletes rows older than 3 years)
+- Enforces 6-month data retention (auto-deletes rows older than 6 months)
 - Sector data pushed correctly (sector_id resolved from name)
 - Null-safe for all float fields
 """
@@ -13,7 +13,8 @@ from typing import Optional
 import pandas as pd
 from supabase import create_client, Client
 
-THREE_YEARS_AGO = (datetime.now(timezone.utc) - timedelta(days=3*365)).strftime("%Y-%m-%d")
+# Retention policy: keep only last 6 months of data
+RETENTION_CUTOFF = (datetime.now(timezone.utc) - timedelta(days=180)).strftime("%Y-%m-%d")
 
 
 def _get_client() -> Client:
@@ -93,12 +94,12 @@ class AegisGateway:
         for i in range(0, len(deduped), 500):
             self.db.table(table).upsert(deduped[i:i+500], on_conflict=conflict).execute()
 
-    # ── 3-year retention ──────────────────────────────────────────────────────
+    # ── 6-month retention ─────────────────────────────────────────────────────
 
     def _prune(self, table: str, date_col: str = "date"):
-        """Delete rows older than 3 years."""
+        """Delete rows older than 6 months to stay within free tier limits."""
         try:
-            self.db.table(table).delete().lt(date_col, THREE_YEARS_AGO).execute()
+            self.db.table(table).delete().lt(date_col, RETENTION_CUTOFF).execute()
         except Exception as e:
             print(f"  [prune] {table}: {e}")
 
@@ -115,7 +116,7 @@ class AegisGateway:
             tmp = df.reset_index() if "Date" not in df.columns else df.copy()
             for _, row in tmp.iterrows():
                 d = _date(row)
-                if not d or d < THREE_YEARS_AGO:
+                if not d or d < RETENTION_CUTOFF:
                     continue
                 records.append({
                     "run_at": run_at, "sector_id": sid, "date": d,
@@ -146,7 +147,7 @@ class AegisGateway:
             tmp = df.reset_index() if "Date" not in df.columns else df.copy()
             for _, row in tmp.iterrows():
                 d = _date(row)
-                if not d or d < THREE_YEARS_AGO:
+                if not d or d < RETENTION_CUTOFF:
                     continue
                 records.append({
                     "run_at": run_at, "sector_id": sid, "date": d,
@@ -178,7 +179,7 @@ class AegisGateway:
         records = []
         for _, row in df.iterrows():
             d = _date(row)
-            if not d or d < THREE_YEARS_AGO:
+            if not d or d < RETENTION_CUTOFF:
                 continue
             records.append({
                 "run_at": run_at, "date": d,
@@ -201,7 +202,7 @@ class AegisGateway:
         records = []
         for _, row in df.iterrows():
             d = _date(row)
-            if not d or d < THREE_YEARS_AGO:
+            if not d or d < RETENTION_CUTOFF:
                 continue
             records.append({
                 "run_at": run_at, "company_id": company_id, "date": d,
@@ -262,7 +263,7 @@ class AegisGateway:
             if sid is None:
                 continue
             d = _date(row)
-            if not d or d < THREE_YEARS_AGO:
+            if not d or d < RETENTION_CUTOFF:
                 continue
             records.append({
                 "run_at": run_at, "company_id": company_id, "sector_id": sid,
@@ -342,7 +343,7 @@ class AegisGateway:
         records = []
         for _, row in df.iterrows():
             d = _date(row)
-            if not d or d < THREE_YEARS_AGO:
+            if not d or d < RETENTION_CUTOFF:
                 continue
             val = _clean(row.get("Value"))
             if val is None:
