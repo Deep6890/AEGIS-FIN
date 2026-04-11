@@ -1191,3 +1191,17 @@
 [2026-03-29 16:26:05 UTC] [INFO] [274/274] Kaynes Technology (KAYNES.NS)
 [2026-03-29 16:26:05 UTC] [ERROR]   ✘ FAILED in 0.1s: No valid company data found or empty dataframe.
 [2026-03-29 16:26:06 UTC] [INFO] BATCH COMPLETE  |  ok=78  failed=59  skipped=0
+[2026-04-11 07:56:05 UTC] [INFO] ============================================================
+[2026-04-11 07:56:05 UTC] [INFO] AEGIS-FIN Pipeline  |  3 companies  |  dry=False  |  resume=False
+[2026-04-11 07:56:05 UTC] [INFO] ============================================================
+[2026-04-11 07:56:05 UTC] [INFO] Pre-computing sector data (shared across all companies)...
+[2026-04-11 07:56:22 UTC] [INFO] Sectors ready: 12 metrics, 12 health dfs
+[2026-04-11 07:56:24 UTC] [INFO] Pushing sector metrics and health to Supabase...
+[2026-04-11 07:56:31 UTC] [INFO] Sector data pushed.
+[2026-04-11 07:56:31 UTC] [INFO] [1/3] Infollion Research Services (INFOLLION.NS)
+[2026-04-11 07:57:11 UTC] [INFO]   ✔ Done in 40.0s
+[2026-04-11 07:57:12 UTC] [INFO] [2/3] Zaggle Prepaid Ocean Services (ZAGGLE.NS)
+[2026-04-11 07:57:46 UTC] [INFO]   ✔ Done in 34.4s
+[2026-04-11 07:57:47 UTC] [INFO] [3/3] Netweb Technologies India (NETWEB.NS)
+[2026-04-11 07:58:18 UTC] [INFO]   ✔ Done in 31.0s
+[2026-04-11 07:58:19 UTC] [INFO] BATCH COMPLETE  |  ok=3  failed=0  skipped=0
