@@ -1,0 +1,380 @@
+{
+  "date": "2026-03-29",
+  "completed": [
+    "Hitech Corporation",
+    "JG Chemicals",
+    "Clean Science Technology",
+    "Neogen Chemicals",
+    "Sudarshan Chemical",
+    "Chemplast Sanmar",
+    "Fine Organics",
+    "Vinati Organics",
+    "Aarti Industries",
+    "SRF Limited",
+    "Deepak Nitrite",
+    "Minda Corporation",
+    "Suprajit Engineering",
+    "Bharat Forge",
+    "CIE Automotive India",
+    "Wheels India",
+    "Exide Industries",
+    "Sharda Motor Industries",
+    "Ramkrishna Forgings",
+    "JBM Auto",
+    "Sona BLW Precision",
+    "Craftsman Automation",
+    "Nazara Technologies",
+    "Saregama India",
+    "Shemaroo Entertainment",
+    "PVR Inox",
+    "Zee Entertainment",
+    "Updater Services (UDS)",
+    "Mahindra Logistics",
+    "Allcargo Logistics",
+    "TCI Express",
+    "VRL Logistics",
+    "Delhivery",
+    "Snowman Logistics",
+    "Balrampur Chini",
+    "Avanti Feeds",
+    "Kaveri Seed Company",
+    "PI Industries",
+    "Rallis India",
+    "NCC Limited",
+    "KNR Constructions",
+    "HG Infra Engineering",
+    "RITES Limited",
+    "IRCON International",
+    "G R Infraprojects",
+    "PNC Infratech",
+    "Capacit'e Infraprojects",
+    "Man Infraconstruction",
+    "Ahluwalia Contracts",
+    "Dilip Buildcon",
+    "Ashoka Buildcon",
+    "Nova AgriTech",
+    "Manorama Industries",
+    "Supriya Lifescience",
+    "Bansal Wire Industries",
+    "NSLNISP",
+    "KPIT Technologies",
+    "Newgen Software",
+    "Astra Microwave",
+    "Bharat Dynamics",
+    "Zen Technologies",
+    "Apollo Micro Systems",
+    "Anant Raj",
+    "Sansera Engineering",
+    "Campus Activewear",
+    "Zee Learn",
+    "MT Educare",
+    "HFCL",
+    "Tejas Networks",
+    "Smartlink Holdings",
+    "EIH Limited",
+    "Chalet Hotels",
+    "Lemon Tree Hotels",
+    "Mahindra Holidays",
+    "Juniper Hotels",
+    "Geojit Financial",
+    "SBFC Finance",
+    "Northern Arc Capital"
+  ],
+  "failed": [
+    {
+      "name": "Tatva Chintan Pharma",
+      "ticker": "TATVA2.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Archit Organosys",
+      "ticker": "ARCHIT.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Anupam Rasayan",
+      "ticker": "ANUPAMRAS.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Ami Organics",
+      "ticker": "AMIORG.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Paushak Limited",
+      "ticker": "PAUSHAK.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Rane Holdings",
+      "ticker": "RANE.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Amara Raja Energy",
+      "ticker": "AMARAJAB.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Minda Industries",
+      "ticker": "MINDAIND.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Maxposure",
+      "ticker": "MAXPOSURE.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "UFO Moviez",
+      "ticker": "UFOMOVIZ.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Tips Industries",
+      "ticker": "TIPS.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Inox Leisure",
+      "ticker": "INOXLEISUR.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Gati Limited",
+      "ticker": "GATI.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Xpressbees",
+      "ticker": "XPRESSBEE.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Om Logistics",
+      "ticker": "OMLOG.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Gopal Snacks (Gujarat)",
+      "ticker": "GOPAL2.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Mahindra AgriSolutions",
+      "ticker": "MAHAGRI.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Rajshree Sugars",
+      "ticker": "RAJSHREESUG.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Godrej Agrovet",
+      "ticker": "GODREJAGROVET.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Gawar Construction",
+      "ticker": "GAWAR.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "BL Kashyap",
+      "ticker": "BLK.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "ITD Cementation",
+      "ticker": "ITDCEM.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Kcal World",
+      "ticker": "KCAL.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Jio-BP",
+      "ticker": "JIOBP.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Alpex Solar",
+      "ticker": "ALPEXSOLAR.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Bright Solar",
+      "ticker": "BRIGHTSOL.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Zaggle Fintech",
+      "ticker": "ZAGGLE2.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "ASK Automotive",
+      "ticker": "ASKAUTOM.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Kalyani Steels",
+      "ticker": "KALYANISL.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Gala Precision Engineering",
+      "ticker": "GALA.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Euro India Fresh Foods",
+      "ticker": "EUROIND.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Allied Blenders & Distillers",
+      "ticker": "ABD.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Cigniti Technologies",
+      "ticker": "CIGNITI.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Kellton Tech Solutions",
+      "ticker": "KELLTON.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Mastech Digital",
+      "ticker": "MASTECH.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Data Patterns India",
+      "ticker": "DATAPATT.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "MTAR Technologies",
+      "ticker": "MTAR.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Paras Defence",
+      "ticker": "PARASDEF.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "DCX Systems",
+      "ticker": "DCX.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Global Education (GEDU)",
+      "ticker": "GEDU.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Brainbees Solutions (FirstCry)",
+      "ticker": "BRAINBEES.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Centum Learning",
+      "ticker": "CENTENIAL.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Schoolnet India",
+      "ticker": "SCHOOLNET.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Everonn Education",
+      "ticker": "EVERONN.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Sterlite Technologies",
+      "ticker": "STRTECH.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Black Box Networks",
+      "ticker": "BLACKBOX.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Indian Hotels",
+      "ticker": "IHC.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "The Park Hotels",
+      "ticker": "PARKHOTEL2.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Sayaji Hotels",
+      "ticker": "SAYAJIHOTEL.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Vaibhav Global",
+      "ticker": "VAIBHAVGBL.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "CarTrade Tech",
+      "ticker": "CARTRADE.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Policybazaar",
+      "ticker": "POLICYBZR.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Yudiz Solutions",
+      "ticker": "YUDIZ.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "One Click Logic",
+      "ticker": "ONECLICK.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Sai Bhaskar Biotech",
+      "ticker": "SAIBHASKBIO.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Vraj Iron & Steel",
+      "ticker": "VRAJ.BO",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "EMS Limited",
+      "ticker": "EMS.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Ethos Limited",
+      "ticker": "ETHOS.NS",
+      "error": "No valid company data found or empty dataframe."
+    },
+    {
+      "name": "Kaynes Technology",
+      "ticker": "KAYNES.NS",
+      "error": "No valid company data found or empty dataframe."
+    }
+  ]
+}
