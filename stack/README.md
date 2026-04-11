@@ -2,34 +2,84 @@
 
 **Complete ML-powered financial analytics platform with automated daily pipeline and real-time market monitoring.**
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-repo)
+---
+
+## 📋 Quick Start
+
+### Prerequisites
+- Python 3.8+
+- Node.js 16+
+- Supabase account
+- Git
+
+### 1. Setup Backend
+```bash
+# Run automated setup
+setup.bat  # Windows
+
+# This will:
+# - Create virtual environment
+# - Install dependencies
+# - Configure environment
+# - Set up daily automation
+```
+
+### 2. Configure Supabase
+Edit `backend/.env`:
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your_service_key_here
+```
+
+### 3. Run Initial Pipeline
+```bash
+venv/Scripts/python.exe backend/daily_pipeline.py
+```
+
+### 4. Setup Frontend
+```bash
+cd frontend
+npm install
+cp .env.example .env
+# Edit .env with your Supabase ANON key
+npm run dev
+```
+
+### 5. Open Browser
+```
+http://localhost:5173
+```
 
 ---
 
-## 📋 Table of Contents
+## 🌐 Deploy to Vercel
 
-- [Overview](#overview)
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [Architecture](#architecture)
-- [Deployment](#deployment)
-- [Documentation](#documentation)
-- [Support](#support)
+### Frontend Deployment
 
----
+```bash
+cd frontend
+vercel
+```
 
-## 🎯 Overview
+Or use Vercel Dashboard:
+1. Import your GitHub repository
+2. Set root directory to `frontend`
+3. Add environment variables:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+4. Deploy!
 
-AEGIS-FIN is a production-ready financial analytics platform that:
-- ✅ Fetches live market data daily
-- ✅ Calculates 40+ financial metrics
-- ✅ Runs ML survival predictions
-- ✅ Monitors sector health
-- ✅ Tracks correlations
-- ✅ Analyzes balance sheets
-- ✅ Auto-manages data retention
+### Backend Setup (Your Server)
 
-**Perfect for:** Financial analysts, portfolio managers, risk teams, and investors.
+```bash
+# Windows
+cd backend
+setup_daily_task.bat
+
+# Linux/Mac
+crontab -e
+# Add: 0 13 * * 1-5 /path/to/venv/bin/python /path/to/backend/daily_pipeline.py
+```
 
 ---
 
@@ -65,58 +115,6 @@ AEGIS-FIN is a production-ready financial analytics platform that:
 
 ---
 
-## 🚀 Quick Start
-
-### Prerequisites
-- Python 3.8+
-- Node.js 16+
-- Supabase account
-- Git
-
-### 1. Clone Repository
-```bash
-git clone https://github.com/your-repo/aegis-fin.git
-cd aegis-fin
-```
-
-### 2. Setup Backend
-```bash
-# Run automated setup
-setup.bat  # Windows
-# OR
-python backend/setup_production.py  # Linux/Mac
-```
-
-This will:
-- Create virtual environment
-- Install dependencies
-- Configure environment
-- Run initial data population
-- Set up daily automation
-
-### 3. Configure Supabase
-Edit `backend/.env`:
-```env
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_KEY=your_service_key_here
-```
-
-### 4. Setup Frontend
-```bash
-cd frontend
-npm install
-cp .env.example .env
-# Edit .env with your Supabase ANON key
-npm run dev
-```
-
-### 5. Open Browser
-```
-http://localhost:5173
-```
-
----
-
 ## 🏗️ Architecture
 
 ```
@@ -145,59 +143,6 @@ http://localhost:5173
 
 ---
 
-## 📦 Deployment
-
-### Deploy Frontend to Vercel
-
-```bash
-cd frontend
-vercel
-```
-
-Or use Vercel Dashboard:
-1. Import GitHub repository
-2. Set root directory to `frontend`
-3. Add environment variables
-4. Deploy!
-
-**See:** [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md) for detailed guide
-
-### Setup Backend Automation
-
-**Windows:**
-```bash
-cd backend
-setup_daily_task.bat
-```
-
-**Linux/Mac:**
-```bash
-crontab -e
-# Add: 0 13 * * 1-5 /path/to/venv/bin/python /path/to/backend/daily_pipeline.py
-```
-
-**See:** [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) for complete checklist
-
----
-
-## 📚 Documentation
-
-### Quick References
-- **[README_SETUP.md](README_SETUP.md)** - Complete setup guide
-- **[QUICK_START.md](backend/QUICK_START.md)** - Quick command reference
-- **[PRODUCTION_SETUP.md](PRODUCTION_SETUP.md)** - Production deployment
-
-### Detailed Guides
-- **[DAILY_PIPELINE_GUIDE.md](backend/DAILY_PIPELINE_GUIDE.md)** - Pipeline usage
-- **[PIPELINE_SUMMARY.md](backend/PIPELINE_SUMMARY.md)** - System overview
-- **[DATA_RETENTION_POLICY.md](backend/DATA_RETENTION_POLICY.md)** - Storage management
-
-### Deployment
-- **[VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md)** - Vercel deployment guide
-- **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)** - Pre-launch checklist
-
----
-
 ## 🛠️ Tech Stack
 
 ### Frontend
@@ -215,12 +160,6 @@ crontab -e
 - **API:** Yahoo Finance
 - **Database:** Supabase (PostgreSQL)
 - **Scheduling:** Windows Task Scheduler / cron
-
-### Database
-- **Platform:** Supabase
-- **Type:** PostgreSQL
-- **Features:** RLS, Real-time, REST API
-- **Storage:** 500MB free tier
 
 ---
 
@@ -245,15 +184,12 @@ aegis-fin/
 │   ├── daily_pipeline.py       # Main pipeline
 │   ├── setup_production.py     # Automated setup
 │   ├── cleanup_old_data_simple.py  # Manual cleanup
+│   ├── setup_daily_task.bat    # Windows scheduler
 │   ├── .env.example            # Environment template
 │   └── requirements.txt        # Python dependencies
 │
 ├── setup.bat                    # One-command setup (Windows)
-├── README.md                    # This file
-├── README_SETUP.md              # Setup guide
-├── PRODUCTION_SETUP.md          # Production guide
-├── VERCEL_DEPLOYMENT.md         # Vercel guide
-└── DEPLOYMENT_CHECKLIST.md      # Deployment checklist
+└── README.md                    # This file
 ```
 
 ---
@@ -282,44 +218,35 @@ VITE_SUPABASE_ANON_KEY=your_anon_key_here
 
 ---
 
-## 🧪 Testing
+## 📈 Usage
 
-### Backend
+### Run Pipeline Manually
 ```bash
-# Test connection
-python backend/test_connection.py
-
-# Run pipeline once
-python backend/daily_pipeline.py
-
-# Check logs
-tail -f backend/pipeline_run.log
+venv/Scripts/python.exe backend/daily_pipeline.py
 ```
 
-### Frontend
+### Run with Custom Settings
 ```bash
-cd frontend
-npm run dev
-# Open http://localhost:5173
+# Keep only 3 months of data
+venv/Scripts/python.exe backend/daily_pipeline.py --retention-days 90
+
+# Run without cleanup
+venv/Scripts/python.exe backend/daily_pipeline.py --no-cleanup
 ```
 
----
-
-## 📈 Monitoring
-
-### Logs
+### Manual Cleanup
 ```bash
-# Backend logs
-tail -f backend/pipeline_run.log
-
-# Progress
-cat backend/.pipeline_progress.json
+venv/Scripts/python.exe backend/cleanup_old_data_simple.py
 ```
 
-### Dashboards
-- **Vercel:** Dashboard → Your Project → Analytics
-- **Supabase:** Dashboard → Settings → Usage
-- **Pipeline:** Frontend → Pipeline Monitor page
+### Check Logs
+```bash
+# Windows
+type backend\pipeline_run.log
+
+# PowerShell (live)
+Get-Content backend\pipeline_run.log -Wait -Tail 50
+```
 
 ---
 
@@ -349,28 +276,56 @@ cat backend/.pipeline_progress.json
 
 ---
 
-## 🤝 Contributing
+## 🆘 Troubleshooting
 
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+### Frontend Shows No Data
+
+**Check 1:** Is Supabase configured?
+```bash
+# Check backend/.env has:
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your_service_key
+```
+
+**Check 2:** Has pipeline run?
+```bash
+# Check if pipeline has run
+type backend\pipeline_run.log
+```
+
+**Solution:** Run pipeline once
+```bash
+venv/Scripts/python.exe backend/daily_pipeline.py
+```
+
+### Pipeline Fails
+
+**Check 1:** Dependencies installed
+```bash
+venv/Scripts/pip.exe install -r backend/requirements.txt
+```
+
+**Check 2:** Environment variables set
+```bash
+# Check backend/.env exists and has correct values
+```
+
+**Check 3:** Internet connection
+- Pipeline needs to fetch data from Yahoo Finance
+
+### Git Push Issues
+
+```bash
+# If on wrong branch
+git checkout main
+git pull origin main
+git merge your-branch
+git push origin main
+```
 
 ---
 
-## 📝 License
-
-[Your License Here]
-
----
-
-## 🆘 Support
-
-### Documentation
-- Check the `/docs` folder
-- Read the guides in root directory
-- Review inline code comments
+## 📞 Support
 
 ### Common Issues
 1. **No data:** Run backend pipeline
@@ -380,29 +335,18 @@ Contributions welcome! Please:
 
 ### Getting Help
 1. Check documentation
-2. Review logs
+2. Review logs: `backend/pipeline_run.log`
 3. Check Supabase dashboard
 4. Open an issue on GitHub
 
 ---
 
-## 🎉 Acknowledgments
+## 📝 License
 
-- **Yahoo Finance** for market data
-- **Supabase** for database platform
-- **Vercel** for hosting
-- **CatBoost** for ML framework
-
----
-
-## 📞 Contact
-
-- **Email:** [your-email@example.com]
-- **GitHub:** [your-github-username]
-- **Website:** [your-website.com]
+[Your License Here]
 
 ---
 
 **Built with ❤️ for financial analysts and investors**
 
-🚀 **Ready to deploy? Run `setup.bat` and follow the guides!**
+🚀 **Ready to deploy? Run `setup.bat` and follow the guide!**
