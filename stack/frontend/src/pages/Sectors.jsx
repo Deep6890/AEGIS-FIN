@@ -46,10 +46,9 @@ export default function Sectors() {
         {/* Live Market Bar */}
         <LiveMarketBar />
         
-        <div className="grid grid-cols-1 lg:grid-3 gap-5">
-
-        {/* Sector List */}
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {/* Sector List */}
+          <div className="space-y-2">
           <p className="stat-label mb-3">All Sectors ({sectors.length})</p>
           {sectors.length ? sectors.map(s => {
             const h = healthMap[s.id];
@@ -201,6 +200,7 @@ export default function Sectors() {
             </>
           )}
         </div>
+      </div>
       </div>
     </PageLayout>
   );
