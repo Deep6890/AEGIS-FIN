@@ -201,7 +201,6 @@ export default function Sectors() {
           )}
         </div>
       </div>
-      </div>
     </PageLayout>
   );
 }
