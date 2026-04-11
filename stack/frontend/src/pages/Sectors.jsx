@@ -7,6 +7,7 @@ import PageLayout from "../components/Layout/PageLayout";
 import SignalBadge from "../components/ui/SignalBadge";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import EmptyState from "../components/ui/EmptyState";
+import LiveMarketBar from "../components/ui/LiveMarketBar";
 import { useAppData } from "../context/AppDataContext";
 import { fetchSectorHealthHistory, fetchSectorMetricsHistory } from "../lib/api";
 
@@ -41,7 +42,11 @@ export default function Sectors() {
 
   return (
     <PageLayout title="Sectors">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="space-y-4">
+        {/* Live Market Bar */}
+        <LiveMarketBar />
+        
+        <div className="grid grid-cols-1 lg:grid-3 gap-5">
 
         {/* Sector List */}
         <div className="space-y-2">

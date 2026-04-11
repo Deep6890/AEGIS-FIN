@@ -617,6 +617,8 @@ export default function Dashboard() {
   return (
     <PageLayout title="Dashboard">
       <div className="space-y-5">
+        {/* Live Market Bar */}
+        <LiveMarketBar />
 
         {/* ── Live Market Ticker ── */}
         <LiveMarketBar />
