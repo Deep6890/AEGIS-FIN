@@ -188,3 +188,38 @@ export const fetchPipelineStats = () =>
     .select("status, company, run_at")
     .order("run_at", { ascending: false })
     .limit(200); // Reduced from 500 to 200
+
+// ── Dashboard extras ──────────────────────────────────────────────────────────
+
+// Latest classifier scores for all companies (for top picks)
+export const fetchLatestClassifier = () =>
+  supabase
+    .from("classifier")
+    .select("*, companies(name, ticker)")
+    .order("date", { ascending: false })
+    .order("composite_score", { ascending: false })
+    .limit(50);
+
+// Latest ohlcv_health for all companies (for health signals)
+export const fetchLatestOhlcvHealth = () =>
+  supabase
+    .from("ohlcv_health")
+    .select("*, companies(name, ticker)")
+    .order("date", { ascending: false })
+    .limit(100);
+
+// Latest balance_sheet_ratios summary (for fundamental health)
+export const fetchLatestBalanceSheetRatios = () =>
+  supabase
+    .from("balance_sheet_ratios")
+    .select("*, companies(name, ticker), ratio_definitions(name, category)")
+    .order("period", { ascending: false })
+    .limit(200);
+
+// Latest stock_holding signals
+export const fetchLatestStockHolding = () =>
+  supabase
+    .from("stock_holding")
+    .select("*, companies(name, ticker), holding_metric_definitions(name, category)")
+    .order("period", { ascending: false })
+    .limit(100);
