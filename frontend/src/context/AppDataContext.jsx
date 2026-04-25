@@ -21,9 +21,10 @@ export function AppDataProvider({ children }) {
   const [csvSessionId, setCsvSessionId]    = useState(null);
   const isCsvMode = csvTickers !== null;
 
-  // ── Load global data ───────────────────────────────────────────────────────
+  // ── Load global data — re-runs when user auth state changes ──────────────
   useEffect(() => {
     async function load() {
+      setLoading(true);
       try {
         const [c, s, sh, ml] = await Promise.all([
           fetchCompanies(),
@@ -45,6 +46,7 @@ export function AppDataProvider({ children }) {
         // Build macro from latest sector_health where sector_type = macro
         const macroRows = (sh.data || []).filter(r => r.sectors?.sector_type === "macro");
         if (macroRows.length > 0) {
+          // Deduplicate — keep only the latest row per macro asset
           const byName = {};
           macroRows.forEach(r => {
             const name = r.sectors?.name;
@@ -75,7 +77,7 @@ export function AppDataProvider({ children }) {
       }
     }
     load();
-  }, []);
+  }, [user]); // re-fetch when auth state changes
 
   // ── Restore last CSV session for this user ─────────────────────────────────
   useEffect(() => {

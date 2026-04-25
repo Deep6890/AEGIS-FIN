@@ -2,14 +2,14 @@ import { supabase } from "./supabase";
 
 // ── Companies ─────────────────────────────────────────────────────────────────
 export const fetchCompanies = () =>
-  supabase.from("companies").select("*").eq("is_active", true).order("name");
+  supabase.from("companies").select("*").order("name");
 
 export const fetchCompanyById = (id) =>
   supabase.from("companies").select("*").eq("id", id).single();
 
 // ── Sectors ───────────────────────────────────────────────────────────────────
 export const fetchSectors = () =>
-  supabase.from("sectors").select("*").eq("is_active", true).order("name");
+  supabase.from("sectors").select("*").order("name");
 
 // ── Sector OHLC (sector_ohlcv_raw) ───────────────────────────────────────────
 export const fetchSectorOHLC = (sectorId, days = 90) =>
@@ -168,18 +168,15 @@ export const fetchMacroOverlay = (days = 90) =>
   supabase
     .from("sector_health")
     .select("*, sectors!inner(name, yf_ticker, sector_type)")
-    .eq("sectors.sector_type", "macro")
     .order("date", { ascending: true })
-    .limit(days * 6); // 6 macro assets × days
+    .limit(days * 14); // all 14 sectors × days, filter client-side
 
 export const fetchLatestMacro = () =>
   supabase
     .from("sector_health")
     .select("*, sectors!inner(name, yf_ticker, sector_type)")
-    .eq("sectors.sector_type", "macro")
     .order("date", { ascending: false })
-    .limit(6)
-    .maybeSingle();
+    .limit(28); // latest rows for all sectors, filter client-side
 
 // ── Portfolio Summary ─────────────────────────────────────────────────────────
 export const fetchPortfolioSummary = () =>
