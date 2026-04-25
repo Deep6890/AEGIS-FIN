@@ -1,213 +1,215 @@
-import React, { useState, useMemo } from 'react';
-import { ShieldAlert, BarChart3, TrendingUp, CheckCircle2, Eye, AlertTriangle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
-import AppLayout from '../components/Layout/AppLayout';
-import DataTable from '../components/ui/DataTable';
-import StatusBadge from '../components/ui/StatusBadge';
-import EmptyState from '../components/ui/EmptyState';
-import SectionHeader from '../components/ui/SectionHeader';
-import { useAppData } from '../context/AppDataContext';
-import { useChartTheme } from '../hooks/useChartTheme';
+import React, { useState } from "react";
+import { Brain, AlertTriangle, CheckCircle, Eye, Search, ShieldAlert } from "lucide-react";
+import {
+  ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  Cell, BarChart, Bar, CartesianGrid
+} from "recharts";
+import PageLayout from "../components/Layout/PageLayout";
+import SignalBadge from "../components/ui/SignalBadge";
+import LoadingSpinner, { PageSkeleton } from "../components/ui/LoadingSpinner";
+import EmptyState from "../components/ui/EmptyState";
+import { useAppData } from "../context/AppDataContext";
+import { useChartTheme } from "../hooks/useChartTheme";
+import { Link } from "react-router-dom";
+
+const SCORE_COLOR = s => s >= 70 ? "#10B981" : s >= 40 ? "#F59E0B" : "#EF4444";
+
+const BUCKETS = [
+  { label: "0–20",   fill: "#EF4444" },
+  { label: "20–40",  fill: "#F97316" },
+  { label: "40–60",  fill: "#F59E0B" },
+  { label: "60–80",  fill: "#84CC16" },
+  { label: "80–100", fill: "#10B981" },
+];
 
 export default function RiskEngine() {
-  const { allCompanies, isLoadingCompanies } = useAppData();
+  const { latestMl, portfolioStats, companies, loading } = useAppData();
   const ct = useChartTheme();
-  const [sortParam, setSortParam] = useState('Worst First');
+  const [sort, setSort]     = useState("score_asc");
+  const [search, setSearch] = useState("");
 
-  const stats = useMemo(() => {
-    let total = 0, healthy = 0, watch = 0, distress = 0;
-    (allCompanies || []).forEach(c => {
-      total++;
-      if (c.survival_score >= 70) healthy++;
-      else if (c.survival_score >= 40) watch++;
-      else distress++;
+  const compMap = React.useMemo(() => {
+    const m = {};
+    companies.forEach(c => { m[c.id] = c; });
+    return m;
+  }, [companies]);
+
+  const sorted = React.useMemo(() => {
+    let data = latestMl.filter(r => {
+      const c = compMap[r.company_id];
+      return !search || c?.name?.toLowerCase().includes(search.toLowerCase());
     });
-    return { total, healthy, watch, distress };
-  }, [allCompanies]);
+    if (sort === "score_asc")  data = [...data].sort((a, b) => (a.survival_score || 0) - (b.survival_score || 0));
+    if (sort === "score_desc") data = [...data].sort((a, b) => (b.survival_score || 0) - (a.survival_score || 0));
+    if (sort === "distress")   data = [...data].sort((a, b) => (b.distress_probability || 0) - (a.distress_probability || 0));
+    return data;
+  }, [latestMl, sort, search, compMap]);
 
-  const distribution = useMemo(() => {
-    if (!allCompanies || !allCompanies.length) return [];
-    
-    // Create bins 0-10, 10-20, ... 90-100
-    const bins = Array.from({ length: 10 }, (_, i) => ({
-      range: `${i * 10}-${(i + 1) * 10}`,
-      min: i * 10,
-      count: 0
-    }));
+  const scatterData = latestMl.map(r => ({
+    x: r.survival_score || 0,
+    y: r.distress_probability || 0,
+    name: compMap[r.company_id]?.name || "",
+  }));
 
-    allCompanies.forEach(c => {
-      const s = c.survival_score || 0;
-      const binIdx = s === 100 ? 9 : Math.floor(s / 10);
-      if(bins[binIdx]) bins[binIdx].count++;
-    });
-    return bins;
-  }, [allCompanies]);
+  const bucketData = BUCKETS.map((b, i) => {
+    const ranges = [[0,20],[20,40],[40,60],[60,80],[80,100]];
+    const [lo, hi] = ranges[i];
+    return { ...b, count: latestMl.filter(r => (r.survival_score || 0) >= lo && (r.survival_score || 0) < hi).length };
+  });
 
-  const pieData = [
-    { name: 'Survival', value: stats.healthy + stats.watch, fill: ct.healthy },
-    { name: 'Distress', value: stats.distress, fill: ct.distress }
-  ];
-
-  const sortedRows = useMemo(() => {
-    const arr = [...(allCompanies || [])];
-    if (sortParam === 'Worst First') {
-      arr.sort((a,b) => (a.survival_score || 0) - (b.survival_score || 0));
-    } else if (sortParam === 'Best First') {
-      arr.sort((a,b) => (b.survival_score || 0) - (a.survival_score || 0));
-    } else if (sortParam === 'High Distress') {
-      return arr.filter(c => (c.survival_score || 0) < 40).sort((a,b) => (a.survival_score || 0) - (b.survival_score || 0));
-    }
-    return arr;
-  }, [allCompanies, sortParam]);
-
-  const survivalRate = stats.total > 0 ? Math.round(((stats.healthy + stats.watch) / stats.total) * 100) : 0;
-
-  const renderNineLayers = (score) => {
-    const segments = 9;
-    const filled = Math.round((score / 100) * segments);
-    return (
-      <div className="flex items-center gap-0.5">
-        {Array.from({ length: segments }).map((_, i) => (
-          <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < filled ? (score >= 70 ? 'bg-brand-green' : score >= 40 ? 'bg-brand-amber' : 'bg-brand-red') : 'bg-neutral-200 dark:bg-neutral-800'}`} />
-        ))}
-      </div>
-    );
-  };
-
-  const columns = [
-    { header: 'Company', accessor: 'name', render: (r) => <span className="font-medium">{r.name}</span> },
-    { header: 'Score', accessor: 'survival_score', render: (r) => (
-        <span className={`font-bold tabular-nums ${r.survival_score >= 70 ? 'text-brand-green' : r.survival_score >= 40 ? 'text-brand-amber' : 'text-brand-red'}`}>
-          {r.survival_score?.toFixed(1) || '—'}
-        </span>
-      ) 
-    },
-    { header: 'Status', accessor: 'status', render: (r) => {
-        const s = r.survival_score >= 70 ? 'healthy' : r.survival_score >= 40 ? 'watch' : 'distress';
-        return <StatusBadge status={s} />
-      } 
-    },
-    { header: 'Health Index', accessor: 'layers', render: (r) => renderNineLayers(r.survival_score || 0) },
-  ];
+  if (loading) return <PageLayout title="Risk Engine"><PageSkeleton /></PageLayout>;
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
+    <PageLayout title="Risk Engine · ML Predictions">
+      <div className="space-y-5">
 
-        {/* Row 1: KPI Cards */}
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-12 md:col-span-3 bg-neutral-900 dark:bg-black rounded-card p-5">
-            <div className="flex items-center gap-2 mb-2 text-neutral-400">
-              <ShieldAlert size={18} />
-              <p className="label-caps">SCORED</p>
+        {/* KPI row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-neutral-900 dark:bg-neutral-950 border border-neutral-800 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center">
+                <ShieldAlert size={15} className="text-brand-orange" />
+              </div>
             </div>
-            <p className="text-4xl font-bold tabular-nums text-white">{stats.total}</p>
+            <p className="label-caps text-white/40 mb-1">Scored</p>
+            <p className="text-3xl font-black text-brand-orange tabular-nums">{latestMl.length}</p>
           </div>
-          <div className="col-span-12 md:col-span-3 bg-[#1A5C38] rounded-card p-5">
-            <div className="flex items-center gap-2 mb-2 text-white/70">
-              <CheckCircle2 size={18} />
-              <p className="label-caps">HEALTHY</p>
+          <div className="bg-emerald-600 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                <CheckCircle size={15} className="text-white" />
+              </div>
             </div>
-            <p className="text-4xl font-bold tabular-nums text-white">{stats.healthy}</p>
+            <p className="label-caps text-white/60 mb-1">Healthy ≥70</p>
+            <p className="text-3xl font-black text-white tabular-nums">{portfolioStats.healthy}</p>
           </div>
-          <div className="col-span-12 md:col-span-3 bg-brand-yellow rounded-card p-5">
-            <div className="flex items-center gap-2 mb-2 text-neutral-900/70">
-              <Eye size={18} />
-              <p className="label-caps">WATCH</p>
+          <div className="bg-amber-400 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-xl bg-black/10 flex items-center justify-center">
+                <Eye size={15} className="text-neutral-900" />
+              </div>
             </div>
-            <p className="text-4xl font-bold tabular-nums text-neutral-900">{stats.watch}</p>
+            <p className="label-caps text-neutral-900/60 mb-1">Watch 40–70</p>
+            <p className="text-3xl font-black text-neutral-900 tabular-nums">{portfolioStats.watch}</p>
           </div>
-          <div className="col-span-12 md:col-span-3 bg-surface dark:bg-surface-card border border-neutral-200 dark:border-neutral-800 rounded-card p-5">
-            <div className="flex items-center gap-2 mb-2 text-neutral-500">
-              <AlertTriangle size={18} />
-              <p className="label-caps">DISTRESS</p>
+          <div className="card rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-950/30 flex items-center justify-center">
+                <AlertTriangle size={15} className="text-red-500" />
+              </div>
             </div>
-            <p className="text-4xl font-bold tabular-nums text-brand-red">{stats.distress}</p>
+            <p className="label-caps mb-1">Distress &lt;40</p>
+            <p className="text-3xl font-black text-red-500 tabular-nums">{portfolioStats.distress}</p>
           </div>
         </div>
 
-        {/* Row 2: Charts */}
-        <div className="grid grid-cols-12 gap-4">
-          {/* Distribution */}
-          <div className="col-span-12 lg:col-span-8 bg-surface dark:bg-surface-card border border-neutral-200 dark:border-neutral-800 rounded-card p-6">
-            <SectionHeader title="Score Distribution" />
-            <div className="h-[280px]">
-              {!distribution.length ? (
-                <EmptyState icon={BarChart3} title="No distribution data" subtitle="Run the pipeline to populate" />
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={distribution} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <XAxis dataKey="range" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: ct.tick }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: ct.tick }} />
-                    <Tooltip cursor={{ fill: ct.grid, opacity: 0.2 }} contentStyle={ct.tooltip.contentStyle} itemStyle={ct.tooltip.itemStyle} />
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                      {distribution.map((entry, index) => {
-                        const min = entry.min;
-                        const fill = min >= 70 ? ct.healthy : min >= 40 ? ct.watch : ct.distress;
-                        return <Cell key={`cell-${index}`} fill={fill} />;
-                      })}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="card p-5">
+            <p className="title-md mb-4">Score Distribution</p>
+            {bucketData.some(b => b.count > 0) ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={bucketData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} width={24} />
+                  <Tooltip {...ct.tooltip} />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                    {bucketData.map((b, i) => <Cell key={i} fill={b.fill} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : <EmptyState title="No ML data" />}
           </div>
 
-          {/* Donut */}
-          <div className="col-span-12 lg:col-span-4 bg-surface dark:bg-surface-card border border-neutral-200 dark:border-neutral-800 rounded-card p-6 flex flex-col">
-            <SectionHeader title="Survival vs Distress" />
-            <div className="flex-1 relative flex items-center justify-center min-h-[220px]">
-              {!allCompanies?.length ? (
-                <EmptyState title="No metrics" />
-              ) : (
-                <>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={pieData} innerRadius={60} outerRadius={85} paddingAngle={2} dataKey="value" stroke="none" />
-                      <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '12px' }}/>
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center -translate-y-4 pointer-events-none">
-                    <span className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{survivalRate}%</span>
-                    <span className="text-[10px] text-neutral-500 uppercase tracking-widest mt-1">Survival</span>
-                  </div>
-                </>
-              )}
-            </div>
+          <div className="card p-5">
+            <p className="title-md mb-4">Survival vs Distress Probability</p>
+            {scatterData.length ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <ScatterChart>
+                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                  <XAxis dataKey="x" name="Survival" type="number" domain={[0,100]} tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} />
+                  <YAxis dataKey="y" name="Distress" type="number" domain={[0,100]} tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} width={28} />
+                  <Tooltip {...ct.tooltip} formatter={(v, n) => [`${v.toFixed(1)}`, n]} />
+                  <Scatter data={scatterData}>
+                    {scatterData.map((d, i) => <Cell key={i} fill={SCORE_COLOR(d.x)} fillOpacity={0.75} />)}
+                  </Scatter>
+                </ScatterChart>
+              </ResponsiveContainer>
+            ) : <EmptyState title="No ML data" />}
           </div>
         </div>
 
-        {/* Row 3: Rankings Table */}
-        <div className="bg-surface dark:bg-surface-card border border-neutral-200 dark:border-neutral-800 rounded-card p-6">
-          <SectionHeader 
-            title="Company Risk Rankings" 
-            action={
-              <div className="flex gap-2">
-                {['Worst First', 'Best First', 'High Distress'].map(sort => (
-                  <button 
-                    key={sort}
-                    onClick={() => setSortParam(sort)}
-                    className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all ${
-                      sortParam === sort 
-                        ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 shadow-sm' 
-                        : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
-                    }`}
-                  >
-                    {sort}
-                  </button>
-                ))}
+        {/* Rankings table */}
+        <div className="card overflow-hidden">
+          <div className="p-5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-wrap gap-3">
+            <p className="title-md">Company Risk Rankings</p>
+            <div className="flex gap-2 flex-wrap items-center">
+              <div className="relative">
+                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" className="input-base pl-7 py-1.5 text-xs w-36" />
+              </div>
+              {[
+                { key: "score_asc",  label: "Worst First" },
+                { key: "score_desc", label: "Best First"  },
+                { key: "distress",   label: "High Distress" },
+              ].map(({ key, label }) => (
+                <button key={key} onClick={() => setSort(key)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all ${sort === key ? "btn-active" : "btn-inactive"}`}>
+                  {label}
+                </button>
+              ))}
             </div>
-            }
-          />
-          <DataTable 
-            columns={columns} 
-            rows={sortedRows} 
-            loading={isLoadingCompanies} 
-            emptyState={<EmptyState title="No ranked data" />}
-          />
-        </div>
+          </div>
 
+          {sorted.length ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-neutral-50 dark:bg-neutral-800/50">
+                  <tr>
+                    {["Company","Ticker","Survival Score","Distress %","Date",""].map(h => (
+                      <th key={h} className="th-base">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map(r => {
+                    const c = compMap[r.company_id];
+                    const s = r.survival_score;
+                    const barColor = s >= 70 ? "bar-high" : s >= 40 ? "bar-mid" : "bar-low";
+                    const textColor = s >= 70 ? "score-high" : s >= 40 ? "score-mid" : "score-low";
+                    return (
+                      <tr key={r.id} className="tr-base">
+                        <td className="td-base text-sm font-semibold text-neutral-900 dark:text-neutral-100">{c?.name || "—"}</td>
+                        <td className="td-base text-xs font-mono text-neutral-500">{c?.ticker || "—"}</td>
+                        <td className="td-base">
+                          <div className="flex items-center gap-2">
+                            <div className="progress-track w-16">
+                              <div className={`progress-fill ${barColor}`} style={{ width: `${s || 0}%` }} />
+                            </div>
+                            <span className={`text-xs font-bold tabular-nums ${textColor}`}>{s?.toFixed(0)}</span>
+                          </div>
+                        </td>
+                        <td className="td-base">
+                          <span className={`text-xs font-semibold tabular-nums ${(r.distress_probability || 0) > 60 ? "text-red-500" : "text-neutral-500"}`}>
+                            {r.distress_probability?.toFixed(1)}%
+                          </span>
+                        </td>
+                        <td className="td-base text-xs text-neutral-400">{r.date}</td>
+                        <td className="td-base">
+                          <Link to={`/companies/${r.company_id}`} className="text-xs font-semibold text-neutral-500 hover:text-brand-orange transition-colors">
+                            Details →
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : <EmptyState title="No ML predictions" sub="Run the ML pipeline to generate survival scores." />}
+        </div>
       </div>
-    </AppLayout>
+    </PageLayout>
   );
 }

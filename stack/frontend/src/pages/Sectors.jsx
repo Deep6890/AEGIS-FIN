@@ -1,149 +1,209 @@
-import React, { useState, useMemo } from 'react';
-import { Layers, Building2, Activity, Star } from 'lucide-react';
-import AppLayout from '../components/Layout/AppLayout';
-import DataTable from '../components/ui/DataTable';
-import KPICard from '../components/ui/KPICard';
-import EmptyState from '../components/ui/EmptyState';
-import StatusBadge from '../components/ui/StatusBadge';
-import { useAppData } from '../context/AppDataContext';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  LineChart, Line, Legend, CartesianGrid
+} from "recharts";
+import PageLayout from "../components/Layout/PageLayout";
+import SignalBadge from "../components/ui/SignalBadge";
+import LoadingSpinner, { PageSkeleton } from "../components/ui/LoadingSpinner";
+import EmptyState from "../components/ui/EmptyState";
+import LiveMarketBar from "../components/ui/LiveMarketBar";
+import { useAppData } from "../context/AppDataContext";
+import { useChartTheme } from "../hooks/useChartTheme";
+import { fetchSectorHealthHistory, fetchSectorMetricsHistory } from "../lib/api";
 
 export default function Sectors() {
-  const { allSectors, allCompanies, isLoadingSectors } = useAppData();
-  const [selectedSectorId, setSelectedSectorId] = useState(null);
+  const { sectors, latestSectorHealth, loading } = useAppData();
+  const ct = useChartTheme();
+  const [selected, setSelected]           = useState(null);
+  const [healthHistory, setHealthHistory] = useState([]);
+  const [metricsHistory, setMetricsHistory] = useState([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
-  // Compute sector stats (healthy %, total companies etc.)
-  const sectorData = useMemo(() => {
-    if (!allSectors || !allCompanies) return [];
-    
-    return allSectors.map(sec => {
-      const comps = allCompanies.filter(c => c.sector_id === sec.id);
-      let healthyCount = 0;
-      let totalScore = 0;
-      let topComp = null;
-      
-      comps.forEach(c => {
-        if (c.survival_score >= 70) healthyCount++;
-        totalScore += (c.survival_score || 0);
-        if (!topComp || (c.survival_score || 0) > (topComp.survival_score || 0)) {
-          topComp = c;
-        }
-      });
+  useEffect(() => {
+    if (!selected) return;
+    setDetailLoading(true);
+    Promise.all([
+      fetchSectorHealthHistory(selected, 90),
+      fetchSectorMetricsHistory(selected, 90),
+    ]).then(([h, m]) => {
+      setHealthHistory(h.data || []);
+      setMetricsHistory(m.data || []);
+    }).finally(() => setDetailLoading(false));
+  }, [selected]);
 
-      const total = comps.length;
-      const avgScore = total > 0 ? totalScore / total : 0;
-      const healthyPct = total > 0 ? (healthyCount / total) * 100 : 0;
+  const healthMap = React.useMemo(() => {
+    const m = {};
+    latestSectorHealth.forEach(r => { m[r.sector_id] = r; });
+    return m;
+  }, [latestSectorHealth]);
 
-      return {
-        ...sec,
-        totalCompanies: total,
-        healthyCount,
-        healthyPct,
-        avgScore,
-        topComp,
-        companies: comps
-      };
-    }).sort((a,b) => b.totalCompanies - a.totalCompanies);
-  }, [allSectors, allCompanies]);
+  const selectedSector = sectors.find(s => s.id === selected);
 
-  const selectedSector = sectorData.find(s => s.id === selectedSectorId);
-
-  const columns = [
-    { header: 'Company', accessor: 'name', render: (r) => (
-      <Link to={`/companies/${r.id}`} className="font-medium hover:text-brand-accent transition-colors">
-        {r.name}
-      </Link>
-    )},
-    { header: 'Ticker', accessor: 'ticker', render: (r) => <span className="text-xs font-mono text-neutral-500">{r.ticker}</span> },
-    { header: 'Score', accessor: 'survival_score', render: (r) => (
-        <span className={`font-bold tabular-nums ${r.survival_score >= 70 ? 'text-brand-green' : r.survival_score >= 40 ? 'text-brand-amber' : 'text-brand-red'}`}>
-          {r.survival_score?.toFixed(1) || '—'}
-        </span>
-      )
-    },
-    { header: 'Status', accessor: 'status', render: (r) => {
-        const s = r.survival_score >= 70 ? 'healthy' : r.survival_score >= 40 ? 'watch' : 'distress';
-        return <StatusBadge status={s} />
-      }
-    }
-  ];
+  if (loading) return <PageLayout title="Sectors"><PageSkeleton /></PageLayout>;
 
   return (
-    <AppLayout>
-      <div className="grid grid-cols-12 gap-6 h-[calc(100vh-140px)]">
-        
-        {/* Left Panel */}
-        <div className="col-span-12 lg:col-span-4 flex flex-col pt-2">
-          <p className="label-caps mb-4 mt-1">ALL SECTORS ({sectorData.length})</p>
-          
-          <div className="flex-1 overflow-y-auto pr-2 space-y-2 pb-10">
-            {isLoadingSectors ? (
-              <EmptyState title="Loading sectors..." />
-            ) : sectorData.length === 0 ? (
-              <EmptyState icon={Layers} title="No sectors" />
-            ) : (
-              sectorData.map(sec => {
-                const isSelected = selectedSectorId === sec.id;
+    <PageLayout title="Sectors">
+      <div className="space-y-4">
+        <LiveMarketBar />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {/* Sector list */}
+          <div>
+            <p className="label-caps mb-3">All Sectors ({sectors.length})</p>
+            <div className="space-y-1.5 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
+              {sectors.length ? sectors.map(s => {
+                const h = healthMap[s.id];
+                const isSelected = selected === s.id;
                 return (
                   <button
-                    key={sec.id}
-                    onClick={() => setSelectedSectorId(sec.id)}
-                    className={`w-full text-left p-4 rounded-xl transition-all border ${
-                      isSelected 
-                        ? 'border-l-4 border-l-yellow-400 bg-yellow-50/50 dark:bg-yellow-900/10 border-transparent dark:border-transparent' 
-                        : 'border-transparent hover:bg-white dark:hover:bg-surface-card'
+                    key={s.id}
+                    onClick={() => setSelected(s.id)}
+                    className={`w-full text-left p-3.5 rounded-xl border transition-all ${
+                      isSelected
+                        ? "border-brand-orange bg-brand-orange/5"
+                        : "border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-brand-orange/50"
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className={`font-medium text-sm ${isSelected ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-700 dark:text-neutral-300'}`}>
-                        {sec.name}
-                      </span>
-                      <span className="text-xs font-mono text-neutral-400 tabular-nums">{sec.totalCompanies}</span>
+                      <div>
+                        <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{s.name}</p>
+                        <p className="text-[10px] font-mono text-neutral-400 mt-0.5">{s.yf_ticker}</p>
+                      </div>
+                      {h ? <SignalBadge value={h.signal} /> : <span className="badge-gray">No data</span>}
                     </div>
-                    {/* Health Bar */}
-                    <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-800 w-full overflow-hidden">
-                      <div className="h-full rounded-full bg-brand-green transition-all" style={{ width: `${sec.healthyPct}%` }} />
-                    </div>
+                    {h && (
+                      <div className="flex items-center gap-2">
+                        <div className="progress-track flex-1">
+                          <div className="progress-fill bg-brand-orange" style={{ width: `${Math.min(100, h.health_score || 0)}%` }} />
+                        </div>
+                        <span className="text-[10px] font-semibold tabular-nums text-neutral-500">{h.health_score?.toFixed(1)}</span>
+                      </div>
+                    )}
                   </button>
                 );
-              })
+              }) : <EmptyState title="No sectors" />}
+            </div>
+          </div>
+
+          {/* Detail panel */}
+          <div className="lg:col-span-2 space-y-4">
+            {!selected ? (
+              <div className="card p-16 flex items-center justify-center">
+                <p className="text-sm text-neutral-400">Select a sector to view details</p>
+              </div>
+            ) : detailLoading ? <LoadingSpinner /> : (
+              <>
+                {/* Header */}
+                <div className="card p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-lg font-bold text-neutral-900 dark:text-neutral-100">{selectedSector?.name}</p>
+                      <p className="text-xs font-mono text-neutral-400 mt-0.5">{selectedSector?.yf_ticker}</p>
+                    </div>
+                    {healthMap[selected] && (
+                      <div className="text-right space-y-1">
+                        <SignalBadge value={healthMap[selected].signal} />
+                        <div><SignalBadge value={healthMap[selected].regime} /></div>
+                      </div>
+                    )}
+                  </div>
+                  {healthMap[selected] && (
+                    <div className="grid grid-cols-4 gap-3">
+                      {[
+                        ["Health Score", healthMap[selected].health_score?.toFixed(1)],
+                        ["Composite",    healthMap[selected].composite?.toFixed(2)],
+                        ["Ret Z",        healthMap[selected].ret_z?.toFixed(2)],
+                        ["Vol Z",        healthMap[selected].vol_z?.toFixed(2)],
+                      ].map(([l, v]) => (
+                        <div key={l} className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-3">
+                          <p className="label-caps mb-1">{l}</p>
+                          <p className="text-base font-bold text-neutral-900 dark:text-neutral-100">{v ?? "—"}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {healthHistory.length > 0 && (
+                  <div className="card p-5">
+                    <p className="title-md mb-4">Health Score (90d)</p>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <AreaChart data={healthHistory}>
+                        <defs>
+                          <linearGradient id="hGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%"  stopColor={ct.orange} stopOpacity={0.2} />
+                            <stop offset="95%" stopColor={ct.orange} stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} width={28} />
+                        <Tooltip {...ct.tooltip} />
+                        <Area type="monotone" dataKey="health_score" stroke={ct.orange} strokeWidth={2} fill="url(#hGrad)" dot={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {metricsHistory.length > 0 && (
+                  <div className="card p-5">
+                    <p className="title-md mb-4">Sector Returns (90d)</p>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <LineChart data={metricsHistory}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} width={28} />
+                        <Tooltip {...ct.tooltip} />
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
+                        <Line type="monotone" dataKey="sector_return_1d" stroke={ct.orange} dot={false} name="Return 1d" strokeWidth={1.5} />
+                        <Line type="monotone" dataKey="sector_return_5d" stroke={ct.blue}   dot={false} name="Return 5d" strokeWidth={1.5} />
+                        <Line type="monotone" dataKey="sector_momentum"  stroke={ct.green}  dot={false} name="Momentum"  strokeWidth={1.5} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {healthHistory.length > 0 && (
+                  <div className="card overflow-hidden">
+                    <div className="p-5 pb-0">
+                      <p className="title-md mb-3">Health Signal Log</p>
+                    </div>
+                    <div className="overflow-x-auto max-h-64 overflow-y-auto">
+                      <table className="w-full">
+                        <thead className="sticky top-0 bg-white dark:bg-neutral-900">
+                          <tr className="border-b border-neutral-100 dark:border-neutral-800">
+                            {["Date","Signal","Regime","Health","Composite","↑","↓"].map(h => (
+                              <th key={h} className="th-base">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...healthHistory].reverse().map(r => (
+                            <tr key={r.id} className="tr-base">
+                              <td className="td-base text-xs text-neutral-500">{r.date}</td>
+                              <td className="td-base"><SignalBadge value={r.signal} /></td>
+                              <td className="td-base"><SignalBadge value={r.regime} /></td>
+                              <td className="td-base text-xs font-semibold tabular-nums">{r.health_score?.toFixed(1)}</td>
+                              <td className="td-base text-xs font-mono tabular-nums">{r.composite?.toFixed(2)}</td>
+                              <td className="td-base">{r.spike_up   ? <span className="badge-green">↑</span> : "—"}</td>
+                              <td className="td-base">{r.spike_down ? <span className="badge-red">↓</span>  : "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {!healthHistory.length && !metricsHistory.length && (
+                  <EmptyState title="No historical data" sub="Run the pipeline to populate sector history." />
+                )}
+              </>
             )}
           </div>
         </div>
-
-        {/* Right Panel */}
-        <div className="col-span-12 lg:col-span-8 flex flex-col h-full right-panel-scroll">
-          {!selectedSector ? (
-            <div className="flex-1 flex items-center justify-center">
-               <EmptyState icon={Layers} title="Select a sector" subtitle="Click any sector on the left to view detailed metrics and components." />
-            </div>
-          ) : (
-            <div className="space-y-6 pb-12 animate-fade-in">
-              <div className="bg-surface dark:bg-surface-card border border-neutral-200 dark:border-neutral-800 rounded-card p-6 border-t-4 border-t-neutral-900 dark:border-t-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 opacity-5">
-                  <Layers size={120} />
-                </div>
-                <h2 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100 mb-6 relative z-10">{selectedSector.name}</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
-                  <KPICard label="TOTAL COMPANIES" value={selectedSector.totalCompanies} icon={Building2} />
-                  <KPICard label="AVG SURVIVAL SCORE" value={selectedSector.avgScore.toFixed(1)} icon={Activity} variant={selectedSector.avgScore >= 70 ? 'healthy' : selectedSector.avgScore >= 40 ? 'watch' : 'distress'} />
-                  <KPICard label="TOP COMPANY" value={selectedSector.topComp?.ticker || '—'} icon={Star} subtitle={selectedSector.topComp?.name} />
-                </div>
-              </div>
-
-              <div className="bg-surface dark:bg-surface-card border border-neutral-200 dark:border-neutral-800 rounded-card p-1">
-                <DataTable 
-                  columns={columns} 
-                  rows={selectedSector.companies.sort((a,b) => (b.survival_score||0)-(a.survival_score||0))}
-                  emptyState={<EmptyState title="No companies in this sector" />}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
       </div>
-    </AppLayout>
+    </PageLayout>
   );
 }

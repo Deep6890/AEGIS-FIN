@@ -47,7 +47,7 @@ export default function MacroOverlay() {
 
         {/* Current state hero */}
         {macro && (
-          <div className={`${regime === "RISK_OFF" ? "card-ink" : regime === "RISK_ON" ? "card-green" : "card"} rounded-2xl p-6 relative overflow-hidden`}>
+          <div className={`${regime === "RISK_OFF" ? "bg-neutral-900 dark:bg-neutral-950 border border-neutral-800 text-white" : regime === "RISK_ON" ? "bg-emerald-600 text-white" : "card"} rounded-2xl p-6 relative overflow-hidden`}>
             <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-white/5 blur-3xl -translate-y-1/2 translate-x-1/4" />
             <div className="relative">
               <div className="flex items-start justify-between mb-5">
@@ -82,17 +82,17 @@ export default function MacroOverlay() {
 
         {/* Regime distribution */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="card-ink p-5 rounded-2xl text-center hover-lift">
+          <div className="bg-neutral-900 dark:bg-neutral-950 border border-neutral-800 rounded-2xl p-5 text-center">
             <p className="text-2xl font-black text-red-400 tabular-nums">{regimeDist.RISK_OFF}</p>
-            <p className="label mt-1 text-white/50">Risk-Off Days</p>
+            <p className="label-caps mt-1 text-neutral-500">Risk-Off Days</p>
           </div>
-          <div className="card p-5 rounded-2xl text-center hover-lift">
-            <p className="text-2xl font-black text-[#E8C547] tabular-nums">{regimeDist.NEUTRAL}</p>
-            <p className="label mt-1">Neutral Days</p>
+          <div className="card rounded-2xl p-5 text-center">
+            <p className="text-2xl font-black text-amber-500 tabular-nums">{regimeDist.NEUTRAL}</p>
+            <p className="label-caps mt-1">Neutral Days</p>
           </div>
-          <div className="card-green p-5 rounded-2xl text-center hover-lift">
+          <div className="bg-emerald-600 rounded-2xl p-5 text-center">
             <p className="text-2xl font-black text-white tabular-nums">{regimeDist.RISK_ON}</p>
-            <p className="label mt-1 text-white/60">Risk-On Days</p>
+            <p className="label-caps mt-1 text-white/60">Risk-On Days</p>
           </div>
         </div>
 

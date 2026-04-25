@@ -97,8 +97,8 @@ export default function Correlation() {
                 onClick={() => setSelectedCompany(c.id)}
                 className={`w-full text-left px-3 py-2.5 rounded-xl text-xs transition-all duration-200 ${
                   selectedCompany === c.id
-                    ? "bg-[#0D0D0D] dark:bg-[#E8C547] text-[#E8C547] dark:text-[#0D0D0D] font-bold shadow-sm"
-                    : "text-[#6B7280] hover:bg-[#F7F5F0] dark:hover:bg-[#22252E] hover:text-[#0D0D0D] dark:hover:text-white"
+                    ? "bg-neutral-900 dark:bg-brand-orange text-brand-orange dark:text-neutral-900 font-bold shadow-sm"
+                    : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100"
                 }`}
               >
                 <p className="font-bold">{c.name}</p>
@@ -125,8 +125,8 @@ export default function Correlation() {
                       onClick={() => setWindow(w)}
                       className={`px-3 py-2 text-xs font-bold rounded-xl border-2 transition-all duration-200 ${
                         window_ === w
-                          ? "bg-[#0D0D0D] dark:bg-[#E8C547] text-[#E8C547] dark:text-[#0D0D0D] border-[#0D0D0D] dark:border-[#E8C547]"
-                          : "bg-white dark:bg-[#1A1C23] border-[#E5E1D8] dark:border-[#1F2128] text-[#6B7280] hover:border-[#E8C547]/40"
+                          ? "bg-neutral-900 dark:bg-brand-orange text-brand-orange dark:text-neutral-900 border-neutral-900 dark:border-brand-orange"
+                          : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-600 hover:border-brand-orange/40"
                       }`}
                     >
                       {w}d
@@ -141,9 +141,9 @@ export default function Correlation() {
                   <p className="title-md mb-3">Top Correlated Sectors</p>
                   <div className="flex flex-wrap gap-2">
                     {topSectors.slice(0, 5).map(r => (
-                      <div key={r.id} className="flex items-center gap-2 px-3 py-2 bg-[#E8C547]/8 border border-[#E8C547]/15 rounded-xl hover-scale">
-                        <span className="w-6 h-6 rounded-lg bg-[#0D0D0D] dark:bg-[#E8C547] text-[#E8C547] dark:text-[#0D0D0D] text-xs font-black flex items-center justify-center">{r.rank}</span>
-                        <span className="text-xs font-bold text-[#0D0D0D] dark:text-[#E8E6E0]">{r.sectors?.name}</span>
+                      <div key={r.id} className="flex items-center gap-2 px-3 py-2 bg-brand-orange/5 border border-brand-orange/15 rounded-xl">
+                        <span className="w-6 h-6 rounded-lg bg-neutral-900 dark:bg-brand-orange text-brand-orange dark:text-neutral-900 text-xs font-black flex items-center justify-center">{r.rank}</span>
+                        <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100">{r.sectors?.name}</span>
                       </div>
                     ))}
                   </div>

@@ -73,8 +73,8 @@ export default function BalanceSheet() {
                 onClick={() => setSelectedId(c.id)}
                 className={`w-full text-left px-3 py-2.5 rounded-xl text-xs transition-all duration-200 ${
                   selectedId === c.id
-                    ? "bg-[#0D0D0D] dark:bg-[#E8C547] text-[#E8C547] dark:text-[#0D0D0D] font-bold shadow-sm"
-                    : "text-[#6B7280] hover:bg-[#F7F5F0] dark:hover:bg-[#22252E] hover:text-[#0D0D0D] dark:hover:text-white"
+                    ? "bg-neutral-900 dark:bg-brand-orange text-brand-orange dark:text-neutral-900 font-bold shadow-sm"
+                    : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100"
                 }`}
               >
                 {c.name}
@@ -93,10 +93,10 @@ export default function BalanceSheet() {
             <EmptyState title="No balance sheet data" sub="Run the pipeline for this company." />
           ) : (
             <>
-              <div className="card-ink p-5 rounded-2xl">
-                <p className="label text-white/40 mb-1">Balance Sheet Analysis</p>
-                <p className="text-xl font-black text-[#E8C547]">{selectedComp?.name}</p>
-                {bsData.quarter && <p className="text-xs text-white/40 mt-1">Latest: {bsData.quarter}</p>}
+              <div className="bg-neutral-900 dark:bg-neutral-950 border border-neutral-800 rounded-2xl p-5">
+                <p className="label-caps text-neutral-500 mb-1">Balance Sheet Analysis</p>
+                <p className="text-xl font-black text-brand-orange">{selectedComp?.name}</p>
+                {bsData.quarter && <p className="text-xs text-neutral-500 mt-1">Latest: {bsData.quarter}</p>}
               </div>
 
               {/* Ratio cards */}

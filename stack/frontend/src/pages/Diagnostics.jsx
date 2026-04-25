@@ -89,41 +89,41 @@ export default function Diagnostics() {
 
           {!loading && Object.keys(results).length > 0 && (
             <div className="grid grid-cols-3 gap-3 mb-5">
-              <div className="card-green rounded-2xl p-4 text-center hover-lift">
+              <div className="bg-emerald-600 rounded-2xl p-4 text-center">
                 <p className="text-2xl font-black text-white">{hasData.length}</p>
-                <p className="label mt-1 text-white/60">With Data</p>
+                <p className="label-caps mt-1 text-white/60">With Data</p>
               </div>
-              <div className="card-yellow rounded-2xl p-4 text-center hover-lift">
-                <p className="text-2xl font-black">{empty.length}</p>
-                <p className="label mt-1 opacity-60">Empty</p>
+              <div className="bg-amber-400 rounded-2xl p-4 text-center">
+                <p className="text-2xl font-black text-neutral-900">{empty.length}</p>
+                <p className="label-caps mt-1 text-neutral-900/60">Empty</p>
               </div>
-              <div className="card-ink rounded-2xl p-4 text-center hover-lift">
+              <div className="bg-neutral-900 dark:bg-neutral-950 border border-neutral-800 rounded-2xl p-4 text-center">
                 <p className="text-2xl font-black text-red-400">{rlsBlocked.length}</p>
-                <p className="label mt-1 text-white/50">Blocked</p>
+                <p className="label-caps mt-1 text-neutral-500">Blocked</p>
               </div>
             </div>
           )}
 
           {rlsBlocked.length > 0 && (
-            <div className="card-ink rounded-2xl p-4 mb-5">
+            <div className="bg-neutral-900 dark:bg-neutral-950 border border-neutral-800 rounded-2xl p-4 mb-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <AlertCircle size={14} className="text-red-400" />
                   <p className="text-xs font-bold text-red-400">RLS blocking {rlsBlocked.length} table(s)</p>
                 </div>
-                <button onClick={copy} className="btn-yellow text-xs py-1.5 px-3">
+                <button onClick={copy} className="btn-primary text-xs py-1.5 px-3">
                   <Copy size={10} /> {copied ? "Copied!" : "Copy SQL"}
                 </button>
               </div>
-              <p className="text-xs text-white/50 mb-2">Go to Supabase → SQL Editor → New Query, paste and run:</p>
-              <pre className="text-[10px] font-mono bg-black/40 rounded-xl p-3 overflow-x-auto text-[#E8C547] max-h-48 overflow-y-auto">
+              <p className="text-xs text-neutral-500 mb-2">Go to Supabase → SQL Editor → New Query, paste and run:</p>
+              <pre className="text-[10px] font-mono bg-black/60 rounded-xl p-3 overflow-x-auto text-brand-orange max-h-48 overflow-y-auto">
                 {RLS_SQL}
               </pre>
             </div>
           )}
 
           {hasData.length === TABLES.length && (
-            <div className="card-green rounded-2xl p-3 mb-5 flex items-center gap-2">
+            <div className="bg-emerald-600 rounded-2xl p-3 mb-5 flex items-center gap-2">
               <CheckCircle size={14} className="text-white" />
               <p className="text-xs font-semibold text-white">All tables have data — everything is working</p>
             </div>
