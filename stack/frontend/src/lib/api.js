@@ -169,3 +169,23 @@ export const fetchPipelineStats = () =>
     .select("status, company, run_at")
     .order("run_at", { ascending: false })
     .limit(200);
+
+// ── Check tickers in DB (for UploadCSV) ───────────────────────────────────────
+export const checkTickersInDB = async (tickers) => {
+  try {
+    const { data, error } = await supabase
+      .from("companies")
+      .select("id, ticker, name, composite_score:classifier(composite_score)")
+      .in("ticker", tickers);
+    if (error) return { existing: [], missing: tickers, error };
+    const existingTickers = new Set((data || []).map(c => c.ticker));
+    const existing = (data || []).map(c => ({
+      ...c,
+      survival_score: c.composite_score?.[0]?.composite_score ?? null,
+    }));
+    const missing = tickers.filter(t => !existingTickers.has(t));
+    return { existing, missing, error: null };
+  } catch (e) {
+    return { existing: [], missing: tickers, error: e };
+  }
+};

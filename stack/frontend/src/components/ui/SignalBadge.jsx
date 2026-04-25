@@ -14,26 +14,28 @@ const MAP = {
   gray:              "badge-gray",
   RISK_OFF:          "badge-red",
   RISK_ON:           "badge-green",
+  NEUTRAL_REGIME:    "badge-gray",
   INSUFFICIENT_DATA: "badge-gray",
-  TAILWIND:          "badge-green",
-  HEADWIND:          "badge-red",
-  up:                "badge-green",
-  down:              "badge-red",
   TIER_1:            "badge-green",
-  TIER_2:            "badge-amber",
-  TIER_3:            "badge-orange",
+  TIER_2:            "badge-green",
+  TIER_3:            "badge-amber",
   TIER_4:            "badge-red",
 };
 
-const LABEL = {
+const LABELS = {
   INSUFFICIENT_DATA: "Warming Up",
+  NEUTRAL_REGIME:    "Neutral",
   RISK_OFF:          "Risk Off",
   RISK_ON:           "Risk On",
-  TIER_1: "Tier 1", TIER_2: "Tier 2", TIER_3: "Tier 3", TIER_4: "Tier 4",
+  TIER_1:            "Tier 1",
+  TIER_2:            "Tier 2",
+  TIER_3:            "Tier 3",
+  TIER_4:            "Tier 4",
 };
 
 export default function SignalBadge({ value }) {
+  if (!value) return <span className="badge-gray">—</span>;
   const cls   = MAP[value] || "badge-gray";
-  const label = LABEL[value] || value || "—";
+  const label = LABELS[value] || value;
   return <span className={cls}>{label}</span>;
 }

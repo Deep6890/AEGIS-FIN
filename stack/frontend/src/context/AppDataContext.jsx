@@ -12,6 +12,11 @@ export function AppDataProvider({ children }) {
   const [mlSummary, setMlSummary]       = useState([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
+  // CSV filter state
+  const [csvTickers, setCsvTickersState] = useState(null);
+  const isCsvMode = csvTickers !== null;
+  const setCsvTickers = (tickers) => setCsvTickersState(tickers);
+  const clearCsvFilter = () => setCsvTickersState(null);
 
   useEffect(() => {
     async function load() {
@@ -107,7 +112,8 @@ export function AppDataProvider({ children }) {
 
   return (
     <AppDataContext.Provider value={{
-      companies, sectors, latestSectorHealth, macro, latestMl, portfolioStats, loading, error
+      companies, sectors, latestSectorHealth, macro, latestMl, portfolioStats, loading, error,
+      csvTickers, isCsvMode, setCsvTickers, clearCsvFilter,
     }}>
       {children}
     </AppDataContext.Provider>
