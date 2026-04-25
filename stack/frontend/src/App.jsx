@@ -24,6 +24,9 @@ import Diagnostics     from "./pages/Diagnostics";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
+  // ── DEV BYPASS: remove this block to re-enable auth ──────────────────────
+  return <AppDataProvider>{children}</AppDataProvider>;
+  // ─────────────────────────────────────────────────────────────────────────
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
       <LoadingSpinner text="Loading..." />
