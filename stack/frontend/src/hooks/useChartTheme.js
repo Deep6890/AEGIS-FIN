@@ -3,27 +3,26 @@ import { useTheme } from "../context/ThemeContext";
 export function useChartTheme() {
   const { dark } = useTheme();
   return {
-    grid:       dark ? "#1f1f1f" : "#f3f4f6",
-    axis:       dark ? "#3a3a3a" : "#e5e7eb",
-    tick:       dark ? "#555"    : "#9ca3af",
+    orange:  "#E8A020",
+    yellow:  "#E8C547",
+    green:   "#52B788",
+    "green-d": "#2D6A4F",
+    blue:    "#60A5FA",
+    red:     "#F87171",
+    purple:  "#A78BFA",
+    grid:    dark ? "#1F2128" : "#F0EDE6",
+    tick:    dark ? "#4B5563" : "#9CA3AF",
     tooltip: {
       contentStyle: {
-        background:   dark ? "#111111" : "#ffffff",
-        border:       `1px solid ${dark ? "#2a2a2a" : "#f3f4f6"}`,
+        background: dark ? "#1A1C23" : "#fff",
+        border:     `1px solid ${dark ? "#1F2128" : "#E5E1D8"}`,
         borderRadius: 12,
-        fontSize:     11,
-        color:        dark ? "#e5e7eb" : "#111827",
-        boxShadow:    dark ? "0 4px 24px rgba(0,0,0,0.6)" : "0 4px 16px rgba(0,0,0,0.08)",
+        fontSize: 11,
+        color: dark ? "#E8E6E0" : "#0D0D0D",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
       },
-      cursor: { fill: dark ? "rgba(249,115,22,0.06)" : "rgba(249,115,22,0.04)" },
+      cursor: { fill: dark ? "rgba(232,197,71,0.05)" : "rgba(232,197,71,0.08)" },
     },
-    orange:  "#f97316",
-    emerald: "#10b981",
-    red:     "#ef4444",
-    amber:   "#f59e0b",
-    blue:    "#6366f1",
-    purple:  "#8b5cf6",
-    cyan:    "#06b6d4",
-    COLORS:  ["#f97316","#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#84cc16","#ec4899","#14b8a6"],
+    emerald: "#52B788",
   };
 }

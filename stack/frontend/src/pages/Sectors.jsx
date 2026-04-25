@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, Activity } from "lucide-react";
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, Legend
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  LineChart, Line, Legend, CartesianGrid
 } from "recharts";
 import PageLayout from "../components/Layout/PageLayout";
 import SignalBadge from "../components/ui/SignalBadge";
@@ -9,11 +9,13 @@ import LoadingSpinner from "../components/ui/LoadingSpinner";
 import EmptyState from "../components/ui/EmptyState";
 import LiveMarketBar from "../components/ui/LiveMarketBar";
 import { useAppData } from "../context/AppDataContext";
+import { useChartTheme } from "../hooks/useChartTheme";
 import { fetchSectorHealthHistory, fetchSectorMetricsHistory } from "../lib/api";
 
 export default function Sectors() {
   const { sectors, latestSectorHealth, loading } = useAppData();
-  const [selected, setSelected] = useState(null);
+  const ct = useChartTheme();
+  const [selected, setSelected]         = useState(null);
   const [healthHistory, setHealthHistory] = useState([]);
   const [metricsHistory, setMetricsHistory] = useState([]);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -43,13 +45,12 @@ export default function Sectors() {
   return (
     <PageLayout title="Sectors">
       <div className="space-y-4">
-        {/* Live Market Bar */}
         <LiveMarketBar />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Sector List */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Sector list */}
           <div className="space-y-2">
-            <p className="stat-label mb-3">All Sectors ({sectors.length})</p>
+            <p className="label mb-3">All Sectors ({sectors.length})</p>
             {sectors.length ? sectors.map(s => {
               const h = healthMap[s.id];
               const isSelected = selected === s.id;
@@ -57,25 +58,25 @@ export default function Sectors() {
                 <button
                   key={s.id}
                   onClick={() => setSelected(s.id)}
-                  className={`w-full text-left p-4 rounded-2xl border transition-all ${
+                  className={`w-full text-left p-3.5 rounded-2xl border-2 transition-all ${
                     isSelected
-                      ? "border-2 border-black dark:border-[#FFC224] bg-[#FFC224]/10"
-                      : "border border-gray-100 dark:border-[#1f1f1f] bg-white dark:bg-[#111] hover:bg-gray-100 dark:hover:bg-[#1a1a1a]"
+                      ? "border-[#0D0D0D] dark:border-[#E8C547] bg-[#E8C547]/10"
+                      : "border-[#E5E1D8] dark:border-[#1F2128] bg-white dark:bg-[#1A1C23] hover:border-[#0D0D0D] dark:hover:border-[#E8C547]"
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className={`text-sm font-black ${isSelected ? "text-black dark:text-[#FFC224]" : "text-gray-900 dark:text-white"}`}>{s.name}</p>
-                      <p className="text-xs text-gray-400 font-mono mt-0.5">{s.ticker}</p>
+                      <p className="text-sm font-semibold text-[#0D0D0D] dark:text-[#E8E6E0]">{s.name}</p>
+                      <p className="text-xs font-mono text-[#6B7280] mt-0.5">{s.yf_ticker}</p>
                     </div>
                     {h ? <SignalBadge value={h.signal} /> : <span className="badge-gray">No data</span>}
                   </div>
                   {h && (
-                    <div className="mt-2 flex items-center gap-3">
-                      <div className="flex-1 h-1.5 bg-gray-100 dark:bg-[#2a2a2a] rounded-full overflow-hidden">
-                        <div className="h-full bg-[#FFC224] rounded-full" style={{ width: `${Math.min(100, h.health_score || 0)}%` }} />
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="progress-track flex-1">
+                        <div className="progress-fill bg-[#E8C547]" style={{ width: `${Math.min(100, h.health_score || 0)}%` }} />
                       </div>
-                      <span className="text-xs font-bold text-gray-500 dark:text-gray-400">{h.health_score?.toFixed(1)}</span>
+                      <span className="text-xs text-[#6B7280]">{h.health_score?.toFixed(1)}</span>
                     </div>
                   )}
                 </button>
@@ -83,22 +84,20 @@ export default function Sectors() {
             }) : <EmptyState title="No sectors" />}
           </div>
 
-          {/* Detail Panel */}
+          {/* Detail panel */}
           <div className="lg:col-span-2 space-y-4">
             {!selected ? (
-              <div className="card p-10 flex items-center justify-center">
-                <p className="text-sm text-gray-400">Select a sector to view details</p>
+              <div className="card p-12 flex items-center justify-center">
+                <p className="text-sm text-[#6B7280]">Select a sector to view details</p>
               </div>
-            ) : detailLoading ? (
-              <LoadingSpinner />
-            ) : (
+            ) : detailLoading ? <LoadingSpinner /> : (
               <>
                 {/* Header */}
                 <div className="card p-5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-lg font-black text-gray-900 dark:text-white">{selectedSector?.name}</p>
-                      <p className="text-xs text-gray-400 font-mono">{selectedSector?.ticker}</p>
+                      <p className="title-lg">{selectedSector?.name}</p>
+                      <p className="text-xs font-mono text-[#6B7280] mt-0.5">{selectedSector?.yf_ticker}</p>
                     </div>
                     {healthMap[selected] && (
                       <div className="text-right space-y-1">
@@ -115,63 +114,62 @@ export default function Sectors() {
                         ["Ret Z",        healthMap[selected].ret_z?.toFixed(2)],
                         ["Vol Z",        healthMap[selected].vol_z?.toFixed(2)],
                       ].map(([l, v]) => (
-                        <div key={l} className="bg-[#FFC224]/10 border border-[#FFC224]/20 rounded-2xl p-3">
-                          <p className="stat-label">{l}</p>
-                          <p className="text-base font-black text-gray-900 dark:text-white mt-1">{v ?? "—"}</p>
+                        <div key={l} className="bg-[#F5F2EC] dark:bg-[#111318] rounded-xl p-3">
+                          <p className="label mb-1">{l}</p>
+                          <p className="text-base font-bold text-[#0D0D0D] dark:text-[#E8E6E0]">{v ?? "—"}</p>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
 
-                {/* Health Score Chart */}
                 {healthHistory.length > 0 && (
                   <div className="card p-5">
-                    <p className="section-title mb-4">Health Score (90d)</p>
+                    <p className="title-md mb-4">Health Score (90d)</p>
                     <ResponsiveContainer width="100%" height={180}>
                       <AreaChart data={healthHistory}>
                         <defs>
-                          <linearGradient id="healthGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%"  stopColor="#FF8A00" stopOpacity={0.25} />
-                            <stop offset="95%" stopColor="#FF8A00" stopOpacity={0}    />
+                          <linearGradient id="hGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%"  stopColor={ct.yellow} stopOpacity={0.25} />
+                            <stop offset="95%" stopColor={ct.yellow} stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                        <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                        <Tooltip contentStyle={{ fontSize: 11, borderRadius: 12 }} />
-                        <Area type="monotone" dataKey="health_score" stroke="#FF8A00" strokeWidth={2} fill="url(#healthGrad)" dot={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} width={28} />
+                        <Tooltip {...ct.tooltip} />
+                        <Area type="monotone" dataKey="health_score" stroke={ct.yellow} strokeWidth={2} fill="url(#hGrad)" dot={false} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
                 )}
 
-                {/* Metrics Chart */}
                 {metricsHistory.length > 0 && (
                   <div className="card p-5">
-                    <p className="section-title mb-4">Sector Returns (90d)</p>
+                    <p className="title-md mb-4">Sector Returns (90d)</p>
                     <ResponsiveContainer width="100%" height={180}>
                       <LineChart data={metricsHistory}>
-                        <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                        <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                        <Tooltip contentStyle={{ fontSize: 11, borderRadius: 12 }} />
+                        <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} width={28} />
+                        <Tooltip {...ct.tooltip} />
                         <Legend wrapperStyle={{ fontSize: 11 }} />
-                        <Line type="monotone" dataKey="sector_return_1d"  stroke="#FF8A00" dot={false} name="Return 1d"  strokeWidth={1.5} />
-                        <Line type="monotone" dataKey="sector_return_5d"  stroke="#3b82f6" dot={false} name="Return 5d"  strokeWidth={1.5} />
-                        <Line type="monotone" dataKey="sector_momentum"   stroke="#00B341" dot={false} name="Momentum"   strokeWidth={1.5} />
+                        <Line type="monotone" dataKey="sector_return_1d" stroke={ct.yellow} dot={false} name="Return 1d" strokeWidth={1.5} />
+                        <Line type="monotone" dataKey="sector_return_5d" stroke={ct.blue}   dot={false} name="Return 5d" strokeWidth={1.5} />
+                        <Line type="monotone" dataKey="sector_momentum"  stroke={ct.green}  dot={false} name="Momentum"  strokeWidth={1.5} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
                 )}
 
-                {/* Health History Table */}
                 {healthHistory.length > 0 && (
                   <div className="card p-5">
-                    <p className="section-title mb-3">Health Signal Log</p>
+                    <p className="title-md mb-3">Health Signal Log</p>
                     <div className="overflow-x-auto max-h-64 overflow-y-auto">
-                      <table className="w-full text-sm">
-                        <thead className="sticky top-0 bg-white dark:bg-[#111]">
-                          <tr className="border-b border-gray-100 dark:border-[#1f1f1f]">
-                            {["Date","Signal","Regime","Health","Composite","Spike Up","Spike Down"].map(h => (
+                      <table className="w-full">
+                        <thead className="sticky top-0 bg-white dark:bg-[#1A1C23]">
+                          <tr className="border-b border-[#E5E1D8] dark:border-[#1F2128]">
+                            {["Date","Signal","Regime","Health","Composite","↑","↓"].map(h => (
                               <th key={h} className="th-base">{h}</th>
                             ))}
                           </tr>
@@ -179,10 +177,10 @@ export default function Sectors() {
                         <tbody>
                           {[...healthHistory].reverse().map(r => (
                             <tr key={r.id} className="tr-base">
-                              <td className="td-base text-xs text-gray-600 dark:text-gray-400">{r.date}</td>
+                              <td className="td-base text-xs text-[#6B7280]">{r.date}</td>
                               <td className="td-base"><SignalBadge value={r.signal} /></td>
                               <td className="td-base"><SignalBadge value={r.regime} /></td>
-                              <td className="td-base text-xs font-bold">{r.health_score?.toFixed(1)}</td>
+                              <td className="td-base text-xs">{r.health_score?.toFixed(1)}</td>
                               <td className="td-base text-xs">{r.composite?.toFixed(2)}</td>
                               <td className="td-base">{r.spike_up   ? <span className="badge-green">↑</span> : "—"}</td>
                               <td className="td-base">{r.spike_down ? <span className="badge-red">↓</span>  : "—"}</td>

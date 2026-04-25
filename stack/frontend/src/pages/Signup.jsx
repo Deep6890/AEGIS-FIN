@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ShieldAlert, Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
+import { ShieldAlert, Eye, EyeOff, ArrowRight, CheckCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 export default function Signup() {
@@ -8,84 +8,74 @@ export default function Signup() {
   const navigate   = useNavigate();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [showPw, setShowPw]     = useState(false);
+  const [show, setShow]         = useState(false);
+  const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
   const [done, setDone]         = useState(false);
-  const [loading, setLoading]   = useState(false);
 
-  const submit = async e => {
+  const handleSubmit = async e => {
     e.preventDefault();
-    setError(""); setLoading(true);
+    setLoading(true); setError("");
     const { error: err } = await signUp(email, password);
-    setLoading(false);
-    if (err) { setError(err.message); return; }
-    setDone(true);
+    if (err) { setError(err.message); setLoading(false); }
+    else setDone(true);
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] dark:bg-[#0a0a0a] flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Decorative dots */}
-      <div className="absolute top-20 right-20 w-3 h-3 rounded-full bg-[#FFC224] opacity-60" />
-      <div className="absolute top-48 left-28 w-2 h-2 rounded-full bg-[#00B341] opacity-50" />
-      <div className="absolute bottom-28 right-40 w-2.5 h-2.5 rounded-full bg-[#FF8A00] opacity-50" />
-      <div className="absolute bottom-20 left-20 w-3 h-3 rounded-full bg-[#FFC224] opacity-40" />
+    <div className="min-h-screen app-bg flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute top-20 right-20 w-64 h-64 rounded-full bg-[#52B788]/10 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-20 left-20 w-48 h-48 rounded-full bg-[#E8C547]/10 blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm animate-slide-up">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-black flex items-center justify-center shadow-xl mb-4">
-            <ShieldAlert size={26} className="text-[#FFC224]" />
+          <div className="w-12 h-12 rounded-2xl bg-[#0D0D0D] dark:bg-[#E8C547] flex items-center justify-center mb-4 shadow-card-md">
+            <ShieldAlert size={22} className="text-[#E8C547] dark:text-[#0D0D0D]" />
           </div>
-          <h1 className="text-3xl font-black text-black dark:text-white">AEGIS-FIN</h1>
-          <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest">Risk Intelligence Platform</p>
+          <h1 className="text-2xl font-black text-[#0D0D0D] dark:text-[#E8E6E0]">AEGIS-FIN</h1>
+          <p className="text-xs text-[#6B7280] mt-1">Risk Intelligence Platform</p>
         </div>
 
-        <div className="bg-white dark:bg-[#111] rounded-3xl border-2 border-gray-100 dark:border-[#1f1f1f] p-8 shadow-xl">
+        <div className="card p-6 shadow-card-md">
           {done ? (
-            <div className="flex flex-col items-center gap-3 py-4">
-              <div className="w-14 h-14 rounded-2xl bg-[#00B341]/10 flex items-center justify-center">
-                <CheckCircle size={28} className="text-[#00B341]" />
-              </div>
-              <p className="text-lg font-black text-gray-900 dark:text-white">Check your email</p>
-              <p className="text-xs text-gray-400 text-center">We sent a confirmation link to <span className="font-bold text-gray-700 dark:text-gray-300">{email}</span></p>
-              <Link to="/login" className="text-xs text-[#FF8A00] font-bold hover:text-[#e67a00] transition-colors mt-2">Back to Sign In</Link>
+            <div className="text-center py-4">
+              <CheckCircle size={40} className="text-[#52B788] mx-auto mb-3" />
+              <h2 className="text-lg font-bold text-[#0D0D0D] dark:text-[#E8E6E0] mb-2">Check your email</h2>
+              <p className="text-xs text-[#6B7280] mb-4">We sent a confirmation link to <strong>{email}</strong></p>
+              <Link to="/login" className="btn-primary inline-flex">Back to Sign In</Link>
             </div>
           ) : (
             <>
-              <h2 className="text-lg font-black text-gray-900 dark:text-white mb-6">Create your account</h2>
+              <h2 className="text-lg font-bold text-[#0D0D0D] dark:text-[#E8E6E0] mb-1">Create account</h2>
+              <p className="text-xs text-[#6B7280] mb-6">Get access to the risk intelligence platform</p>
+
               {error && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl mb-4">
-                  <AlertCircle size={14} className="text-red-500 shrink-0" />
-                  <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-xl text-xs text-red-600 dark:text-red-400">
+                  {error}
                 </div>
               )}
-              <form onSubmit={submit} className="space-y-4">
+
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="stat-label block mb-1.5">Email</label>
-                  <div className="relative">
-                    <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                      placeholder="you@example.com" className="w-full pl-9 pr-4 py-2.5 text-sm input-base" />
-                  </div>
+                  <label className="label mb-1.5 block">Email</label>
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required className="input-base w-full" />
                 </div>
                 <div>
-                  <label className="stat-label block mb-1.5">Password</label>
+                  <label className="label mb-1.5 block">Password</label>
                   <div className="relative">
-                    <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input type={showPw ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)}
-                      placeholder="Min 6 characters" className="w-full pl-9 pr-10 py-2.5 text-sm input-base" />
-                    <button type="button" onClick={() => setShowPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                      {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                    <input type={show ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 8 characters" required minLength={8} className="input-base w-full pr-10" />
+                    <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#0D0D0D] dark:hover:text-white">
+                      {show ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
                 </div>
-                <button type="submit" disabled={loading}
-                  className="w-full py-2.5 btn-primary disabled:opacity-60">
-                  {loading ? "Creating..." : "Create Account"}
+                <button type="submit" disabled={loading} className="btn-primary w-full justify-center py-2.5 mt-2">
+                  {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Create Account <ArrowRight size={15} /></>}
                 </button>
               </form>
-              <p className="text-xs text-center text-gray-400 mt-5">
+
+              <p className="text-center text-xs text-[#6B7280] mt-5">
                 Already have an account?{" "}
-                <Link to="/login" className="text-[#FF8A00] font-bold hover:text-[#e67a00] transition-colors">Sign in</Link>
+                <Link to="/login" className="font-semibold text-[#E8A020] hover:underline">Sign in</Link>
               </p>
             </>
           )}

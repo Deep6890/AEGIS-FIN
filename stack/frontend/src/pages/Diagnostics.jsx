@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { CheckCircle, XCircle, AlertCircle, RefreshCw, Database, Copy } from "lucide-react";
+import { CheckCircle, XCircle, RefreshCw, Database, Copy, AlertCircle } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import PageLayout from "../components/Layout/PageLayout";
 
@@ -10,7 +10,7 @@ const TABLES = [
   "ml_predictions","feature_store","macro_overlay",
 ];
 
-const RLS_SQL = `-- Paste this in Supabase → SQL Editor → Run
+const RLS_SQL = `-- Paste in Supabase → SQL Editor → Run
 ALTER TABLE companies             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sectors               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sector_metrics        ENABLE ROW LEVEL SECURITY;
@@ -47,18 +47,12 @@ export default function Diagnostics() {
   const [copied, setCopied]   = useState(false);
 
   const run = async () => {
-    setLoading(true);
-    setResults({});
+    setLoading(true); setResults({});
     for (const table of TABLES) {
       try {
-        // Simple select — if RLS blocks it we get an error, if empty we get []
-        const { data, error } = await supabase
-          .from(table).select("*").limit(3);
-        if (error) {
-          setResults(p => ({ ...p, [table]: { status: "error", msg: error.message, code: error.code } }));
-        } else {
-          setResults(p => ({ ...p, [table]: { status: "ok", sample: data?.length ?? 0 } }));
-        }
+        const { data, error } = await supabase.from(table).select("*").limit(3);
+        if (error) setResults(p => ({ ...p, [table]: { status: "error", msg: error.message, code: error.code } }));
+        else       setResults(p => ({ ...p, [table]: { status: "ok", sample: data?.length ?? 0 } }));
       } catch (e) {
         setResults(p => ({ ...p, [table]: { status: "error", msg: e.message } }));
       }
@@ -85,97 +79,62 @@ export default function Diagnostics() {
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Database size={16} className="text-[#FF8A00]" />
-              <p className="section-title">Supabase Diagnostics</p>
+              <Database size={16} className="text-[#E8C547]" />
+              <p className="title-md">Supabase Diagnostics</p>
             </div>
-            <button onClick={run} disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-black dark:text-[#FFC224] border border-black dark:border-[#FFC224] rounded-xl hover:bg-black hover:text-[#FFC224] dark:hover:bg-[#FFC224] dark:hover:text-black transition-all disabled:opacity-50">
+            <button onClick={run} disabled={loading} className="btn-ghost text-xs py-1.5 px-3">
               <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Re-run
             </button>
           </div>
 
-          {/* Summary */}
           {!loading && Object.keys(results).length > 0 && (
             <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="bento-green text-center">
-                <p className="text-xl font-black text-white">{hasData.length}</p>
-                <p className="text-xs text-white/70 mt-0.5">Tables with data</p>
+              <div className="card-green rounded-2xl p-4 text-center">
+                <p className="text-2xl font-black text-white">{hasData.length}</p>
+                <p className="label mt-1 text-white/60">With Data</p>
               </div>
-              <div className="bento-yellow text-center">
-                <p className="text-xl font-black text-black">{empty.length}</p>
-                <p className="text-xs text-black/60 mt-0.5">Empty tables</p>
+              <div className="card-yellow rounded-2xl p-4 text-center">
+                <p className="text-2xl font-black">{empty.length}</p>
+                <p className="label mt-1 opacity-60">Empty</p>
               </div>
-              <div className="bento-white text-center">
-                <p className="text-xl font-black text-red-500">{rlsBlocked.length}</p>
-                <p className="stat-label mt-0.5">Blocked (RLS)</p>
+              <div className="card-ink rounded-2xl p-4 text-center">
+                <p className="text-2xl font-black text-red-400">{rlsBlocked.length}</p>
+                <p className="label mt-1 text-white/50">Blocked</p>
               </div>
             </div>
           )}
 
-          {/* RLS fix */}
           {rlsBlocked.length > 0 && (
-            <div className="mb-4 rounded-2xl overflow-hidden">
-              <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-t-2xl">
+            <div className="card-ink rounded-2xl p-4 mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <AlertCircle size={14} className="text-red-500" />
-                  <p className="text-xs font-black text-red-600 dark:text-red-400">
-                    RLS is blocking {rlsBlocked.length} table(s) — anon key can't read
-                  </p>
+                  <AlertCircle size={14} className="text-red-400" />
+                  <p className="text-xs font-bold text-red-400">RLS blocking {rlsBlocked.length} table(s)</p>
                 </div>
-                <button onClick={copy}
-                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-black bg-black text-[#FFC224] rounded-xl hover:opacity-80 transition-opacity">
+                <button onClick={copy} className="btn-yellow text-xs py-1 px-2.5">
                   <Copy size={10} /> {copied ? "Copied!" : "Copy SQL"}
                 </button>
               </div>
-              <div className="p-4 bg-red-50 dark:bg-red-950/20 border-x border-b border-red-200 dark:border-red-900 rounded-b-2xl">
-                <p className="text-xs text-red-600 dark:text-red-400 mb-2">
-                  Go to <strong>Supabase Dashboard → SQL Editor → New Query</strong>, paste and run:
-                </p>
-                <pre className="text-[10px] font-mono bg-black text-[#FFC224] p-3 rounded-2xl overflow-x-auto max-h-48 overflow-y-auto">
-                  {RLS_SQL}
-                </pre>
-              </div>
-            </div>
-          )}
-
-          {/* Empty tables */}
-          {empty.length > 0 && rlsBlocked.length === 0 && (
-            <div className="p-3 bg-[#FFC224]/10 border border-[#FFC224]/20 rounded-2xl mb-4">
-              <div className="flex items-start gap-2">
-                <AlertCircle size={14} className="text-[#b38a00] dark:text-[#FFC224] shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs font-black text-[#b38a00] dark:text-[#FFC224] mb-1">
-                    {empty.length} tables are empty — run the pipeline
-                  </p>
-                  <code className="text-[10px] font-mono text-[#b38a00] dark:text-[#FFC224]">
-                    cd backend &amp;&amp; python run_pipeline.py --start 0 --end 5
-                  </code>
-                </div>
-              </div>
+              <p className="text-xs text-white/60 mb-2">Go to Supabase → SQL Editor → New Query, paste and run:</p>
+              <pre className="text-[10px] font-mono bg-black/40 rounded-xl p-3 overflow-x-auto text-[#E8C547] max-h-48 overflow-y-auto">
+                {RLS_SQL}
+              </pre>
             </div>
           )}
 
           {hasData.length === TABLES.length && (
-            <div className="p-3 bg-[#00B341]/10 border border-[#00B341]/20 rounded-2xl mb-4">
-              <div className="flex items-center gap-2">
-                <CheckCircle size={14} className="text-[#00B341]" />
-                <p className="text-xs font-black text-[#00B341]">
-                  All tables have data — everything is working
-                </p>
-              </div>
+            <div className="card-green rounded-2xl p-3 mb-4 flex items-center gap-2">
+              <CheckCircle size={14} className="text-white" />
+              <p className="text-xs font-semibold text-white">All tables have data — everything is working</p>
             </div>
           )}
         </div>
 
-        {/* Table list */}
         <div className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-[#FDFBF7] dark:bg-[#0a0a0a] border-b border-gray-100 dark:border-[#1f1f1f]">
+          <table className="w-full">
+            <thead className="bg-[#F5F2EC] dark:bg-[#111318] border-b border-[#E5E1D8] dark:border-[#1F2128]">
               <tr>
-                <th className="th-base">Table</th>
-                <th className="th-base">Status</th>
-                <th className="th-base">Sample rows</th>
-                <th className="th-base">Error</th>
+                {["Table","Status","Rows","Error"].map(h => <th key={h} className="th-base">{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -183,17 +142,17 @@ export default function Diagnostics() {
                 const r = results[table];
                 return (
                   <tr key={table} className="tr-base">
-                    <td className="td-base font-mono text-xs text-gray-700 dark:text-gray-300">{table}</td>
+                    <td className="td-base font-mono text-xs text-[#0D0D0D] dark:text-[#E8E6E0]">{table}</td>
                     <td className="td-base">
                       {!r
-                        ? <RefreshCw size={11} className="text-gray-400 animate-spin" />
+                        ? <RefreshCw size={11} className="text-[#6B7280] animate-spin" />
                         : r.status === "ok"
                           ? <span className="badge-green">OK</span>
                           : <span className="badge-red">Blocked</span>}
                     </td>
                     <td className="td-base text-xs font-mono">
                       {r?.status === "ok"
-                        ? <span className={r.sample === 0 ? "text-[#FFC224] font-bold" : "text-[#00B341] font-black"}>
+                        ? <span className={r.sample === 0 ? "text-[#E8C547]" : "text-[#52B788] font-bold"}>
                             {r.sample === 0 ? "empty" : `${r.sample} rows`}
                           </span>
                         : "—"}
@@ -207,7 +166,6 @@ export default function Diagnostics() {
             </tbody>
           </table>
         </div>
-
       </div>
     </PageLayout>
   );
