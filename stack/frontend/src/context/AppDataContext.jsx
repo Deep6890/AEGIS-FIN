@@ -1,14 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import {
-  fetchCompanies, fetchSectors, fetchLatestSectorHealth,
-  fetchLatestMacro, fetchAllMlPredictions, fetchCompaniesByTickers,
-  fetchLatestClassifier
-} from "../lib/api";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
+import { fetchCompanies, fetchSectors, fetchLatestSectorHealth, fetchAllMlPredictions } from "../lib/api";
 
 const AppDataContext = createContext(null);
-export const useAppData = () => useContext(AppDataContext);
-
-const CSV_STORAGE_KEY = "aegis_csv_tickers";
 
 export function AppDataProvider({ children }) {
   const [companies, setCompanies]       = useState([]);
@@ -19,60 +13,52 @@ export function AppDataProvider({ children }) {
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
 
-  const [csvTickers, setCsvTickersState] = useState(() => {
-    try {
-      const stored = sessionStorage.getItem(CSV_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : null;
-    } catch { return null; }
-  });
-
-  const setCsvTickers = useCallback((tickers) => {
-    setCsvTickersState(tickers);
-    if (tickers) sessionStorage.setItem(CSV_STORAGE_KEY, JSON.stringify(tickers));
-    else sessionStorage.removeItem(CSV_STORAGE_KEY);
-  }, []);
-
-  const clearCsvFilter = useCallback(() => setCsvTickers(null), [setCsvTickers]);
-
   useEffect(() => {
     async function load() {
       try {
-        setLoading(true);
-
-        const companiesPromise = csvTickers && csvTickers.length > 0
-          ? fetchCompaniesByTickers(csvTickers)
-          : fetchCompanies();
-
-        // Use v_classifier_latest or fallback to ml_predictions map
-        const [c, s, sh, m, classifierRes] = await Promise.all([
-          companiesPromise,
+        const [c, s, sh, ml] = await Promise.all([
+          fetchCompanies(),
           fetchSectors(),
           fetchLatestSectorHealth(),
-          fetchLatestMacro(),
-          fetchLatestClassifier(), // Fetching from classifier view
+          fetchAllMlPredictions(),
         ]);
+
+        if (c.error)  console.error("companies error:",     c.error);
+        if (s.error)  console.error("sectors error:",       s.error);
+        if (sh.error) console.error("sector_health error:", sh.error);
+        if (ml.error) console.error("classifier error:",    ml.error);
 
         setCompanies(c.data || []);
         setSectors(s.data || []);
         setSectorHealth(sh.data || []);
+        setMlSummary(ml.data || []);
 
-        // Map new macro schema to existing UI variables
-        const mData = m.data;
-        if (mData) {
-          mData.macro_score = mData.health_score;
-          mData.macro_regime = mData.regime;
-          mData.vix_z = mData.vol_z;
-          mData.usd_z = mData.ret_z;
+        // Build macro from latest sector_health where sector_type = macro
+        const macroRows = (sh.data || []).filter(r => r.sectors?.sector_type === "macro");
+        if (macroRows.length > 0) {
+          // Build a synthetic macro object from the latest macro rows
+          const byName = {};
+          macroRows.forEach(r => {
+            const name = r.sectors?.name;
+            if (name && !byName[name]) byName[name] = r;
+          });
+          const vix   = byName["India VIX"];
+          const usd   = byName["USD-INR"];
+          const gold  = byName["Gold"];
+          const crude = byName["Crude Oil"];
+          const scores = [vix, usd, gold, crude].filter(Boolean).map(r => r.composite || 0);
+          const macroScore = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+          const regime = macroScore > 0.5 ? "RISK_ON" : macroScore < -0.5 ? "RISK_OFF" : "NEUTRAL";
+          setMacro({
+            macro_regime: regime,
+            macro_score:  macroScore,
+            vix_z:   vix?.ret_z   ?? null,
+            usd_z:   usd?.ret_z   ?? null,
+            gold_z:  gold?.ret_z  ?? null,
+            crude_z: crude?.ret_z ?? null,
+            date:    macroRows[0]?.date,
+          });
         }
-        setMacro(mData || null);
-        
-        // Map new classifier schema to existing UI variables for backwards compatibility
-        const classifierData = (classifierRes.data || []).map(row => ({
-          ...row,
-          survival_score: row.composite_score || row.survival_score,
-          distress_probability: row.composite_score ? 100 - row.composite_score : row.distress_probability
-        }));
-        setMlSummary(classifierData);
       } catch (err) {
         console.error("AppDataContext load error:", err);
         setError(err.message || "Failed to load data");
@@ -81,8 +67,9 @@ export function AppDataProvider({ children }) {
       }
     }
     load();
-  }, [csvTickers]);
+  }, []);
 
+  // Latest health per sector (deduplicated)
   const latestSectorHealth = React.useMemo(() => {
     const seen = new Map();
     for (const row of sectorHealth) {
@@ -91,33 +78,40 @@ export function AppDataProvider({ children }) {
     return Array.from(seen.values());
   }, [sectorHealth]);
 
+  // Latest classifier per company — map composite_score → survival_score for compat
   const latestMl = React.useMemo(() => {
     const seen = new Map();
     for (const row of mlSummary) {
-      if (!seen.has(row.company_id)) seen.set(row.company_id, row);
+      if (!seen.has(row.company_id)) {
+        seen.set(row.company_id, {
+          ...row,
+          // Map new fields to old field names for backward compat
+          survival_score:       row.composite_score,
+          distress_probability: row.composite_score != null ? (100 - row.composite_score) : null,
+          model_version:        row.composite_tier || "v2",
+        });
+      }
     }
     return Array.from(seen.values());
   }, [mlSummary]);
 
+  // Portfolio stats
   const portfolioStats = React.useMemo(() => {
     if (!latestMl.length) return { total: companies.length, healthy: 0, watch: 0, distress: 0, avgSurvival: 0 };
-    const healthy  = latestMl.filter(r => r.survival_score >= 70).length;
-    const watch    = latestMl.filter(r => r.survival_score >= 40 && r.survival_score < 70).length;
-    const distress = latestMl.filter(r => r.survival_score < 40).length;
-    const avgSurvival = latestMl.reduce((s, r) => s + (r.survival_score || 0), 0) / latestMl.length;
-    return { total: companies.length, healthy, watch, distress, avgSurvival: avgSurvival.toFixed(1) };
+    const healthy  = latestMl.filter(r => r.composite_score >= 70).length;
+    const watch    = latestMl.filter(r => r.composite_score >= 40 && r.composite_score < 70).length;
+    const distress = latestMl.filter(r => r.composite_score < 40).length;
+    const avg      = latestMl.reduce((s, r) => s + (r.composite_score || 0), 0) / latestMl.length;
+    return { total: companies.length, healthy, watch, distress, avgSurvival: avg.toFixed(1) };
   }, [latestMl, companies]);
 
   return (
     <AppDataContext.Provider value={{
-      companies, sectors, latestSectorHealth, macro, latestMl, portfolioStats,
-      loading, error,
-      csvTickers, setCsvTickers, clearCsvFilter,
-      isCsvMode: !!(csvTickers && csvTickers.length > 0),
+      companies, sectors, latestSectorHealth, macro, latestMl, portfolioStats, loading, error
     }}>
       {children}
     </AppDataContext.Provider>
   );
 }
 
-
+export const useAppData = () => useContext(AppDataContext);
