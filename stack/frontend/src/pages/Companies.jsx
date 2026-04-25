@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, Building2, ChevronRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Search, Building2, ChevronRight, Filter, X } from "lucide-react";
 import PageLayout from "../components/Layout/PageLayout";
 import SignalBadge from "../components/ui/SignalBadge";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
@@ -20,7 +20,7 @@ function SurvivalBar({ score }) {
 }
 
 export default function Companies() {
-  const { companies, latestMl, loading } = useAppData();
+  const { companies, latestMl, loading, isCsvMode, csvTickers, clearCsvFilter } = useAppData();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
 
@@ -46,6 +46,24 @@ export default function Companies() {
   return (
     <PageLayout title="Companies">
       <div className="space-y-4">
+
+        {/* CSV filter banner */}
+        {isCsvMode && (
+          <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-xl">
+            <div className="flex items-center gap-2">
+              <Filter size={13} className="text-orange-500" />
+              <p className="text-xs font-semibold text-orange-700 dark:text-orange-400">
+                Showing {companies.length} companies from your CSV ({csvTickers?.length} tickers)
+              </p>
+            </div>
+            <button
+              onClick={clearCsvFilter}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <X size={12} /> Show all
+            </button>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">

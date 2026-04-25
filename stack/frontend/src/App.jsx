@@ -17,6 +17,7 @@ import BalanceSheet  from "./pages/BalanceSheet";
 import Profile       from "./pages/Profile";
 import UploadCSV     from "./pages/UploadCSV";
 import LoadingSpinner from "./components/ui/LoadingSpinner";
+import FinPlan       from "./pages/FinPlan";
 
 import PipelineMonitor from "./pages/PipelineMonitor";
 import Diagnostics     from "./pages/Diagnostics";
@@ -49,6 +50,8 @@ function AppRoutes() {
       <Route path="/upload"            element={<ProtectedRoute><UploadCSV /></ProtectedRoute>}     />
       <Route path="/pipeline"           element={<ProtectedRoute><PipelineMonitor /></ProtectedRoute>}  />
       <Route path="/diagnostics"        element={<ProtectedRoute><Diagnostics /></ProtectedRoute>}      />
+      {/* FinPlan — standalone, no auth required */}
+      <Route path="/finplan"            element={<FinPlan />} />
       <Route path="*"                   element={<Navigate to="/" replace />} />
     </Routes>
   );

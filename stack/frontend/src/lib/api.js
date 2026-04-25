@@ -7,6 +7,25 @@ export const fetchCompanies = () =>
 export const fetchCompanyById = (id) =>
   supabase.from("companies").select("*").eq("id", id).single();
 
+// Fetch companies filtered by a list of tickers (for CSV mode)
+export const fetchCompaniesByTickers = (tickers) =>
+  supabase.from("companies").select("*").in("ticker", tickers).order("name");
+
+// Check which tickers already exist in DB — returns {existing: [], missing: []}
+export const checkTickersInDB = async (tickers) => {
+  const { data, error } = await supabase
+    .from("companies")
+    .select("ticker, name, id")
+    .in("ticker", tickers);
+  if (error) return { existing: [], missing: tickers, error };
+  const existingTickers = new Set((data || []).map(r => r.ticker));
+  return {
+    existing: data || [],
+    missing:  tickers.filter(t => !existingTickers.has(t)),
+    error:    null,
+  };
+};
+
 // ── Sectors ───────────────────────────────────────────────────────────────────
 export const fetchSectors = () =>
   supabase.from("sectors").select("*").order("name");

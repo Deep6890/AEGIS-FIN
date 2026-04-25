@@ -1,7 +1,13 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { fetchCompanies, fetchSectors, fetchLatestSectorHealth, fetchLatestMacro, fetchAllMlPredictions } from "../lib/api";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import {
+  fetchCompanies, fetchSectors, fetchLatestSectorHealth,
+  fetchLatestMacro, fetchAllMlPredictions, fetchCompaniesByTickers,
+} from "../lib/api";
 
 const AppDataContext = createContext(null);
+
+// Key used to persist CSV tickers across page refreshes
+const CSV_STORAGE_KEY = "aegis_csv_tickers";
 
 export function AppDataProvider({ children }) {
   const [companies, setCompanies]       = useState([]);
@@ -12,18 +18,44 @@ export function AppDataProvider({ children }) {
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
 
+  // CSV filter mode — when set, only show companies from the CSV
+  const [csvTickers, setCsvTickersState] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem(CSV_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  });
+
+  // Persist CSV tickers to sessionStorage
+  const setCsvTickers = useCallback((tickers) => {
+    setCsvTickersState(tickers);
+    if (tickers) {
+      sessionStorage.setItem(CSV_STORAGE_KEY, JSON.stringify(tickers));
+    } else {
+      sessionStorage.removeItem(CSV_STORAGE_KEY);
+    }
+  }, []);
+
+  const clearCsvFilter = useCallback(() => setCsvTickers(null), [setCsvTickers]);
+
   useEffect(() => {
     async function load() {
       try {
+        setLoading(true);
+
+        // If CSV mode: only fetch companies matching the CSV tickers
+        const companiesPromise = csvTickers && csvTickers.length > 0
+          ? fetchCompaniesByTickers(csvTickers)
+          : fetchCompanies();
+
         const [c, s, sh, m, ml] = await Promise.all([
-          fetchCompanies(),
+          companiesPromise,
           fetchSectors(),
           fetchLatestSectorHealth(),
           fetchLatestMacro(),
           fetchAllMlPredictions(),
         ]);
 
-        // Log errors to console so we can debug
         if (c.error)  console.error("companies error:",     c.error);
         if (s.error)  console.error("sectors error:",       s.error);
         if (sh.error) console.error("sector_health error:", sh.error);
@@ -43,7 +75,7 @@ export function AppDataProvider({ children }) {
       }
     }
     load();
-  }, []);
+  }, [csvTickers]); // Re-fetch when CSV filter changes
 
   // Derived: latest health per sector (deduplicated by sector_id)
   const latestSectorHealth = React.useMemo(() => {
@@ -75,7 +107,11 @@ export function AppDataProvider({ children }) {
 
   return (
     <AppDataContext.Provider value={{
-      companies, sectors, latestSectorHealth, macro, latestMl, portfolioStats, loading, error
+      companies, sectors, latestSectorHealth, macro, latestMl, portfolioStats,
+      loading, error,
+      // CSV filter
+      csvTickers, setCsvTickers, clearCsvFilter,
+      isCsvMode: !!(csvTickers && csvTickers.length > 0),
     }}>
       {children}
     </AppDataContext.Provider>

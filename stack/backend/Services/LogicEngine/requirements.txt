@@ -1,4 +1,4 @@
-# AEGIS-FIN — Python dependencies
+# AEGIS-FIN LogicEngine — Python dependencies
 # Install with: pip install -r requirements.txt
 #
 # NOTE: Python 3.14 on Windows — use --prefer-binary to avoid C++ compiler errors.

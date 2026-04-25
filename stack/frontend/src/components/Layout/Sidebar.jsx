@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Building2, TrendingUp, GitBranch,
   Brain, Globe, ShieldAlert, Sun, Moon, LogOut,
-  User, Upload, Activity, Stethoscope
+  User, Upload, Activity, Stethoscope, LineChart
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
@@ -19,6 +19,7 @@ const NAV = [
   { to: "/upload",      icon: Upload,          label: "Upload CSV"   },
   { to: "/pipeline",    icon: Activity,        label: "Pipeline"     },
   { to: "/diagnostics", icon: Stethoscope,     label: "Diagnostics"  },
+  { to: "/finplan",     icon: LineChart,       label: "FinPlan App"  },
 ];
 
 function Tooltip({ label, children }) {
