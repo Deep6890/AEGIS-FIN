@@ -1,152 +1,182 @@
-import React, { useEffect, useState } from "react";
-import { Search, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import React, { useEffect, useState, useMemo } from "react";
+import { Search, Building2, FileSpreadsheet, TrendingUp, DollarSign, Activity, Scale, Percent, Eye, ChevronDown, ShieldAlert } from "lucide-react";
 import PageLayout from "../components/Layout/PageLayout";
-import LoadingSpinner, { PageSkeleton } from "../components/ui/LoadingSpinner";
+import SignalBadge from "../components/ui/SignalBadge";
+import LoadingSpinner from "../components/ui/LoadingSpinner";
 import EmptyState from "../components/ui/EmptyState";
 import { useAppData } from "../context/AppDataContext";
 import { fetchBalanceSheet } from "../lib/api";
 
-const STATUS_STYLE = {
-  green:  "badge-green",
-  amber:  "badge-amber",
-  red:    "badge-red",
+const RATIO_ICONS = {
+  "Gross Margin %": Percent,
+  "Net Profit Margin %": Percent,
+  "EBITDA Margin %": Percent,
+  "ROE %": TrendingUp,
+  "ROA %": TrendingUp,
+  "Current Ratio": Activity,
+  "Quick Ratio": Activity,
+  "Cash Ratio": DollarSign,
+  "Debt/Equity": Scale,
+  "Debt/Assets": Scale,
+  "Interest Coverage": ShieldAlert,
+  "Asset Turnover": Activity,
+  "Inventory Turnover": Activity,
+  "Receivables Turnover": Activity,
+  "CFO/Net Income": DollarSign,
+  "FCF Margin %": Percent,
+  "Revenue Growth %": TrendingUp,
+  "Net Income Growth %": TrendingUp,
+  "Equity Ratio": Scale,
+  "Equity Growth %": TrendingUp,
 };
-
-const RATIO_LABELS = {
-  de_ratio:          "D/E Ratio",
-  current_ratio:     "Current Ratio",
-  revenue_growth:    "Revenue Growth",
-  ebitda_margin:     "EBITDA Margin",
-  roe:               "ROE",
-  interest_coverage: "Interest Coverage",
-  equity_growth:     "Equity Growth",
-  debt_growth:       "Debt Growth",
-};
-
-function ChangeIndicator({ val }) {
-  if (val == null) return <span className="text-[#9CA3AF]">—</span>;
-  const color = val > 5 ? "text-[#52B788]" : val < -5 ? "text-red-400" : "text-[#9CA3AF]";
-  const Icon  = val > 5 ? TrendingUp : val < -5 ? TrendingDown : Minus;
-  return (
-    <span className={`flex items-center gap-1 text-xs font-semibold tabular-nums ${color}`}>
-      <Icon size={11} /> {val > 0 ? "+" : ""}{val.toFixed(1)}%
-    </span>
-  );
-}
 
 export default function BalanceSheet() {
-  const { companies, loading } = useAppData();
-  const [selectedId, setSelectedId] = useState(null);
-  const [search, setSearch]         = useState("");
-  const [bsData, setBsData]         = useState(null);
-  const [bsLoading, setBsLoading]   = useState(false);
+  const { companies } = useAppData();
+  const [search, setSearch] = useState("");
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [ratios, setRatios] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const filtered = companies.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    (c.ticker || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = companies.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || (c.ticker || "").toLowerCase().includes(search.toLowerCase()));
 
   useEffect(() => {
-    if (!selectedId) return;
-    setBsLoading(true);
-    fetchBalanceSheet(selectedId).then(r => setBsData(r.data || null)).finally(() => setBsLoading(false));
-  }, [selectedId]);
+    if (!selectedCompany) return;
+    setLoading(true);
+    fetchBalanceSheet(selectedCompany)
+      .then(res => setRatios(res.data || []))
+      .finally(() => setLoading(false));
+  }, [selectedCompany]);
 
-  const selectedComp = companies.find(c => c.id === selectedId);
+  const selectedComp = companies.find(c => c.id === selectedCompany);
 
-  if (loading) return <PageLayout title="Balance Sheet"><PageSkeleton /></PageLayout>;
+  const groupedRatios = useMemo(() => {
+    const groups = {};
+    ratios.forEach(r => { 
+      const cat = r.ratio_definitions?.category || "Other";
+      if (!groups[cat]) groups[cat] = []; 
+      groups[cat].push(r); 
+    });
+    return groups;
+  }, [ratios]);
 
   return (
-    <PageLayout title="Balance Sheet · Financial Ratios">
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-
-        {/* Company selector */}
-        <div className="space-y-2">
-          <div className="relative">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search company…" className="w-full pl-9 pr-3 py-2.5 text-xs input-base" />
-          </div>
-          <div className="space-y-1 max-h-[calc(100vh-200px)] overflow-y-auto pr-1">
-            {filtered.slice(0, 100).map(c => (
-              <button
-                key={c.id}
-                onClick={() => setSelectedId(c.id)}
-                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs transition-all duration-200 ${
-                  selectedId === c.id
-                    ? "bg-neutral-900 dark:bg-brand-orange text-brand-orange dark:text-neutral-900 font-bold shadow-sm"
-                    : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100"
-                }`}
-              >
-                {c.name}
-              </button>
-            ))}
-          </div>
+    <PageLayout title="Balance Sheet">
+      <div className="space-y-8 pb-12">
+        <div className="animate-fade-in mb-8">
+          <h1 className="page-heading">Balance Sheet Analysis</h1>
+          <p className="page-subheading">Quarterly fundamental ratios, YoY growth, and sector-relative pressure analysis.</p>
         </div>
 
-        {/* Detail */}
-        <div className="lg:col-span-3 space-y-4">
-          {!selectedId ? (
-            <div className="card p-16 flex items-center justify-center">
-              <p className="text-sm text-[#9CA3AF]">Select a company to view balance sheet analysis</p>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-fade-in">
+          {/* Company Picker */}
+          <div className="space-y-4">
+            <div className="relative">
+              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search company..." className="w-full pl-11 pr-4 py-3 text-sm input-base" />
             </div>
-          ) : bsLoading ? <LoadingSpinner /> : !bsData ? (
-            <EmptyState title="No balance sheet data" sub="Run the pipeline for this company." />
-          ) : (
-            <>
-              <div className="bg-neutral-900 dark:bg-neutral-950 border border-neutral-800 rounded-2xl p-5">
-                <p className="label-caps text-neutral-500 mb-1">Balance Sheet Analysis</p>
-                <p className="text-xl font-black text-brand-orange">{selectedComp?.name}</p>
-                {bsData.quarter && <p className="text-xs text-neutral-500 mt-1">Latest: {bsData.quarter}</p>}
-              </div>
+            <div className="space-y-2 max-h-[calc(100vh-260px)] overflow-y-auto pr-2">
+              {filtered.slice(0, 100).map(c => (
+                <button key={c.id} onClick={() => setSelectedCompany(c.id)}
+                  className={`w-full text-left px-5 py-4 rounded-2xl transition-all duration-200 border ${
+                    selectedCompany === c.id ? "bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 shadow-sm" : "bg-neutral-900/[0.02] dark:bg-neutral-900/[0.02] dark:bg-white/[0.02] border-transparent hover:bg-neutral-900/[0.05] dark:hover:bg-neutral-900/[0.05] dark:bg-white/[0.05]"
+                  }`}>
+                  <p className="font-semibold text-base text-neutral-900 dark:text-neutral-100 truncate tracking-tight">{c.name}</p>
+                  <p className="font-mono text-[11px] mt-1 text-neutral-500">{c.ticker}</p>
+                </button>
+              ))}
+            </div>
+          </div>
 
-              {/* Ratio cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {Object.entries(RATIO_LABELS).map(([key, label]) => {
-                  const value  = bsData[key];
-                  const pct    = bsData[`${key}_percentile`];
-                  const yoy    = bsData[`${key}_yoy`];
-                  const status = bsData[`${key}_status`] || "gray";
-                  const color  = pct >= 70 ? "bar-high" : pct >= 40 ? "bar-mid" : "bar-low";
-
-                  return (
-                    <div key={key} className="card p-4 hover-lift">
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="text-sm font-semibold text-[#0D0D0D] dark:text-[#E8E6E0]">{label}</p>
-                        <span className={STATUS_STYLE[status] || "badge-gray"}>{status}</span>
-                      </div>
-                      <div className="flex items-end justify-between">
-                        <div>
-                          <p className="value-lg">
-                            {value != null ? (typeof value === "number" ? value.toFixed(2) : value) : "—"}
-                          </p>
-                          {yoy != null && <div className="mt-1"><ChangeIndicator val={yoy} /></div>}
+          {/* Details */}
+          <div className="lg:col-span-3 space-y-6">
+            {!selectedCompany ? (
+              <div className="card-dark p-12 lg:p-20 flex flex-col items-center text-center relative overflow-hidden h-[calc(100vh-260px)] min-h-[500px]">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-500/10 to-transparent blur-[100px] pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-brand-orange/10 to-transparent blur-[80px] pointer-events-none" />
+                
+                <div className="relative m-auto flex flex-col items-center">
+                  <div className="w-24 h-24 rounded-3xl bg-neutral-900/[0.04] dark:bg-white/[0.04] border border-neutral-900/[0.08] dark:border-white/[0.08] flex items-center justify-center mb-8 animate-float">
+                    <FileSpreadsheet size={40} className="text-neutral-900 dark:text-white opacity-80" />
+                  </div>
+                  <h3 className="value-lg text-neutral-900 dark:text-white mb-4 tracking-tighter">Fundamental Analysis</h3>
+                  <p className="text-base text-neutral-400 max-w-lg leading-relaxed mb-8">
+                    Select a company to view comprehensive financial health metrics across profitability, liquidity, leverage, efficiency, and growth.
+                  </p>
+                  
+                  <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+                    {Object.keys(RATIO_ICONS).slice(0, 4).map(k => {
+                      const Icon = RATIO_ICONS[k];
+                      return (
+                        <div key={k} className="flex items-center gap-3 bg-neutral-900/[0.03] dark:bg-white/[0.03] border border-neutral-900/[0.05] dark:border-white/[0.05] px-4 py-3 rounded-xl">
+                          <Icon size={16} className="text-neutral-400" />
+                          <span className="text-xs font-semibold text-neutral-300 truncate">{k}</span>
                         </div>
-                        {pct != null && (
-                          <div className="text-right">
-                            <p className="label mb-1">Percentile</p>
-                            <div className="flex items-center gap-2">
-                              <div className="progress-track w-14">
-                                <div className={`progress-fill ${color}`} style={{ width: `${pct}%` }} />
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : loading ? <div className="h-64 flex items-center justify-center"><LoadingSpinner /></div> : (
+              <>
+                <div className="card-dark p-8 flex items-center justify-between">
+                  <div className="absolute right-0 top-0 w-64 h-64 bg-brand-orange/10 blur-[100px] pointer-events-none" />
+                  <div className="relative">
+                    <p className="value-lg text-neutral-900 dark:text-white mb-1">{selectedComp?.name}</p>
+                    <p className="text-sm font-mono text-neutral-400">{selectedComp?.ticker}</p>
+                  </div>
+                  <div className="relative w-14 h-14 rounded-2xl bg-neutral-900/[0.05] dark:bg-white/[0.05] border border-neutral-900/[0.1] dark:border-white/[0.1] flex items-center justify-center">
+                    <Building2 size={24} className="text-neutral-900 dark:text-white opacity-80" />
+                  </div>
+                </div>
+
+                {Object.keys(groupedRatios).length === 0 ? <EmptyState title="No balance sheet data" sub="Run the pipeline to populate fundamentals." /> : (
+                  <div className="space-y-8">
+                    {Object.entries(groupedRatios).map(([category, items]) => (
+                      <div key={category} className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <h3 className="title-md">{category}</h3>
+                          <div className="h-px flex-1 bg-neutral-900/[0.05] dark:bg-neutral-900/[0.05] dark:bg-white/[0.05]" />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {items.map(r => {
+                            const ratioName = r.ratio_definitions?.name || "Ratio";
+                            const Icon = RATIO_ICONS[ratioName] || Activity;
+                            return (
+                              <div key={r.id || ratioName} className="card-glass p-5 group hover:border-brand-orange/30 transition-all">
+                                <div className="flex items-start justify-between mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <Icon size={14} className="text-neutral-400 group-hover:text-brand-orange transition-colors" />
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">{ratioName}</p>
+                                  </div>
+                                  <SignalBadge value={r.status} />
+                                </div>
+                                <div className="flex items-end justify-between">
+                                  <div>
+                                    <p className="text-2xl font-bold tabular-nums tracking-tight text-neutral-900 dark:text-neutral-100">{r.value?.toFixed(2)}</p>
+                                    {r.yoy_pct != null && (
+                                      <p className={`text-xs font-semibold tabular-nums mt-1 flex items-center gap-1 ${r.yoy_pct >= 0 ? "text-[#00B341]" : "text-[#FF3B30]"}`}>
+                                        {r.yoy_pct >= 0 ? "↑" : "↓"} {Math.abs(r.yoy_pct).toFixed(1)}% YoY
+                                      </p>
+                                    )}
+                                  </div>
+                                  {r.sector_direction && (
+                                    <div className="text-right">
+                                      <p className="text-[9px] text-neutral-400 uppercase tracking-widest mb-0.5">Vs Sector</p>
+                                      <span className={`text-[10px] font-bold uppercase ${r.sector_direction === "outperforming" ? "text-[#00B341]" : "text-[#FF3B30]"}`}>{r.sector_direction}</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <span className="text-xs font-bold tabular-nums text-[#6B7280]">{pct.toFixed(0)}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      {bsData[`${key}_sector_overlay`] && (
-                        <div className="mt-3 pt-2 border-t border-[#E5E1D8]/50 dark:border-[#1F2128]/50">
-                          <p className="text-[10px] text-[#9CA3AF]">
-                            <span className="font-bold text-[#E8C547]">Sector overlay:</span>{" "}
-                            {bsData[`${key}_sector_overlay`]}
-                          </p>
+                            );
+                          })}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </PageLayout>

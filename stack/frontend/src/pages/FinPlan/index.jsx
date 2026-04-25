@@ -8,6 +8,7 @@ import LandingPage    from "./components/LandingPage";
 import OnboardingModal from "./components/OnboardingModal";
 import MobileDashboard from "./components/MobileDashboard";
 import { Sun, Moon, ArrowLeft } from "lucide-react";
+import { useAppData } from "../../context/AppDataContext";
 
 // ── Theme toggle (local to FinPlan, independent of AEGIS theme) ───────────────
 function ThemeToggle({ dark, setDark }) {
@@ -37,6 +38,7 @@ function BackButton() {
 // ── Inner app (has access to PersonaContext) ──────────────────────────────────
 function FinPlanInner({ dark, setDark }) {
   const { persona, onboardingDone } = usePersona();
+  const appData = useAppData();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [view, setView] = useState("landing"); // "landing" | "onboarding" | "dashboard"
 
@@ -62,7 +64,7 @@ function FinPlanInner({ dark, setDark }) {
         <ThemeToggle dark={dark} setDark={setDark} />
 
         {view === "landing" && (
-          <LandingPage onGetStarted={handleGetStarted} />
+          <LandingPage onGetStarted={handleGetStarted} appData={appData} />
         )}
 
         {view === "onboarding" && (

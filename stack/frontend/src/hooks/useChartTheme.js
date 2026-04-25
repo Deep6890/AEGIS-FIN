@@ -3,13 +3,13 @@ import { useTheme } from "../context/ThemeContext";
 export function useChartTheme() {
   const { dark } = useTheme();
   return {
-    orange:  "#E85D04",
-    yellow:  "#F59E0B",
-    green:   "#10B981",
-    blue:    "#3B82F6",
-    red:     "#EF4444",
+    orange:  "#FF8A00",
+    yellow:  "#FFC224",
+    green:   "#00B341",
+    blue:    "#007AFF",
+    red:     "#FF3B30",
     purple:  "#8B5CF6",
-    emerald: "#10B981",
+    emerald: "#00B341",
     grid:    dark ? "#262626" : "#F3F3F3",
     tick:    dark ? "#525252" : "#A3A3A3",
     tooltip: {

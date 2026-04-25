@@ -4,42 +4,42 @@ import { supabase } from "../lib/supabase";
 import PageLayout from "../components/Layout/PageLayout";
 
 const TABLES = [
-  "companies","sectors","sector_metrics","sector_health",
-  "company_metrics","static_corr","rolling_corr","top_sectors",
-  "balance_sheet","balance_sheet_history","holding_metrics",
-  "ml_predictions","feature_store","macro_overlay",
+  "companies", "sectors", "ratio_definitions", "holding_metric_definitions",
+  "ohlcv_raw", "sector_ohlcv_raw", "ohlcv_health", "sector_health",
+  "balance_sheet_ratios", "balance_sheet_hist", "stock_holding",
+  "correlation", "classifier", "pipeline_log"
 ];
 
 const RLS_SQL = `-- Paste in Supabase → SQL Editor → Run
-ALTER TABLE companies             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sectors               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sector_metrics        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sector_health         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE company_metrics       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE static_corr           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE rolling_corr          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE top_sectors           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE balance_sheet         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE balance_sheet_history ENABLE ROW LEVEL SECURITY;
-ALTER TABLE holding_metrics       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ml_predictions        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE feature_store         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE macro_overlay         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE companies              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sectors                ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ratio_definitions      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE holding_metric_definitions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ohlcv_raw              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sector_ohlcv_raw       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ohlcv_health           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sector_health          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE balance_sheet_ratios   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE balance_sheet_hist     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stock_holding          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE correlation            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE classifier             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pipeline_log           ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "anon_read_companies"             ON companies             FOR SELECT USING (true);
 CREATE POLICY "anon_read_sectors"               ON sectors               FOR SELECT USING (true);
-CREATE POLICY "anon_read_sector_metrics"        ON sector_metrics        FOR SELECT USING (true);
+CREATE POLICY "anon_read_ratio_defs"            ON ratio_definitions      FOR SELECT USING (true);
+CREATE POLICY "anon_read_holding_defs"          ON holding_metric_definitions FOR SELECT USING (true);
+CREATE POLICY "anon_read_ohlcv"                 ON ohlcv_raw             FOR SELECT USING (true);
+CREATE POLICY "anon_read_sector_ohlcv"          ON sector_ohlcv_raw      FOR SELECT USING (true);
+CREATE POLICY "anon_read_ohlcv_health"          ON ohlcv_health          FOR SELECT USING (true);
 CREATE POLICY "anon_read_sector_health"         ON sector_health         FOR SELECT USING (true);
-CREATE POLICY "anon_read_company_metrics"       ON company_metrics       FOR SELECT USING (true);
-CREATE POLICY "anon_read_static_corr"           ON static_corr           FOR SELECT USING (true);
-CREATE POLICY "anon_read_rolling_corr"          ON rolling_corr          FOR SELECT USING (true);
-CREATE POLICY "anon_read_top_sectors"           ON top_sectors           FOR SELECT USING (true);
-CREATE POLICY "anon_read_balance_sheet"         ON balance_sheet         FOR SELECT USING (true);
-CREATE POLICY "anon_read_balance_sheet_history" ON balance_sheet_history FOR SELECT USING (true);
-CREATE POLICY "anon_read_holding_metrics"       ON holding_metrics       FOR SELECT USING (true);
-CREATE POLICY "anon_read_ml_predictions"        ON ml_predictions        FOR SELECT USING (true);
-CREATE POLICY "anon_read_feature_store"         ON feature_store         FOR SELECT USING (true);
-CREATE POLICY "anon_read_macro_overlay"         ON macro_overlay         FOR SELECT USING (true);`;
+CREATE POLICY "anon_read_bs_ratios"             ON balance_sheet_ratios  FOR SELECT USING (true);
+CREATE POLICY "anon_read_bs_hist"               ON balance_sheet_hist    FOR SELECT USING (true);
+CREATE POLICY "anon_read_stock_holding"         ON stock_holding         FOR SELECT USING (true);
+CREATE POLICY "anon_read_correlation"           ON correlation           FOR SELECT USING (true);
+CREATE POLICY "anon_read_classifier"            ON classifier            FOR SELECT USING (true);
+CREATE POLICY "anon_read_pipeline_log"          ON pipeline_log          FOR SELECT USING (true);`;
 
 export default function Diagnostics() {
   const [results, setResults] = useState({});
