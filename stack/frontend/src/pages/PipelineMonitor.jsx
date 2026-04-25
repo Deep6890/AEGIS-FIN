@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
   Activity, CheckCircle, XCircle, Clock, RefreshCw,
-  Layers, Database, Cpu, TrendingUp, AlertTriangle,
-  Play, ChevronDown, ChevronRight, Terminal
+  Layers, Database, Play, ChevronDown, ChevronRight, Terminal
 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import PageLayout from "../components/Layout/PageLayout";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
+import LoadingSpinner, { PageSkeleton } from "../components/ui/LoadingSpinner";
 import EmptyState from "../components/ui/EmptyState";
 import { useChartTheme } from "../hooks/useChartTheme";
 import { fetchPipelineLog, fetchPipelineStats } from "../lib/api";
@@ -24,28 +23,20 @@ const LAYERS = [
   { id: 9, name: "Feature Store",       desc: "Saves the exact 8 ML input features used for this run. Audit trail for model retraining and explainability. Stored per company per date." },
 ];
 
-function LayerCard({ layer, active }) {
+function LayerCard({ layer }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className={`rounded-2xl border transition-all ${
-      active
-        ? "border-[#FFC224] bg-[#FFC224]/5"
-        : "border-gray-100 dark:border-[#1f1f1f] bg-white dark:bg-[#111]"
-    }`}>
+    <div className="border-2 border-[#E5E1D8] dark:border-[#1F2128] rounded-xl overflow-hidden hover:border-[#E8C547]/30 dark:hover:border-[#E8C547]/20 transition-all duration-200">
       <button onClick={() => setOpen(o => !o)} className="w-full flex items-center gap-3 p-3 text-left">
-        <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
-          active ? "bg-black text-[#FFC224]" : "bg-gray-100 dark:bg-[#1f1f1f] text-gray-500 dark:text-gray-400"
-        }`}>
+        <div className="w-7 h-7 rounded-lg bg-[#0D0D0D] dark:bg-[#E8C547] flex items-center justify-center text-xs font-black text-[#E8C547] dark:text-[#0D0D0D] shrink-0">
           {layer.id}
         </div>
-        <span className={`text-sm font-black flex-1 ${
-          active ? "text-[#b38a00] dark:text-[#FFC224]" : "text-gray-800 dark:text-gray-200"
-        }`}>{layer.name}</span>
-        {open ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+        <span className="text-sm font-bold flex-1 text-[#0D0D0D] dark:text-[#E8E6E0]">{layer.name}</span>
+        {open ? <ChevronDown size={14} className="text-[#E8C547]" /> : <ChevronRight size={14} className="text-[#9CA3AF]" />}
       </button>
       {open && (
-        <div className="px-4 pb-3">
-          <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{layer.desc}</p>
+        <div className="px-4 pb-3 animate-fade-in">
+          <p className="text-xs text-[#6B7280] leading-relaxed">{layer.desc}</p>
         </div>
       )}
     </div>
@@ -69,13 +60,12 @@ export default function PipelineMonitor() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Stats
   const total   = stats.length;
   const ok      = stats.filter(r => r.status === "ok").length;
   const errors  = stats.filter(r => r.status === "error").length;
   const lastRun = logs[0]?.run_at ? new Date(logs[0].run_at).toLocaleString("en-IN") : "—";
+  const uniqueCompanies = new Set(stats.map(r => r.company)).size;
 
-  // Runs per day chart
   const byDay = {};
   stats.forEach(r => {
     const d = r.run_at?.slice(0, 10);
@@ -85,67 +75,67 @@ export default function PipelineMonitor() {
   });
   const chartData = Object.values(byDay).slice(-14);
 
-  // Unique companies processed
-  const uniqueCompanies = new Set(stats.map(r => r.company)).size;
+  if (loading) return <PageLayout title="Pipeline Monitor"><PageSkeleton /></PageLayout>;
 
   return (
     <PageLayout title="Pipeline Monitor">
       <div className="space-y-5">
 
-        {/* Header insight */}
-        <div className="bento-black">
-          <p className="text-xs font-black text-[#FFC224] uppercase tracking-widest mb-1">AEGIS-FIN 9-Layer Pipeline</p>
-          <p className="text-sm text-white/70 leading-relaxed">
-            Every day after NSE market close, the scheduler fetches live data for all{" "}
-            <span className="font-black text-[#FFC224]">134 SME companies</span> from Yahoo Finance,
-            runs all 9 analytical layers, and pushes results to Supabase.
-            The entire process takes ~2–4 hours depending on API rate limits.
-            Each company gets a fresh survival score, balance sheet analysis, and sector correlation update.
-          </p>
+        {/* Hero */}
+        <div className="card-ink p-6 relative overflow-hidden rounded-2xl">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-[#E8C547]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
+          <div className="relative">
+            <p className="label text-[#E8C547] mb-1">AEGIS-FIN 9-Layer Pipeline</p>
+            <p className="text-sm text-white/60 leading-relaxed max-w-xl">
+              Every day after NSE market close, the scheduler processes{" "}
+              <span className="font-bold text-[#E8C547]">134 SME companies</span> through all 9 layers.
+              Takes ~2–4 hours depending on API rate limits.
+            </p>
+          </div>
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { icon: Database,    label: "Total Runs",          value: total,           color: "text-[#FFC224]",  bg: "bento-black" },
-            { icon: CheckCircle, label: "Successful",          value: ok,              color: "text-[#00B341]",  bg: "bento-white" },
-            { icon: XCircle,     label: "Failed",              value: errors,          color: "text-red-500",    bg: "bento-white" },
-            { icon: Activity,    label: "Companies Processed", value: uniqueCompanies, color: "text-[#FF8A00]",  bg: "bento-white" },
-          ].map(({ icon: Icon, label, value, color, bg }) => (
-            <div key={label} className={`${bg} flex flex-col gap-1`}>
-              <div className="flex items-center gap-2">
-                <Icon size={14} className={color} />
-                <p className={`stat-label ${bg === "bento-black" ? "text-white/60" : ""}`}>{label}</p>
+            { icon: Database,    label: "Total Runs",  value: total,           color: "card-ink p-5 rounded-2xl",   iconColor: "text-[#E8C547]", valueColor: "text-[#E8C547]" },
+            { icon: CheckCircle, label: "Successful",   value: ok,             color: "card p-5 rounded-2xl",       iconColor: "text-[#52B788]", valueColor: "text-[#52B788]" },
+            { icon: XCircle,     label: "Failed",       value: errors,         color: "card p-5 rounded-2xl",       iconColor: "text-red-400",   valueColor: "text-red-400" },
+            { icon: Activity,    label: "Companies",    value: uniqueCompanies, color: "card p-5 rounded-2xl",      iconColor: "text-[#E8C547]", valueColor: "" },
+          ].map(({ icon: Icon, label, value, color, iconColor, valueColor }) => (
+            <div key={label} className={`${color} hover-lift`}>
+              <div className="flex items-center gap-2 mb-2">
+                <Icon size={14} className={iconColor} />
+                <p className="label">{label}</p>
               </div>
-              <p className={`text-2xl font-black ${color}`}>{value}</p>
+              <p className={`value-xl ${valueColor}`}>{value}</p>
             </div>
           ))}
         </div>
 
         {/* Last run + refresh */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-gray-400">
+          <div className="flex items-center gap-2 text-xs text-[#9CA3AF]">
             <Clock size={13} />
-            Last run: <span className="font-black text-gray-600 dark:text-gray-300">{lastRun}</span>
+            Last run: <span className="font-bold text-[#0D0D0D] dark:text-[#E8E6E0]">{lastRun}</span>
           </div>
-          <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-black dark:text-[#FFC224] border border-black dark:border-[#FFC224] rounded-xl hover:bg-black hover:text-[#FFC224] dark:hover:bg-[#FFC224] dark:hover:text-black transition-all">
+          <button onClick={load} className="btn-ghost text-xs py-2 px-3">
             <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Refresh
           </button>
         </div>
 
         {/* Runs per day chart */}
         {chartData.length > 0 && (
-          <div className="card p-4 sm:p-5">
-            <p className="section-title mb-1">Pipeline Runs (Last 14 Days)</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Green = successful company runs. Red = failed runs.</p>
-            <ResponsiveContainer width="100%" height={140}>
+          <div className="card p-5">
+            <p className="title-md mb-1">Pipeline Runs (Last 14 Days)</p>
+            <p className="text-xs text-[#9CA3AF] mb-4">Green = successful. Red = failed.</p>
+            <ResponsiveContainer width="100%" height={160}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
                 <XAxis dataKey="date" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={24} />
                 <Tooltip {...ct.tooltip} />
-                <Bar dataKey="ok"    stackId="a" fill="#00B341" radius={[0,0,0,0]} name="OK" />
-                <Bar dataKey="error" stackId="a" fill="#ef4444" radius={[3,3,0,0]} name="Error" />
+                <Bar dataKey="ok"    stackId="a" fill="#52B788" radius={[0,0,0,0]} name="OK" />
+                <Bar dataKey="error" stackId="a" fill="#F87171" radius={[4,4,0,0]} name="Error" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -154,46 +144,41 @@ export default function PipelineMonitor() {
         {/* Two column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-          {/* Pipeline Architecture */}
-          <div className="card p-4 sm:p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Layers size={16} className="text-[#FF8A00]" />
-              <p className="section-title">9-Layer Architecture</p>
+          {/* Architecture */}
+          <div className="card p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Layers size={16} className="text-[#E8C547]" />
+              <p className="title-md">9-Layer Architecture</p>
             </div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Click any layer to see what it does.</p>
             <div className="space-y-1.5">
-              {LAYERS.map(layer => (
-                <LayerCard key={layer.id} layer={layer} active={false} />
-              ))}
+              {LAYERS.map(layer => <LayerCard key={layer.id} layer={layer} />)}
             </div>
           </div>
 
           {/* Run Log */}
-          <div className="card p-4 sm:p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Terminal size={16} className="text-[#FF8A00]" />
-              <p className="section-title">Run Log</p>
+          <div className="card p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Terminal size={16} className="text-[#E8C547]" />
+              <p className="title-md">Run Log</p>
             </div>
-            {loading ? <LoadingSpinner /> : logs.length ? (
+            {logs.length ? (
               <div className="space-y-1.5 max-h-[600px] overflow-y-auto">
                 {logs.map(row => (
                   <div key={row.id}>
                     <button
                       onClick={() => setExpanded(expanded === row.id ? null : row.id)}
-                      className="w-full flex items-center gap-2 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors text-left"
+                      className="w-full flex items-center gap-2 p-2.5 rounded-xl hover:bg-[#F7F5F0] dark:hover:bg-[#22252E] transition-colors text-left"
                     >
                       {row.status === "ok"
-                        ? <CheckCircle size={13} className="text-[#00B341] shrink-0" />
-                        : <XCircle    size={13} className="text-red-500 shrink-0" />}
-                      <span className="text-xs font-black text-gray-800 dark:text-gray-200 flex-1 truncate">{row.company}</span>
-                      <span className="text-[10px] font-mono text-gray-400 shrink-0">{row.ticker}</span>
-                      <span className="text-[10px] text-gray-400 shrink-0 ml-1">{row.run_at?.slice(0,16).replace("T"," ")}</span>
+                        ? <CheckCircle size={13} className="text-[#52B788] shrink-0" />
+                        : <XCircle size={13} className="text-red-400 shrink-0" />}
+                      <span className="text-xs font-bold text-[#0D0D0D] dark:text-[#E8E6E0] flex-1 truncate">{row.company}</span>
+                      <span className="text-[10px] font-mono text-[#9CA3AF] shrink-0">{row.ticker}</span>
+                      <span className="text-[10px] text-[#9CA3AF] shrink-0 ml-1">{row.run_at?.slice(0,16).replace("T"," ")}</span>
                     </button>
                     {expanded === row.id && (
-                      <div className="mx-2 mb-1 p-3 bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-[#2a2a2a]">
-                        {row.error_msg && (
-                          <p className="text-xs text-red-500 mb-2 font-mono">{row.error_msg}</p>
-                        )}
+                      <div className="mx-2 mb-1 p-3 bg-[#F7F5F0] dark:bg-[#111318] rounded-xl border border-[#E5E1D8] dark:border-[#1F2128] animate-fade-in">
+                        {row.error_msg && <p className="text-xs text-red-400 mb-2 font-mono">{row.error_msg}</p>}
                         {row.layers_json && (() => {
                           try {
                             const layers = JSON.parse(row.layers_json);
@@ -202,11 +187,11 @@ export default function PipelineMonitor() {
                                 {Object.entries(layers).map(([k, v]) => (
                                   <div key={k} className="flex items-center gap-1.5">
                                     {v === "ok"
-                                      ? <CheckCircle size={10} className="text-[#00B341]" />
+                                      ? <CheckCircle size={10} className="text-[#52B788]" />
                                       : v === "skipped"
-                                      ? <Clock size={10} className="text-gray-400" />
-                                      : <XCircle size={10} className="text-red-500" />}
-                                    <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{k.replace("layer","L")}</span>
+                                      ? <Clock size={10} className="text-[#9CA3AF]" />
+                                      : <XCircle size={10} className="text-red-400" />}
+                                    <span className="text-[10px] text-[#6B7280] truncate">{k.replace("layer","L")}</span>
                                   </div>
                                 ))}
                               </div>
@@ -218,46 +203,33 @@ export default function PipelineMonitor() {
                   </div>
                 ))}
               </div>
-            ) : <EmptyState title="No pipeline runs yet" sub="Run the scheduler or batch runner to see logs here." />}
+            ) : <EmptyState title="No pipeline runs yet" sub="Run the scheduler or batch runner." />}
           </div>
         </div>
 
         {/* How to run */}
-        <div className="card p-4 sm:p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Play size={16} className="text-[#FF8A00]" />
-            <p className="section-title">How to Run the Pipeline</p>
+        <div className="card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Play size={16} className="text-[#E8C547]" />
+            <p className="title-md">How to Run the Pipeline</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
-              {
-                title: "Run All Companies Once",
-                cmd:   "python run_pipeline.py",
-                desc:  "Processes all 134 companies from the CSV sequentially. Takes 2–4 hours. Saves progress so you can resume if interrupted."
-              },
-              {
-                title: "Resume After Failure",
-                cmd:   "python run_pipeline.py --resume",
-                desc:  "Skips companies already completed in the last run. Use this after a crash or network interruption."
-              },
-              {
-                title: "Start Daily Scheduler",
-                cmd:   "python scheduler.py --run-now",
-                desc:  "Starts the auto-scheduler. Runs every weekday at 18:30 IST (after NSE close). --run-now also triggers immediately."
-              },
+              { title: "Run All Companies Once", cmd: "python run_pipeline.py", desc: "Processes all 134 companies sequentially. Takes 2–4 hours." },
+              { title: "Resume After Failure",   cmd: "python run_pipeline.py --resume", desc: "Skips completed companies. Use after crash or network error." },
+              { title: "Start Daily Scheduler",  cmd: "python scheduler.py --run-now", desc: "Auto-runs every weekday at 18:30 IST after NSE close." },
             ].map(({ title, cmd, desc }) => (
-              <div key={title} className="p-4 bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-[#2a2a2a]">
-                <p className="text-xs font-black text-gray-800 dark:text-gray-200 mb-2">{title}</p>
-                <code className="block text-xs font-mono text-[#FFC224] bg-black px-3 py-2 rounded-2xl mb-2">{cmd}</code>
-                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{desc}</p>
+              <div key={title} className="p-4 bg-[#F7F5F0] dark:bg-[#111318] rounded-2xl border border-[#E5E1D8] dark:border-[#1F2128] hover-lift">
+                <p className="text-xs font-bold text-[#0D0D0D] dark:text-[#E8E6E0] mb-2">{title}</p>
+                <code className="block text-xs font-mono text-[#E8C547] bg-[#0D0D0D] px-3 py-2 rounded-xl mb-2">{cmd}</code>
+                <p className="text-xs text-[#9CA3AF] leading-relaxed">{desc}</p>
               </div>
             ))}
           </div>
-          <div className="mt-3 p-3 bg-[#FFC224]/10 border border-[#FFC224]/20 rounded-2xl">
-            <p className="text-xs text-[#b38a00] dark:text-[#FFC224]">
-              <span className="font-black">Run from:</span> <code className="font-mono">backend/</code> directory.
-              Make sure <code className="font-mono">.env</code> has <code className="font-mono">SUPABASE_URL</code> and <code className="font-mono">SUPABASE_SERVICE_KEY</code> set.
-              Install deps first: <code className="font-mono">pip install schedule supabase yfinance pandas numpy</code>
+          <div className="mt-3 insight-box">
+            <p className="text-xs text-[#8B6914] dark:text-[#E8C547]">
+              <span className="font-bold">Run from:</span> <code className="font-mono">backend/</code> directory.
+              Make sure <code className="font-mono">.env</code> is set.
             </p>
           </div>
         </div>

@@ -1,28 +1,20 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, ChevronRight, Filter, X, Building2, CheckCircle, Eye, AlertTriangle } from "lucide-react";
-import PageLayout from "../components/Layout/PageLayout";
-import SignalBadge from "../components/ui/SignalBadge";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
+import { Search, Building2, CheckCircle, Eye, AlertTriangle, ChevronRight, Filter, X } from "lucide-react";
+import AppLayout from "../components/layout/AppLayout";
+import StatusBadge from "../components/ui/StatusBadge";
+import ScoreBar from "../components/ui/ScoreBar";
+import LoadingSpinner, { PageSkeleton } from "../components/ui/LoadingSpinner";
 import EmptyState from "../components/ui/EmptyState";
+import SectionHeader from "../components/ui/SectionHeader";
 import { useAppData } from "../context/AppDataContext";
 
-function ScoreBar({ score }) {
-  if (score == null) return <span className="muted">—</span>;
-  const pct   = Math.min(100, score);
-  const color = score >= 70 ? "bar-high" : score >= 40 ? "bar-mid" : "bar-low";
-  const text  = score >= 70 ? "score-high" : score >= 40 ? "score-mid" : "score-low";
-  return (
-    <div className="flex items-center gap-2">
-      <div className="progress-track w-16">
-        <div className={`progress-fill ${color}`} style={{ width: `${pct}%` }} />
-      </div>
-      <span className={`text-xs font-bold ${text}`}>{score.toFixed(0)}</span>
-    </div>
-  );
-}
-
-const FILTERS = ["all", "healthy", "watch", "distress"];
+const FILTERS = [
+  { key: "all",      label: "All" },
+  { key: "healthy",  label: "Healthy" },
+  { key: "watch",    label: "Watch" },
+  { key: "distress", label: "Distress" },
+];
 
 export default function Companies() {
   const { companies, latestMl, loading, isCsvMode, csvTickers, clearCsvFilter } = useAppData();
@@ -46,55 +38,69 @@ export default function Companies() {
   });
 
   const stats = React.useMemo(() => {
-    const scored = latestMl;
     return {
       total:    companies.length,
-      healthy:  scored.filter(r => r.survival_score >= 70).length,
-      watch:    scored.filter(r => r.survival_score >= 40 && r.survival_score < 70).length,
-      distress: scored.filter(r => r.survival_score < 40).length,
+      healthy:  latestMl.filter(r => r.survival_score >= 70).length,
+      watch:    latestMl.filter(r => r.survival_score >= 40 && r.survival_score < 70).length,
+      distress: latestMl.filter(r => r.survival_score < 40).length,
     };
   }, [companies, latestMl]);
 
-  if (loading) return <PageLayout title="Companies"><LoadingSpinner /></PageLayout>;
+  if (loading) return <AppLayout title="Companies"><PageSkeleton /></AppLayout>;
 
   return (
-    <PageLayout title="Companies">
-      <div className="space-y-4">
+    <AppLayout title="Companies">
+      <div className="grid grid-cols-12 gap-4">
 
-        {/* Summary bento row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[
-            { icon: Building2,    label: "Total",    value: stats.total,    cls: "card p-4" },
-            { icon: CheckCircle,  label: "Healthy",  value: stats.healthy,  cls: "card-green p-4" },
-            { icon: Eye,          label: "Watch",    value: stats.watch,    cls: "card-yellow p-4" },
-            { icon: AlertTriangle,label: "Distress", value: stats.distress, cls: "card p-4" },
-          ].map(({ icon: Icon, label, value, cls }) => (
-            <div key={label} className={`${cls} rounded-2xl`}>
-              <p className="label mb-1 opacity-70">{label}</p>
-              <p className="value-lg">{value}</p>
-            </div>
-          ))}
+        {/* Status cards */}
+        <div className="col-span-3 card p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 size={16} className="text-neutral-400" />
+            <p className="label-caps">Total</p>
+          </div>
+          <p className="number-display tabular-nums text-neutral-900 dark:text-neutral-100">{stats.total}</p>
+        </div>
+        <div className="col-span-3 card-green rounded-card p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle size={16} className="text-green-300" />
+            <p className="label-caps text-green-300">Healthy</p>
+          </div>
+          <p className="number-display tabular-nums text-white">{stats.healthy}</p>
+        </div>
+        <div className="col-span-3 card-amber rounded-card p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Eye size={16} className="text-amber-800" />
+            <p className="label-caps text-amber-800">Watch</p>
+          </div>
+          <p className="number-display tabular-nums text-neutral-900">{stats.watch}</p>
+        </div>
+        <div className="col-span-3 card p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle size={16} className="text-red-500" />
+            <p className="label-caps">Distress</p>
+          </div>
+          <p className="number-display tabular-nums text-red-600 dark:text-red-400">{stats.distress}</p>
         </div>
 
         {/* CSV banner */}
         {isCsvMode && (
-          <div className="flex items-center justify-between p-3 insight-box">
+          <div className="col-span-12 insight-box flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Filter size={13} className="text-[#E8A020]" />
-              <p className="text-xs font-semibold text-[#8B6914] dark:text-[#E8C547]">
+              <Filter size={13} className="text-yellow-600 dark:text-yellow-400" />
+              <p className="text-xs font-medium text-yellow-700 dark:text-yellow-300">
                 Showing {companies.length} companies from CSV ({csvTickers?.length} tickers)
               </p>
             </div>
-            <button onClick={clearCsvFilter} className="flex items-center gap-1 text-xs text-[#6B7280] hover:text-red-500 transition-colors">
+            <button onClick={clearCsvFilter} className="flex items-center gap-1 text-xs text-neutral-500 hover:text-red-500 transition-colors">
               <X size={12} /> Show all
             </button>
           </div>
         )}
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        {/* Search + filters */}
+        <div className="col-span-12 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -105,26 +111,28 @@ export default function Companies() {
           <div className="flex gap-1.5">
             {FILTERS.map(f => (
               <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl capitalize transition-all ${
-                  filter === f ? "btn-active" : "btn-inactive"
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`px-4 py-2 text-xs font-medium rounded-full transition-colors duration-100 ${
+                  filter === f.key
+                    ? "bg-neutral-900 dark:bg-yellow-400 text-white dark:text-neutral-900"
+                    : "border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-500"
                 }`}
               >
-                {f}
+                {f.label}
               </button>
             ))}
           </div>
         </div>
 
-        <p className="muted">{filtered.length} companies</p>
+        <p className="col-span-12 text-xs text-neutral-400">{filtered.length} companies</p>
 
         {/* Table */}
-        {filtered.length ? (
-          <div className="card overflow-hidden">
+        <div className="col-span-12 card overflow-hidden">
+          {filtered.length ? (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-[#F5F2EC] dark:bg-[#111318] border-b border-[#E5E1D8] dark:border-[#1F2128]">
+                <thead className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800">
                   <tr>
                     {["Company", "Ticker", "Exchange", "Survival Score", "Distress %", "Status", ""].map(h => (
                       <th key={h} className="th-base">{h}</th>
@@ -136,30 +144,27 @@ export default function Companies() {
                     const ml      = mlMap[c.id];
                     const score   = ml?.survival_score;
                     const distress = ml?.distress_probability;
-                    const status  = score == null ? "gray" : score >= 70 ? "green" : score >= 40 ? "amber" : "red";
+                    const status  = score == null ? "gray" : score >= 70 ? "healthy" : score >= 40 ? "watch" : "distress";
                     return (
                       <tr key={c.id} className="tr-base">
                         <td className="td-base">
-                          <p className="text-sm font-semibold text-[#0D0D0D] dark:text-[#E8E6E0]">{c.name}</p>
+                          <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{c.name}</p>
                         </td>
                         <td className="td-base">
-                          <span className="text-xs font-mono text-[#6B7280]">{c.ticker || "—"}</span>
+                          <span className="text-xs font-mono text-neutral-500 dark:text-neutral-400">{c.ticker || "—"}</span>
                         </td>
                         <td className="td-base">
-                          <span className="text-xs text-[#6B7280]">{c.exchange || "NSE"}</span>
+                          <span className="text-xs text-neutral-500">{c.exchange || "NSE"}</span>
                         </td>
                         <td className="td-base"><ScoreBar score={score} /></td>
                         <td className="td-base">
-                          <span className={`text-xs font-semibold ${distress != null && distress > 60 ? "text-red-500" : "text-[#6B7280]"}`}>
+                          <span className={`text-xs font-semibold tabular-nums ${distress != null && distress > 60 ? "text-red-600 dark:text-red-400" : "text-neutral-500"}`}>
                             {distress != null ? `${distress.toFixed(1)}%` : "—"}
                           </span>
                         </td>
-                        <td className="td-base"><SignalBadge value={status} /></td>
+                        <td className="td-base"><StatusBadge status={status} score={score != null ? Math.round(score) : undefined} /></td>
                         <td className="td-base">
-                          <Link
-                            to={`/companies/${c.id}`}
-                            className="flex items-center gap-1 text-xs font-semibold text-[#0D0D0D] dark:text-[#E8E6E0] hover:text-[#E8A020] transition-colors"
-                          >
+                          <Link to={`/companies/${c.id}`} className="flex items-center gap-1 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">
                             View <ChevronRight size={12} />
                           </Link>
                         </td>
@@ -169,11 +174,12 @@ export default function Companies() {
                 </tbody>
               </table>
             </div>
-          </div>
-        ) : (
-          <EmptyState title="No companies found" sub="Run the pipeline to populate company data, or adjust your search." />
-        )}
+          ) : (
+            <EmptyState icon={Building2} title="No companies found" subtitle="Run the pipeline to populate company data, or adjust your search." />
+          )}
+        </div>
+
       </div>
-    </PageLayout>
+    </AppLayout>
   );
 }

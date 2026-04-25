@@ -1,387 +1,152 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
-  Building2, TrendingUp, AlertTriangle, CheckCircle,
-  Eye, Zap, Globe, Activity, Info, ChevronDown, ChevronUp,
-  ArrowUpRight, ArrowDownRight, HelpCircle, Layers
+  Building2, CheckCircle, Eye, AlertTriangle,
+  Activity, Globe, Zap, Layers, ChevronDown, ChevronUp,
+  TrendingUp, TrendingDown
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Cell, CartesianGrid,
+  BarChart, Bar, Cell, CartesianGrid
 } from "recharts";
-import PageLayout from "../components/Layout/PageLayout";
-import StatCard from "../components/ui/StatCard";
-import SignalBadge from "../components/ui/SignalBadge";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
-import EmptyState from "../components/ui/EmptyState";
+import AppLayout from "../components/layout/AppLayout";
+import KPICard from "../components/ui/KPICard";
+import StatusBadge from "../components/ui/StatusBadge";
 import LiveMarketBar from "../components/ui/LiveMarketBar";
+import LoadingSpinner, { PageSkeleton } from "../components/ui/LoadingSpinner";
+import EmptyState from "../components/ui/EmptyState";
+import SectionHeader from "../components/ui/SectionHeader";
 import { useAppData } from "../context/AppDataContext";
 import { useChartTheme } from "../hooks/useChartTheme";
 import { fetchMacroOverlay, fetchLatestSectorMetrics } from "../lib/api";
 
-/* ─────────────────────────────────────────────
-   Constants
-───────────────────────────────────────────── */
-const SIGNAL_COLOR = {
-  STRONG: "#10b981",
-  NEUTRAL: "#6b7280",
-  WATCH: "#f59e0b",
-  WEAK: "#ef4444",
-  INSUFFICIENT_DATA: "#374151",
-};
-
+// ── Intelligence Engine Banner ────────────────────────────────────────────────
 const PIPELINE_STEPS = [
-  {
-    num: "01",
-    name: "Market Data Ingestion",
-    short: "Live OHLCV fetch",
-    detail:
-      "Every trading day, AEGIS fetches OHLCV (Open, High, Low, Close, Volume) data for all tracked companies and all 9 sector indices from NSE via the data pipeline. This is the raw fuel for everything downstream. If a company misses 3+ consecutive days, it is flagged as stale and excluded from that day's scoring run.",
-  },
-  {
-    num: "02",
-    name: "Price Metric Computation",
-    short: "Returns, momentum, slope",
-    detail:
-      "From raw OHLCV the pipeline computes: 1-day, 5-day, 20-day returns (how much did the price move?), rolling volatility (how wild is it?), price slope (is the trend up or down?), and momentum score (rate of change vs its own 60-day history). These become the first layer of inputs to the ML model.",
-  },
-  {
-    num: "03",
-    name: "Rolling Z-Score Windows",
-    short: "Normalise across sectors",
-    detail:
-      "Each metric is z-scored against its own 60-day rolling window. Z-score = (today's value − 60-day mean) ÷ 60-day standard deviation. This normalises across sectors with different volatility profiles — a 2% move in Banking is very different from a 2% move in FMCG. Z-scores above +2 or below −2 are considered outliers and trigger spike flags.",
-  },
-  {
-    num: "04",
-    name: "Balance Sheet Ratios",
-    short: "8 financial health signals",
-    detail:
-      "Quarterly financial data is ingested and 8 ratios are computed per company: Debt-to-Equity, Interest Coverage Ratio, Current Ratio, EBITDA Margin, Return on Equity, Asset Turnover, Cash Flow to Debt, and Working Capital Ratio. These capture whether a company can service its debts, generate cash, and sustain operations — the core of financial health assessment.",
-  },
-  {
-    num: "05",
-    name: "Shareholder Pattern Analysis",
-    short: "Promoter pledges & FII flows",
-    detail:
-      "The pipeline tracks promoter holding %, promoter pledge %, FII/DII flow direction, and change in institutional ownership QoQ. Rising promoter pledges above 40% are a major red flag — it signals the promoter is using shares as collateral, often under financial duress. Increasing institutional ownership is a positive signal.",
-  },
-  {
-    num: "06",
-    name: "Macro Overlay",
-    short: "VIX · INR · Gold · Crude",
-    detail:
-      "Four macro signals are pulled daily and z-scored: VIX (India VIX or CBOE — fear gauge), USD-INR rate (currency weakness = FII outflow risk), Gold price (safe-haven demand = risk-off signal), and Brent Crude (input cost inflation risk). The composite z-score of these four becomes the macro score that adjusts all company scores based on the external environment.",
-  },
-  {
-    num: "07",
-    name: "Sector Health Classification",
-    short: "Signal assignment per index",
-    detail:
-      "Each sector gets a composite health score (0–100) — a rolling percentile rank of its composite z-score vs its own 60-day history. 100 = historically strongest day; 0 = historically weakest. From this a signal is assigned: STRONG (top 25%), NEUTRAL (middle 50%), WATCH (lower 25%), WEAK (bottom 10%). Companies in WEAK sectors receive a macro-context penalty to their survival score.",
-  },
-  {
-    num: "08",
-    name: "ML Survival Model",
-    short: "CatBoost gradient boosting",
-    detail:
-      "A CatBoost gradient boosting model trained on historical NSE company data is the core engine. It ingests ~40 computed features and outputs a probability of financial distress over the next 12 months. This probability is inverted and scaled: survival_score = (1 − distress_prob) × 100. The model is re-trained quarterly on updated historical data.",
-  },
-  {
-    num: "09",
-    name: "Score Output",
-    short: "0–100 per company daily",
-    detail:
-      "The final survival score is a 0–100 value per company, updated each trading day. 70+ = low distress risk, fundamentally strong. 40–70 = watch zone, at least one warning signal. Below 40 = high distress risk, review immediately. The score is stored in Supabase and drives all downstream views: company pages, sector tables, and portfolio-level aggregations.",
-  },
+  { num: "01", name: "Market Data" },
+  { num: "02", name: "Price Metrics" },
+  { num: "03", name: "Z-Score Windows" },
+  { num: "04", name: "Balance Sheet" },
+  { num: "05", name: "Shareholder Patterns" },
+  { num: "06", name: "Macro Overlay" },
+  { num: "07", name: "Sector Health" },
+  { num: "08", name: "ML Survival Model" },
+  { num: "09", name: "Score Output" },
 ];
 
-const FORMULA_COMPONENTS = [
-  {
-    label: "Price momentum",
-    weight: "25%",
-    detail:
-      "Rolling 5-day and 20-day return z-scores, momentum rate-of-change, and price slope vs 60-day trend. Strong positive momentum contributes positively; negative or decelerating momentum reduces the survival score.",
-  },
-  {
-    label: "Balance sheet",
-    weight: "30%",
-    detail:
-      "The largest weight. Includes Debt/Equity, Interest Coverage, Current Ratio, EBITDA Margin, and Cash Flow/Debt ratio. Poor balance sheet is the #1 predictor of distress in the training data — hence the highest weight.",
-  },
-  {
-    label: "Sector context",
-    weight: "20%",
-    detail:
-      "The sector's own health score acts as a contextual modifier. A fundamentally healthy company in a WEAK sector gets a score haircut; a moderately healthy company in a STRONG sector gets a mild boost. Rising tide lifts all boats — but a sinking tide hurts everyone.",
-  },
-  {
-    label: "Macro overlay",
-    weight: "15%",
-    detail:
-      "The composite macro z-score (VIX + INR + Gold + Crude) is applied as a portfolio-level adjustment. In RISK_OFF macro regimes all scores receive a systematic downward nudge — because even healthy companies face liquidity and valuation pressure in macro stress.",
-  },
-  {
-    label: "Shareholder",
-    weight: "10%",
-    detail:
-      "Promoter pledge % above 40% applies a score penalty. Rising FII ownership is a mild positive signal. High promoter pledging is historically the strongest early warning signal for stock-specific blowups in the NSE mid-cap space.",
-  },
-];
-
-const SIGNAL_EXPLAIN = {
-  STRONG:
-    "Top quartile of the sector's own momentum history. All indicators (return, volatility, slope, composite) are positively aligned. Consider overweighting stocks in this sector.",
-  NEUTRAL:
-    "Neither clear strength nor weakness. Mixed signals from the composite z-score. Hold existing positions; don't add aggressively.",
-  WATCH:
-    "At least one signal is deteriorating — momentum softening or volatility rising. The sector hasn't broken down yet but warrants close monitoring over the next 5–10 trading days.",
-  WEAK:
-    "Bottom quartile of the sector's own history. Returns are negative, volatility elevated, and momentum declining. Avoid adding exposure; existing positions should be reviewed.",
+const PIPELINE_DETAIL = {
+  "01": "Every trading day, AEGIS fetches OHLCV data for all tracked companies and all 9 sector indices from NSE via Yahoo Finance.",
+  "02": "Computes 1d/5d/20d returns, rolling volatility, ATR, drawdown, volume ratio, momentum, and price slope.",
+  "03": "Each metric is z-scored against its own 60-day rolling window to normalise across sectors with different volatility profiles.",
+  "04": "20 financial ratios computed from quarterly data: D/E, Interest Coverage, Current Ratio, EBITDA Margin, ROE, Asset Turnover, etc.",
+  "05": "Tracks promoter holding %, promoter pledge %, FII/DII flow direction, and change in institutional ownership QoQ.",
+  "06": "VIX, USD-INR, Gold, Crude Oil z-scores combined into a macro composite. Adjusts all company scores based on external environment.",
+  "07": "Each sector gets a 0–100 health score (rolling percentile rank). STRONG/NEUTRAL/WATCH/WEAK signal assigned.",
+  "08": "CatBoost gradient boosting model ingests ~40 features, outputs distress probability. survival_score = (1 − distress_prob) × 100.",
+  "09": "Final 0–100 score per company, updated daily. 70+ = low risk. 40–70 = watch. Below 40 = high distress.",
 };
 
-const KPI_INSIGHT = {
-  total:
-    "Total companies currently tracked across all NSE sectors. Each one gets its own survival score and is re-evaluated every trading day using fresh market data.",
-  healthy:
-    "Survival score ≥ 70 means the ML model assigns less than 30% probability of financial distress within 12 months. Low leverage, positive cash flow, stable share ownership, and momentum-positive sector context.",
-  watch:
-    "Score 40–70. Not yet in distress but showing at least one warning signal — rising leverage, sector weakness, or declining momentum. Monitor over the next 30–60 days.",
-  distress:
-    "Survival score below 40. The ML model has flagged these as high-probability distress candidates. Common triggers: debt-to-equity above sector norms, negative EBITDA trend, or promoter pledging above 50%.",
-  avgSurvival:
-    "Mean survival score across all ML-scored companies. Above 60 = healthy portfolio. Values below 55 signal portfolio-wide stress — often correlated with broad market drawdowns or macro risk-off periods.",
-  sectors:
-    "NSE sector indices monitored: Bank Nifty, IT, Auto, Metal, Realty, FMCG, Pharma, Energy + macro overlay. Each sector's health score is computed from rolling z-scores of returns, volatility, momentum and price slope vs its own 60-day history.",
-  macroRegimeRiskOn:
-    "Macro tailwinds present — low volatility, stable rupee, and supportive commodity prices. Positive composite z-score. Constructive environment for risk assets.",
-  macroRegimeRiskOff:
-    "Multiple macro headwinds active — VIX elevated, INR weak, or crude rising. Risk assets under pressure. Consider defensive positioning and tighter stop-losses.",
-  macroRegimeNeutral:
-    "Macro environment is balanced. No strong directional signal from VIX, USD-INR, Gold or Crude. Composite z-score between −1 and +1. Stock-selection drives alpha from here.",
-  macroScore:
-    "Composite of VIX, USD-INR, Gold and Crude z-scores. Formula: mean of (VIX_z, INR_z, Gold_z, Crude_z). Negative = risk-off pressure. Positive = risk-on tailwind. Values between −1 and +1 are neutral.",
-};
-
-/* ─────────────────────────────────────────────
-   Small reusable pieces
-───────────────────────────────────────────── */
-
-/** Orange insight box — replaces the original InsightBox */
-function InsightBox({ icon: Icon = Info, title, children }) {
-  return (
-    <div className="flex gap-3 p-4 bg-[#FFC224]/10 dark:bg-[#FFC224]/5 rounded-2xl border border-[#FFC224]/20">
-      <Icon size={15} className="text-[#FF8A00] shrink-0 mt-0.5" />
-      <div>
-        {title && (
-          <p className="text-xs font-black text-[#FF8A00] mb-0.5 uppercase tracking-wide">
-            {title}
-          </p>
-        )}
-        <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-          {children}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-/** Inline tooltip that appears on hover */
-function Tooltip2({ text, children }) {
+function IntelligenceBanner() {
   const [open, setOpen] = useState(false);
-  return (
-    <span
-      className="relative inline-block"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      {children}
-      {open && (
-        <span
-          className="absolute z-50 bottom-full left-0 mb-2 w-64 p-2.5 rounded-lg text-xs leading-relaxed
-            bg-white dark:bg-[#1c1c1c] border border-gray-100 dark:border-[#2a2a2a]
-            text-gray-600 dark:text-gray-400 shadow-lg pointer-events-none"
-          style={{ minWidth: 220 }}
-        >
-          {text}
-          <span className="absolute top-full left-4 w-2 h-2 bg-white dark:bg-[#1c1c1c] border-r border-b border-gray-100 dark:border-[#2a2a2a] rotate-45 -mt-1" />
-        </span>
-      )}
-    </span>
-  );
-}
-
-/** KPI card with hover-reveal explainer */
-function ExplainableStatCard({ icon: Icon, label, value, sub, color = "orange", insightText }) {
-  const [showInsight, setShowInsight] = useState(false);
-
-  const colorMap = {
-    orange:  { icon: "bg-[#FF8A00]/10 text-[#FF8A00]",   border: "border-[#FF8A00]/20" },
-    emerald: { icon: "bg-[#00B341]/10 text-[#00B341]",   border: "border-[#00B341]/20" },
-    amber:   { icon: "bg-[#FFC224]/15 text-[#b38a00] dark:text-[#FFC224]", border: "border-[#FFC224]/30" },
-    red:     { icon: "bg-red-50 dark:bg-red-950/30 text-red-500", border: "border-red-200 dark:border-red-900" },
-    blue:    { icon: "bg-blue-50 dark:bg-blue-950/30 text-blue-500", border: "border-blue-200 dark:border-blue-900" },
-  };
-  const c = colorMap[color] || colorMap.orange;
+  const [active, setActive] = useState(null);
 
   return (
-    <div
-      className={`card p-4 cursor-pointer group transition-all duration-200 ${showInsight ? `border-2 ${c.border}` : ""}`}
-      onClick={() => setShowInsight((v) => !v)}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${c.icon}`}>
-          <Icon size={15} />
+    <div className="card-dark rounded-card p-6 col-span-12">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="label-caps text-yellow-400 mb-1">Intelligence Engine</p>
+          <h2 className="text-2xl font-semibold text-white">9-Layer Risk Analysis Pipeline</h2>
+          <p className="text-sm text-neutral-400 mt-1">
+            Live market data → price metrics → balance sheet → macro signals →{" "}
+            <span className="text-yellow-400 font-medium">0–100 survival score</span> per company, daily.
+          </p>
         </div>
-        <HelpCircle
-          size={13}
-          className={`mt-0.5 transition-colors ${showInsight ? "text-[#FF8A00]" : "text-gray-300 dark:text-gray-600 group-hover:text-gray-400"}`}
-        />
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-white transition-colors mt-1"
+        >
+          {open ? "Collapse" : "Expand"}
+          {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
       </div>
 
-      <p className="stat-label mb-1">{label}</p>
-      <p className="text-2xl font-black text-gray-900 dark:text-white leading-none">{value ?? "—"}</p>
-      {sub && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{sub}</p>}
+      <div className="flex flex-wrap gap-2 mt-4">
+        {PIPELINE_STEPS.map(s => (
+          <button
+            key={s.num}
+            onClick={() => setActive(active === s.num ? null : s.num)}
+            className={`inline-flex items-center gap-2 text-xs rounded-full px-3 py-1 border font-mono transition-all ${
+              active === s.num
+                ? "bg-yellow-400 text-neutral-900 border-yellow-400"
+                : "bg-neutral-800 text-neutral-300 border-neutral-700 hover:border-neutral-500"
+            }`}
+          >
+            <span className="opacity-60">{s.num}</span> {s.name}
+          </button>
+        ))}
+      </div>
 
-      {showInsight && (
-        <div className="mt-3 pt-3 border-t border-[#FFC224]/20">
-          <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{insightText}</p>
+      {active && (
+        <div className="mt-4 p-4 bg-neutral-800 rounded-card border border-neutral-700 animate-slide-up">
+          <p className="text-xs font-mono text-yellow-400 mb-1">Step {active}</p>
+          <p className="text-sm text-neutral-300 leading-relaxed">{PIPELINE_DETAIL[active]}</p>
         </div>
-      )}
-
-      {!showInsight && (
-        <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-2 group-hover:text-gray-400 dark:group-hover:text-gray-500">
-          Click to explain
-        </p>
       )}
     </div>
   );
 }
 
-/** Expandable row detail for sector table */
+// ── Sector health row ─────────────────────────────────────────────────────────
 function SectorRow({ row }) {
   const [open, setOpen] = useState(false);
-
-  const regimeText = {
-    BULL: "Sector momentum is trending positively. Price slope and rolling returns are above the 60-day mean. BULL regime typically persists for 10–20 sessions before reverting — watch for weakening breadth as a leading indicator of regime change.",
-    BEAR: "Sector momentum is trending negatively. Rolling returns and slope are below the 60-day mean. In BEAR regime, individual stock picks within this sector carry an additional headwind from the broad sector trend.",
-    RANGE: "Sector is oscillating without directional commitment. Returns are inside the normal volatility band with no sustained slope. Range-bound sectors offer lower alpha unless you're targeting mean-reversion trades.",
-  };
-
-  const healthColor =
-    row.health_score >= 70 ? "bg-emerald-400" : row.health_score >= 40 ? "bg-orange-400" : "bg-red-400";
-
-  const compositeExplain =
-    row.composite != null
-      ? row.composite > 1
-        ? "Strong positive composite — multiple indicators aligned bullishly."
-        : row.composite < -1
-          ? "Negative composite — multiple indicators aligned bearishly. Down-pressure on sector."
-          : "Composite near zero — mixed or flat indicators. No strong directional signal."
-      : null;
+  const score = row.health_score;
+  const barColor = score >= 70 ? "bar-healthy" : score >= 40 ? "bar-watch" : "bar-distress";
 
   return (
     <>
-      <tr
-        className="tr-base cursor-pointer hover:bg-orange-50/40 dark:hover:bg-orange-950/10 transition-colors"
-        onClick={() => setOpen((v) => !v)}
-      >
+      <tr className="tr-base cursor-pointer" onClick={() => setOpen(o => !o)}>
         <td className="td-base">
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-gray-900 dark:text-white text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
               {row.sectors?.name || `Sector ${row.sector_id}`}
             </span>
-            {open ? (
-              <ChevronUp size={11} className="text-orange-400 shrink-0" />
-            ) : (
-              <ChevronDown size={11} className="text-gray-300 dark:text-gray-600 shrink-0" />
-            )}
+            {open ? <ChevronUp size={12} className="text-neutral-400" /> : <ChevronDown size={12} className="text-neutral-400" />}
           </div>
         </td>
+        <td className="td-base"><StatusBadge status={row.signal} /></td>
+        <td className="td-base"><StatusBadge status={row.regime} /></td>
         <td className="td-base">
-          <SignalBadge value={row.signal} />
-        </td>
-        <td className="td-base">
-          <SignalBadge value={row.regime} />
-        </td>
-        <td className="td-base">
-          {row.health_score != null ? (
+          {score != null ? (
             <div className="flex items-center gap-2">
-              <div className="w-14 h-1.5 bg-gray-100 dark:bg-[#2a2a2a] rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${healthColor}`}
-                  style={{ width: `${Math.min(100, row.health_score)}%` }}
-                />
+              <div className="w-16 h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(100, score)}%` }} />
               </div>
-              <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
-                {row.health_score.toFixed(1)}
-              </span>
+              <span className="text-xs font-semibold tabular-nums text-neutral-700 dark:text-neutral-300">{score.toFixed(1)}</span>
             </div>
-          ) : (
-            <span className="text-xs text-gray-300 dark:text-gray-600">warming up</span>
-          )}
+          ) : <span className="text-xs text-neutral-400">—</span>}
         </td>
-        <td className="td-base text-xs text-gray-600 dark:text-gray-400">{row.trend || "—"}</td>
-        <td className="td-base text-xs font-mono text-gray-600 dark:text-gray-400">
-          {row.composite != null ? row.composite.toFixed(2) : "—"}
-        </td>
+        <td className="td-base text-xs font-mono text-neutral-500">{row.composite?.toFixed(2) ?? "—"}</td>
         <td className="td-base">
           <div className="flex gap-1">
-            {row.spike_up && <span className="badge-green">↑ Up</span>}
-            {row.spike_down && <span className="badge-red">↓ Down</span>}
-            {!row.spike_up && !row.spike_down && (
-              <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
-            )}
+            {row.spike_up   && <span className="badge-green text-[10px]">↑ Up</span>}
+            {row.spike_down && <span className="badge-red text-[10px]">↓ Down</span>}
+            {!row.spike_up && !row.spike_down && <span className="text-xs text-neutral-400">—</span>}
           </div>
         </td>
       </tr>
-
       {open && (
-        <tr className="bg-orange-50/30 dark:bg-orange-950/10 border-b border-orange-100 dark:border-orange-900/20">
-          <td colSpan={7} className="px-4 py-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {/* Health score breakdown */}
-              <div className="bg-white dark:bg-[#111] rounded-lg border border-orange-100 dark:border-orange-900/30 p-3">
-                <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wide mb-1.5">
-                  Health Score — {row.health_score?.toFixed(1) ?? "N/A"}
-                </p>
-                <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                  {row.health_score != null
-                    ? row.health_score >= 70
-                      ? `Score ${row.health_score.toFixed(1)} places this sector in the top quartile of its own 60-day history. The sector has shown above-average composite z-score readings consistently. This is a positive context for individual stock picks within this sector.`
-                      : row.health_score >= 40
-                        ? `Score ${row.health_score.toFixed(1)} is in the middle band — sector health is neither strong nor weak vs its own history. Individual stock fundamentals matter more than sector tailwind here.`
-                        : `Score ${row.health_score.toFixed(1)} is below the 40th percentile of this sector's own history. This acts as a headwind for stocks in this sector — even fundamentally strong names may underperform if the sector weakness persists.`
-                    : "Not enough data yet. Health scoring requires at least 60 days of trading history to compute meaningful percentile ranks."}
-                </p>
+        <tr className="bg-neutral-50 dark:bg-neutral-900/50">
+          <td colSpan={6} className="px-4 py-3">
+            <div className="grid grid-cols-3 gap-3 text-xs">
+              <div>
+                <p className="label-caps mb-1">Ret Z</p>
+                <p className="font-mono font-semibold">{row.ret_z?.toFixed(3) ?? "—"}</p>
               </div>
-
-              {/* Regime explanation */}
-              {row.regime && (
-                <div className="bg-white dark:bg-[#111] rounded-lg border border-orange-100 dark:border-orange-900/30 p-3">
-                  <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wide mb-1.5">
-                    Regime — {row.regime}
-                  </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                    {regimeText[row.regime] || `Regime ${row.regime}: current market conditions are defining how this sector behaves relative to the broader index.`}
-                  </p>
-                </div>
-              )}
-
-              {/* Composite z + spikes */}
-              <div className="bg-white dark:bg-[#111] rounded-lg border border-orange-100 dark:border-orange-900/30 p-3">
-                <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wide mb-1.5">
-                  Composite Z-Score{row.composite != null ? ` — ${row.composite.toFixed(2)}` : ""}
-                </p>
-                <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed mb-2">
-                  {compositeExplain ?? "Composite z-score not yet available for this sector."}
-                </p>
-                {(row.spike_up || row.spike_down) && (
-                  <div className={`mt-1 text-xs font-medium rounded px-2 py-1 ${row.spike_up ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400" : "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400"}`}>
-                    {row.spike_up
-                      ? "↑ Up-spike: today's return exceeded the sector's rolling 95th percentile — a potential breakout. Watch for follow-through volume."
-                      : "↓ Down-spike: today's return fell below the rolling 5th percentile — a sharp selloff. Check for news catalyst before adding exposure."}
-                  </div>
-                )}
+              <div>
+                <p className="label-caps mb-1">Vol Z</p>
+                <p className="font-mono font-semibold">{row.vol_z?.toFixed(3) ?? "—"}</p>
+              </div>
+              <div>
+                <p className="label-caps mb-1">Momentum Z</p>
+                <p className="font-mono font-semibold">{row.momentum_z?.toFixed(3) ?? "—"}</p>
               </div>
             </div>
           </td>
@@ -391,179 +156,31 @@ function SectorRow({ row }) {
   );
 }
 
-/** Signal distribution cell with inline explanation */
-function SignalCell({ name, value }) {
-  const [open, setOpen] = useState(false);
-  const bg = {
-    STRONG: "bg-[#00B341]/10 border-[#00B341]/20",
-    NEUTRAL: "bg-gray-50 dark:bg-[#1a1a1a] border-gray-100 dark:border-[#2a2a2a]",
-    WATCH:   "bg-[#FFC224]/10 border-[#FFC224]/20",
-    WEAK:    "bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900",
-  };
-  const textColor = {
-    STRONG: "#00B341", NEUTRAL: "#6b7280", WATCH: "#b38a00", WEAK: "#ef4444",
-  };
+// ── Custom tooltip ────────────────────────────────────────────────────────────
+function ChartTooltip({ active, payload, label, ct }) {
+  if (!active || !payload?.length) return null;
   return (
-    <div
-      className={`flex flex-col items-center p-3 rounded-2xl border-2 cursor-pointer transition-all ${bg[name] || bg.NEUTRAL} ${open ? "ring-2 ring-[#FFC224]/40" : ""}`}
-      onClick={() => setOpen((v) => !v)}
-    >
-      <p className="text-3xl font-black" style={{ color: textColor[name] || "#6b7280" }}>
-        {value}
-      </p>
-      <p className="text-xs font-black text-gray-500 dark:text-gray-400 mt-1">{name}</p>
-      {open && (
-        <p className="text-[11px] text-gray-600 dark:text-gray-400 mt-2 text-center leading-relaxed border-t border-black/10 dark:border-white/10 pt-2">
-          {SIGNAL_EXPLAIN[name]}
+    <div style={ct.tooltip.contentStyle}>
+      <p className="text-xs font-medium mb-1">{label}</p>
+      {payload.map(p => (
+        <p key={p.name} className="text-xs" style={{ color: p.color }}>
+          {p.name}: <span className="font-semibold tabular-nums">{typeof p.value === "number" ? p.value.toFixed(2) : p.value}</span>
         </p>
-      )}
-      {!open && (
-        <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-1">tap to explain</p>
-      )}
+      ))}
     </div>
   );
 }
 
-/** Collapsible pipeline explainer */
-function PipelineExplainer() {
-  const [open, setOpen] = useState(false);
-  const [activeStep, setActiveStep] = useState(null);
-
-  return (
-    <div className="bg-black dark:bg-[#111] rounded-2xl overflow-hidden">
-      <button
-        className="w-full flex items-center gap-3 p-4 text-left"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <div className="w-8 h-8 rounded-xl bg-[#FFC224] flex items-center justify-center shrink-0">
-          <Layers size={15} className="text-black" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-black text-white">
-            How AEGIS-FIN Works — 9-Layer Intelligence Engine
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
-            Live market data → price metrics → balance sheet → macro signals → ML survival model →{" "}
-            <span className="font-bold text-[#FFC224]">0–100 survival score</span> per company daily.
-          </p>
-        </div>
-        {open ? (
-          <ChevronUp size={14} className="text-gray-400 shrink-0" />
-        ) : (
-          <ChevronDown size={14} className="text-gray-400 shrink-0" />
-        )}
-      </button>
-
-      {open && (
-        <div className="px-4 pb-4 space-y-3">
-          <div className="flex flex-wrap gap-1.5">
-            {PIPELINE_STEPS.map((s, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveStep(activeStep === i ? null : i)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                  activeStep === i
-                    ? "bg-[#FFC224] text-black border-[#FFC224]"
-                    : "bg-white/5 border-white/10 text-gray-400 hover:border-white/30 hover:text-white"
-                }`}
-              >
-                <span className={`text-[10px] font-mono ${activeStep === i ? "text-black/60" : "text-[#FFC224]"}`}>
-                  {s.num}
-                </span>
-                {s.name}
-              </button>
-            ))}
-          </div>
-
-          {activeStep !== null && (
-            <div className="bg-white/5 rounded-xl border border-white/10 p-3">
-              <p className="text-xs font-black text-[#FFC224] mb-1.5">
-                Step {PIPELINE_STEPS[activeStep].num} — {PIPELINE_STEPS[activeStep].name}
-              </p>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                {PIPELINE_STEPS[activeStep].detail}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Interactive survival score formula */
-function SurvivalScoreFormula() {
-  const [activeIdx, setActiveIdx] = useState(null);
-
-  return (
-    <div className="card p-4 sm:p-5">
-      <div className="flex items-center gap-2 mb-1">
-        <p className="section-title">Survival Score — How It's Computed</p>
-        <Tooltip2 text="Click any component to understand what it measures and why it's weighted that way.">
-          <HelpCircle size={13} className="text-gray-400 cursor-help" />
-        </Tooltip2>
-      </div>
-      <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
-        Each company receives a 0–100 score from a CatBoost ML survival model. Click any component below to see what it measures.
-      </p>
-
-      <div className="flex flex-wrap items-center gap-2">
-        {FORMULA_COMPONENTS.map((fc, i) => (
-          <React.Fragment key={i}>
-            <button
-              onClick={() => setActiveIdx(activeIdx === i ? null : i)}
-              className={`flex flex-col items-center px-3 py-2.5 rounded-xl border-2 transition-all text-center ${
-                activeIdx === i
-                  ? "bg-black dark:bg-[#FFC224] border-black dark:border-[#FFC224]"
-                  : "bg-gray-50 dark:bg-[#1a1a1a] border-gray-100 dark:border-[#2a2a2a] hover:border-black dark:hover:border-[#FFC224]"
-              }`}
-            >
-              <span className={`text-[10px] font-bold ${activeIdx === i ? "text-white/60 dark:text-black/60" : "text-gray-400"}`}>
-                {fc.label}
-              </span>
-              <span className={`text-lg font-black mt-0.5 ${activeIdx === i ? "text-[#FFC224] dark:text-black" : "text-black dark:text-white"}`}>
-                {fc.weight}
-              </span>
-            </button>
-            {i < FORMULA_COMPONENTS.length - 1 && (
-              <span className="text-gray-300 dark:text-gray-600 font-light text-lg">+</span>
-            )}
-          </React.Fragment>
-        ))}
-        <span className="text-gray-300 dark:text-gray-600 font-light text-lg">=</span>
-        <div className="flex flex-col items-center px-3 py-2.5 rounded-xl border-2 border-[#FFC224] bg-[#FFC224]/10 text-center">
-          <span className="text-[10px] font-bold text-[#b38a00] dark:text-[#FFC224]">survival score</span>
-          <span className="text-lg font-black text-black dark:text-white mt-0.5">0–100</span>
-        </div>
-      </div>
-
-      {activeIdx !== null && (
-        <div className="mt-3 p-3 rounded-xl bg-[#FFC224]/10 border border-[#FFC224]/20">
-          <p className="text-xs font-black text-[#FF8A00] mb-1">
-            {FORMULA_COMPONENTS[activeIdx].label} ({FORMULA_COMPONENTS[activeIdx].weight})
-          </p>
-          <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-            {FORMULA_COMPONENTS[activeIdx].detail}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   Main Dashboard
-───────────────────────────────────────────── */
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { companies, latestSectorHealth, macro, portfolioStats, loading } =
-    useAppData();
-  const [macroHistory, setMacroHistory] = useState([]);
-  const [sectorMetrics, setSectorMetrics] = useState([]);
+  const { companies, latestSectorHealth, macro, portfolioStats, loading } = useAppData();
   const ct = useChartTheme();
+  const [macroHistory, setMacroHistory]   = useState([]);
+  const [sectorMetrics, setSectorMetrics] = useState([]);
 
   useEffect(() => {
-    fetchMacroOverlay(60).then((r) => setMacroHistory(r.data || []));
-    fetchLatestSectorMetrics().then((r) => setSectorMetrics(r.data || []));
+    fetchMacroOverlay(60).then(r => setMacroHistory(r.data || []));
+    fetchLatestSectorMetrics().then(r => setSectorMetrics(r.data || []));
   }, []);
 
   const latestMetrics = useMemo(() => {
@@ -574,354 +191,181 @@ export default function Dashboard() {
     return Array.from(seen.values());
   }, [sectorMetrics]);
 
-  const signalDist = useMemo(() => {
-    const counts = { STRONG: 0, NEUTRAL: 0, WATCH: 0, WEAK: 0 };
-    latestSectorHealth.forEach((s) => {
-      if (counts[s.signal] !== undefined) counts[s.signal]++;
-    });
-    return Object.entries(counts).map(([name, value]) => ({ name, value }));
-  }, [latestSectorHealth]);
-
-  const macroChartData = macroHistory.slice(-30).map((r) => ({
-    date: r.date?.slice(5),
-    score: parseFloat(r.macro_score?.toFixed(2)),
-    vix: parseFloat(r.vix_z?.toFixed(2)),
+  const macroChartData = macroHistory.slice(-30).map(r => ({
+    date:  r.date?.slice(5),
+    score: parseFloat((r.macro_score ?? 0).toFixed(2)),
   }));
 
   const sectorReturnData = latestMetrics
-    .filter((r) => r.sector_return_1d != null)
-    .map((r) => ({
-      name: r.sectors?.name?.replace(" Sector", "").replace(" Nifty", ""),
-      ret: +(r.sector_return_1d * 100).toFixed(2),
+    .filter(r => r.sector_return_1d != null)
+    .map(r => ({
+      name: r.sectors?.name?.replace(" Sector", "").replace(" Nifty", "") || "—",
+      ret:  +(r.sector_return_1d * 100).toFixed(2),
     }))
     .sort((a, b) => b.ret - a.ret);
 
-  const macroRegime = macro?.macro_regime;
-  const macroScore = macro?.macro_score;
+  const signalCounts = useMemo(() => {
+    const c = { STRONG: 0, NEUTRAL: 0, WATCH: 0, WEAK: 0 };
+    latestSectorHealth.forEach(s => { if (c[s.signal] !== undefined) c[s.signal]++; });
+    return c;
+  }, [latestSectorHealth]);
 
-  const macroInsight =
-    macroRegime === "RISK_ON"
-      ? KPI_INSIGHT.macroRegimeRiskOn
-      : macroRegime === "RISK_OFF"
-        ? KPI_INSIGHT.macroRegimeRiskOff
-        : KPI_INSIGHT.macroRegimeNeutral;
-
-  if (loading)
-    return (
-      <PageLayout title="Dashboard">
-        <LoadingSpinner />
-      </PageLayout>
-    );
+  if (loading) return <AppLayout title="Dashboard"><PageSkeleton /></AppLayout>;
 
   return (
-    <PageLayout title="Dashboard">
-      <div className="space-y-5">
-        {/* Live Market Bar */}
+    <AppLayout title="Dashboard">
+      <div className="grid grid-cols-12 gap-4">
+
+        {/* Live market ticker */}
         <LiveMarketBar />
 
-        {/* ── Pipeline Explainer (replaces static InsightBox) ── */}
-        <PipelineExplainer />
+        {/* Intelligence Engine */}
+        <IntelligenceBanner />
 
-        {/* ── KPI Row 1 ── */}
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-          <ExplainableStatCard
-            icon={Building2}
-            label="Total Companies"
-            value={portfolioStats.total}
-            color="orange"
-            insightText={KPI_INSIGHT.total}
-          />
-          <ExplainableStatCard
-            icon={CheckCircle}
-            label="Healthy ≥ 70"
-            value={portfolioStats.healthy}
-            color="emerald"
-            insightText={KPI_INSIGHT.healthy}
-          />
-          <ExplainableStatCard
-            icon={Eye}
-            label="Watch Zone 40–70"
-            value={portfolioStats.watch}
-            color="amber"
-            insightText={KPI_INSIGHT.watch}
-          />
-          <ExplainableStatCard
-            icon={AlertTriangle}
-            label="Distress < 40"
-            value={portfolioStats.distress}
-            color="red"
-            insightText={KPI_INSIGHT.distress}
-          />
+        {/* KPI Row 1 */}
+        <div className="col-span-3">
+          <KPICard label="Total Companies" value={portfolioStats.total} icon={Building2} variant="default" />
+        </div>
+        <div className="col-span-3">
+          <KPICard label="Healthy ≥ 70" value={portfolioStats.healthy} icon={CheckCircle} variant="healthy" />
+        </div>
+        <div className="col-span-3">
+          <KPICard label="Watch 40–70" value={portfolioStats.watch} icon={Eye} variant="watch" />
+        </div>
+        <div className="col-span-3">
+          <KPICard label="Distress < 40" value={portfolioStats.distress} icon={AlertTriangle} variant="distress" />
         </div>
 
-        {/* ── KPI Row 2 ── */}
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-          <ExplainableStatCard
-            icon={Activity}
-            label="Avg Survival Score"
-            value={portfolioStats.avgSurvival}
-            sub="portfolio average"
-            color="orange"
-            insightText={KPI_INSIGHT.avgSurvival}
-          />
-          <ExplainableStatCard
-            icon={TrendingUp}
-            label="Sectors Tracked"
-            value={latestSectorHealth.length}
-            color="blue"
-            insightText={KPI_INSIGHT.sectors}
-          />
-          <ExplainableStatCard
-            icon={Globe}
-            label="Macro Regime"
-            value={macroRegime?.replace("_", " ") || "—"}
-            color={
-              macroRegime === "RISK_ON"
-                ? "emerald"
-                : macroRegime === "RISK_OFF"
-                  ? "red"
-                  : "amber"
-            }
-            insightText={macroInsight}
-          />
-          <ExplainableStatCard
-            icon={Zap}
-            label="Macro Score"
-            value={macroScore?.toFixed(2) || "—"}
-            sub="composite z-score"
-            color="orange"
-            insightText={KPI_INSIGHT.macroScore}
-          />
+        {/* KPI Row 2 */}
+        <div className="col-span-3">
+          <KPICard label="Avg Survival Score" value={portfolioStats.avgSurvival} icon={Activity} subtitle="portfolio average" />
+        </div>
+        <div className="col-span-3">
+          <KPICard label="Sectors Tracked" value={latestSectorHealth.length} icon={Globe} />
+        </div>
+        <div className="col-span-3">
+          <KPICard label="Macro Regime" value={macro?.macro_regime?.replace("_", " ") || "—"} icon={Globe} />
+        </div>
+        <div className="col-span-3">
+          <KPICard label="Macro Score" value={macro?.macro_score?.toFixed(2) || "—"} icon={Zap} subtitle="composite z-score" />
         </div>
 
-        {/* ── Survival Score Formula (interactive) ── */}
-        <SurvivalScoreFormula />
+        {/* Macro chart */}
+        <div className="col-span-8 card p-5">
+          <SectionHeader title="Macro Composite Score (30d)" subtitle="VIX · USD-INR · Gold · Crude Oil z-score composite" />
+          {macroChartData.length ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={macroChartData}>
+                <defs>
+                  <linearGradient id="macroGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor={ct.yellow} stopOpacity={0.2} />
+                    <stop offset="95%" stopColor={ct.yellow} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} width={28} />
+                <Tooltip content={<ChartTooltip ct={ct} />} />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                <Area type="monotone" dataKey="score" stroke={ct.yellow} strokeWidth={2} fill="url(#macroGrad)" dot={false} name="Score" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : <EmptyState title="No macro data" subtitle="Run the pipeline to populate macro overlay." />}
+        </div>
 
-        {/* ── Charts Row ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-          {/* Macro Score Chart */}
-          <div className="card p-4 sm:p-5">
-            <div className="flex items-start justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <p className="section-title">Macro Score (30d)</p>
-                <Tooltip2 text="Composite z-score of VIX, USD-INR, Gold & Crude. Values below 0 mean macro headwinds are active. The neutral band (−1 to +1) is shaded in the chart.">
-                  <HelpCircle size={13} className="text-gray-400 cursor-help" />
-                </Tooltip2>
-              </div>
-              {macroRegime && (
-                <span
-                  className={`text-xs font-bold px-2 py-0.5 rounded-full ${macroRegime === "RISK_OFF"
-                      ? "bg-red-50 dark:bg-red-950/40 text-red-500"
-                      : macroRegime === "RISK_ON"
-                        ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500"
-                        : "bg-amber-50 dark:bg-amber-950/40 text-amber-500"
-                    }`}
-                >
-                  {macroRegime.replace("_", " ")}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
-              Composite z-score of VIX, USD-INR, Gold &amp; Crude.{" "}
-              <span className="text-orange-400 font-medium">Below 0</span> = risk-off environment.{" "}
-              <span className="text-emerald-500 font-medium">Above 0</span> = risk-on tailwind.
-            </p>
-            {macroChartData.length ? (
-              <ResponsiveContainer width="100%" height={160}>
-                <AreaChart data={macroChartData}>
-                  <defs>
-                    <linearGradient id="macroGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={ct.orange} stopOpacity={0.25} />
-                      <stop offset="95%" stopColor={ct.orange} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 9, fill: ct.tick }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 9, fill: ct.tick }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={28}
-                  />
-                  <Tooltip {...ct.tooltip} />
-                  <Area
-                    type="monotone"
-                    dataKey="score"
-                    stroke={ct.orange}
-                    strokeWidth={2}
-                    fill="url(#macroGrad)"
-                    dot={false}
-                    name="Macro Score"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <EmptyState title="No macro data" sub="Run the pipeline to populate macro overlay." />
-            )}
-          </div>
-
-          {/* Sector Returns */}
-          <div className="card p-4 sm:p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <p className="section-title">Sector 1-Day Returns</p>
-              <Tooltip2 text="How each NSE sector index moved today vs yesterday's close. Sorted best to worst. Green = gained today, Red = declined today.">
-                <HelpCircle size={13} className="text-gray-400 cursor-help" />
-              </Tooltip2>
-            </div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
-              <span className="text-emerald-500 font-medium">Green</span> = sector gained today.{" "}
-              <span className="text-red-400 font-medium">Red</span> = sector declined. Sorted best to worst.
-            </p>
-            {sectorReturnData.length ? (
-              <ResponsiveContainer width="100%" height={160}>
-                <BarChart
-                  data={sectorReturnData}
-                  layout="vertical"
-                  margin={{ left: 0, right: 8 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke={ct.grid}
-                    horizontal={false}
-                  />
-                  <XAxis
-                    type="number"
-                    tick={{ fontSize: 9, fill: ct.tick }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `${v}%`}
-                  />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    tick={{ fontSize: 9, fill: ct.tick }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={60}
-                  />
-                  <Tooltip {...ct.tooltip} formatter={(v) => [`${v}%`, "Return"]} />
-                  <Bar dataKey="ret" radius={[0, 4, 4, 0]}>
-                    {sectorReturnData.map((e, i) => (
-                      <Cell key={i} fill={e.ret >= 0 ? ct.emerald : ct.red} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <EmptyState
-                title="No sector data"
-                sub="Run the pipeline to populate sector metrics."
-              />
-            )}
+        {/* Signal distribution */}
+        <div className="col-span-4 card p-5">
+          <SectionHeader title="Signal Distribution" />
+          <div className="space-y-3 mt-2">
+            {[
+              { label: "STRONG", count: signalCounts.STRONG, color: "bg-green-500",  text: "text-green-600 dark:text-green-400" },
+              { label: "NEUTRAL",count: signalCounts.NEUTRAL,color: "bg-neutral-400",text: "text-neutral-600 dark:text-neutral-400" },
+              { label: "WATCH",  count: signalCounts.WATCH,  color: "bg-amber-400",  text: "text-amber-600 dark:text-amber-400" },
+              { label: "WEAK",   count: signalCounts.WEAK,   color: "bg-red-500",    text: "text-red-600 dark:text-red-400" },
+            ].map(({ label, count, color, text }) => {
+              const total = Object.values(signalCounts).reduce((a, b) => a + b, 0) || 1;
+              return (
+                <div key={label}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="label-caps">{label}</span>
+                    <span className={`text-sm font-bold tabular-nums ${text}`}>{count}</span>
+                  </div>
+                  <div className="h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${color} transition-all duration-500`} style={{ width: `${(count / total) * 100}%` }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* ── Signal Distribution (each cell clickable) ── */}
-        {signalDist.some((d) => d.value > 0) && (
-          <div className="card p-4 sm:p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <p className="section-title">Sector Signal Distribution</p>
-              <Tooltip2 text="How many sectors are in each health state right now. Click any cell to read exactly what that signal means and what action it implies.">
-                <HelpCircle size={13} className="text-gray-400 cursor-help" />
-              </Tooltip2>
-            </div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
-              How many sectors are in each health state right now.{" "}
-              <span className="font-medium">Click any cell</span> to read what that signal means and what portfolio action it implies.
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {signalDist.map(({ name, value }) => (
-                <SignalCell key={name} name={name} value={value} />
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Sector returns */}
+        <div className="col-span-6 card p-5">
+          <SectionHeader title="Sector 1-Day Returns" subtitle="Today's performance by sector index" />
+          {sectorReturnData.length ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={sectorReturnData} layout="vertical" margin={{ left: 0, right: 8 }}>
+                <XAxis type="number" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={64} />
+                <Tooltip content={<ChartTooltip ct={ct} />} formatter={v => [`${v}%`, "Return"]} />
+                <Bar dataKey="ret" radius={[0, 4, 4, 0]} maxBarSize={14}>
+                  {sectorReturnData.map((e, i) => (
+                    <Cell key={i} fill={e.ret >= 0 ? ct.green : ct.red} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : <EmptyState title="No sector data" subtitle="Run the pipeline to populate sector metrics." />}
+        </div>
 
-        {/* ── Sector Health Table (rows expand inline) ── */}
-        <div className="card p-4 sm:p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="section-title">Sector Health Monitor</p>
-                <Tooltip2 text="Each sector's daily health signal from rolling z-scores of returns, volatility, momentum and price slope. Click any row to expand a detailed breakdown of why that sector scored the way it did.">
-                  <HelpCircle size={13} className="text-gray-400 cursor-help" />
-                </Tooltip2>
-              </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                Each sector's daily health signal from rolling z-scores.{" "}
-                Health Score 0–100 = percentile rank vs own 60-day history.{" "}
-                <span className="font-medium text-orange-400">Click any row</span> to expand a full breakdown.
-              </p>
-            </div>
-            {latestSectorHealth.some((r) => r.signal === "INSUFFICIENT_DATA") && (
-              <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-1 rounded-full border border-amber-200 dark:border-amber-900 whitespace-nowrap shrink-0">
-                ⏳ Warming up — needs 60+ days of data
-              </span>
-            )}
-          </div>
-
+        {/* Sector health table */}
+        <div className="col-span-6 card p-5">
+          <SectionHeader title="Sector Health Monitor" subtitle="Rolling z-score health signals" />
           {latestSectorHealth.length ? (
-            <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-              <table className="w-full text-sm min-w-[640px]">
+            <div className="overflow-x-auto">
+              <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-100 dark:border-[#1f1f1f]">
-                    {[
-                      "Sector",
-                      "Signal",
-                      "Regime",
-                      "Health Score",
-                      "Trend",
-                      "Composite",
-                      "Spikes",
-                    ].map((h) => (
-                      <th key={h} className="th-base">
-                        {h}
-                      </th>
+                  <tr className="border-b border-neutral-100 dark:border-neutral-800">
+                    {["Sector", "Signal", "Regime", "Health", "Composite", "Spikes"].map(h => (
+                      <th key={h} className="th-base">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {latestSectorHealth.map((row) => (
-                    <SectorRow key={row.id} row={row} />
-                  ))}
+                  {latestSectorHealth.map(row => <SectorRow key={row.id} row={row} />)}
                 </tbody>
               </table>
             </div>
-          ) : (
-            <EmptyState title="No sector health data" />
-          )}
+          ) : <EmptyState title="No sector health data" />}
+        </div>
 
-          {/* Glossary boxes at the bottom */}
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <InsightBox title="What is Health Score?">
-              A 0–100 rolling percentile rank of the sector's composite z-score vs its own 60-day
-              history. 100 = historically strongest day. 0 = historically weakest. Adapts to each
-              sector's own volatility — a 2% swing in Banking and a 2% swing in FMCG are very
-              different events, and health score normalises for that.
-            </InsightBox>
-            <InsightBox title="What are Spikes?">
-              A spike is flagged when today's return falls outside the sector's rolling [5th, 95th]
-              percentile band computed over the last 60 trading days. Up-spikes can signal
-              breakouts or strong institutional buying. Down-spikes signal sharp selloffs that
-              warrant checking for a news catalyst before adding any exposure.
-            </InsightBox>
+        {/* Survival formula */}
+        <div className="col-span-12 card p-6">
+          <SectionHeader title="Survival Score Formula" subtitle="How the 0–100 score is computed from 5 weighted components" />
+          <div className="flex flex-wrap items-center gap-3 mt-2">
+            {[
+              { label: "Price Momentum",  weight: "25%" },
+              { label: "Balance Sheet",   weight: "30%" },
+              { label: "Sector Context",  weight: "20%" },
+              { label: "Macro Overlay",   weight: "15%" },
+              { label: "Shareholder",     weight: "10%" },
+            ].map((c, i, arr) => (
+              <React.Fragment key={c.label}>
+                <div className="flex flex-col items-center px-4 py-3 bg-neutral-50 dark:bg-neutral-900 rounded-card border border-neutral-200 dark:border-neutral-800 text-center min-w-24">
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">{c.label}</span>
+                  <span className="text-xl font-bold tabular-nums text-yellow-600 dark:text-yellow-400 mt-0.5">{c.weight}</span>
+                </div>
+                {i < arr.length - 1 && <span className="text-neutral-300 dark:text-neutral-600 text-lg font-light">+</span>}
+              </React.Fragment>
+            ))}
+            <span className="text-neutral-300 dark:text-neutral-600 text-lg font-light">=</span>
+            <div className="flex flex-col items-center px-4 py-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-card border border-yellow-200 dark:border-yellow-900/40 text-center min-w-24">
+              <span className="text-xs text-yellow-600 dark:text-yellow-400">Survival Score</span>
+              <span className="text-xl font-bold text-yellow-700 dark:text-yellow-300 mt-0.5">0–100</span>
+            </div>
           </div>
         </div>
 
-        {/* ── Macro Narrative ── */}
-        {macro?.macro_narrative && (
-          <InsightBox title="Today's Macro Narrative">
-            {macro.macro_narrative}
-          </InsightBox>
-        )}
-
       </div>
-    </PageLayout>
+    </AppLayout>
   );
 }

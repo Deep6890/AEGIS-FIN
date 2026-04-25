@@ -1,36 +1,32 @@
 import React from "react";
 
-export default function LoadingSpinner({ text = "Loading..." }) {
+export function SkeletonCard({ className = "" }) {
+  return <div className={`bg-neutral-100 dark:bg-neutral-800 rounded-card animate-pulse ${className}`} />;
+}
+
+export function PageSkeleton() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 gap-4 animate-fade-in">
-      <div className="relative w-10 h-10">
-        <div className="absolute inset-0 rounded-full border-[3px] border-[#E8C547]/20" />
-        <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-[#E8C547] animate-spin" />
+    <div className="space-y-4 animate-pulse">
+      <div className="grid grid-cols-12 gap-4">
+        {[...Array(4)].map((_, i) => <SkeletonCard key={i} className="col-span-3 h-28" />)}
       </div>
-      <p className="label">{text}</p>
+      <div className="grid grid-cols-12 gap-4">
+        <SkeletonCard className="col-span-8 h-64" />
+        <SkeletonCard className="col-span-4 h-64" />
+      </div>
+      <SkeletonCard className="col-span-12 h-48" />
     </div>
   );
 }
 
-/** Skeleton block for loading states */
-export function Skeleton({ className = "" }) {
+export default function LoadingSpinner({ text = "Loading..." }) {
   return (
-    <div className={`bg-[#E5E1D8] dark:bg-[#1F2128] rounded-xl animate-pulse ${className}`} />
-  );
-}
-
-/** Full page skeleton */
-export function PageSkeleton() {
-  return (
-    <div className="space-y-4 animate-pulse">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+    <div className="flex flex-col items-center justify-center py-16 gap-4">
+      <div className="relative w-10 h-10">
+        <div className="absolute inset-0 rounded-full border-2 border-neutral-200 dark:border-neutral-700" />
+        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-yellow-400 animate-spin" />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <Skeleton className="h-48" />
-        <Skeleton className="h-48" />
-      </div>
-      <Skeleton className="h-64" />
+      <p className="label-caps">{text}</p>
     </div>
   );
 }
