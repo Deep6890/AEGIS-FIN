@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowUpRight, Building2, TrendingUp, ShieldAlert,
-  Activity, ArrowRight, ChevronRight, Zap
+  Activity, ChevronRight, Zap, Globe, Brain, ArrowRight
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -16,61 +16,57 @@ import { useAppData } from "../context/AppDataContext";
 import { useChartTheme } from "../hooks/useChartTheme";
 import { fetchMacroOverlay, fetchLatestSectorMetrics } from "../lib/api";
 
-/* ── Tiny helpers ─────────────────────────────────────────────────────────── */
+/* ─── Small reusable pieces ─────────────────────────────────────────────── */
 
-function ScoreBar({ score }) {
-  if (score == null) return <span className="text-sm text-neutral-300">—</span>;
-  const pct = Math.min(100, score);
-  const color = pct >= 70 ? "#FF4D00" : pct >= 40 ? "#FF4D00" : "#FF4D00"; // always orange
+function KpiCard({ label, value, desc, accent = false, delay = "" }) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 h-1 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-        <div className="h-full rounded-full bg-[#FF4D00] transition-all duration-700" style={{ width: `${pct}%` }} />
-      </div>
-      <span className="text-sm font-bold tabular-nums text-neutral-900 dark:text-neutral-100 w-8 text-right">{score.toFixed(0)}</span>
+    <div className={`card p-6 hover-lift ${delay} ${accent ? "card-orange" : ""}`}>
+      <p className={`text-xs font-semibold uppercase tracking-widest mb-3 ${accent ? "text-white/70" : "text-[var(--text-3)]"}`}>{label}</p>
+      <p className={`value-xl mb-2 ${accent ? "text-white" : ""}`}>{value ?? "—"}</p>
+      {desc && <p className={`text-xs leading-relaxed ${accent ? "text-white/70" : "text-[var(--text-3)]"}`}>{desc}</p>}
     </div>
   );
 }
 
 function CompanyRow({ rank, name, ticker, score, companyId }) {
+  const pct = Math.min(100, score || 0);
   return (
-    <Link
-      to={`/companies/${companyId}`}
-      className="flex items-center gap-4 py-3.5 px-5 hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition-colors group border-b border-neutral-100 dark:border-neutral-800/60 last:border-0"
-    >
-      <span className="text-xs font-mono text-neutral-300 dark:text-neutral-600 w-5 shrink-0 tabular-nums">{rank}</span>
+    <Link to={`/companies/${companyId}`}
+      className="flex items-center gap-4 px-5 py-3.5 border-b border-[var(--border)] last:border-0 hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition-colors group">
+      <span className="text-xs font-mono text-[var(--text-3)] w-5 shrink-0 tabular-nums">{rank}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate group-hover:text-[#FF4D00] transition-colors">{name}</p>
-        <p className="text-[11px] font-mono text-neutral-400 mt-0.5">{ticker}</p>
+        <p className="text-sm font-semibold text-[var(--text)] truncate group-hover:text-[var(--orange)] transition-colors">{name}</p>
+        <p className="text-[11px] font-mono text-[var(--text-3)] mt-0.5">{ticker}</p>
       </div>
-      <div className="w-28 shrink-0">
-        <ScoreBar score={score} />
+      <div className="flex items-center gap-2.5 w-28 shrink-0">
+        <div className="flex-1 h-1 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+          <div className="h-full rounded-full bg-[var(--orange)] transition-all duration-700" style={{ width: `${pct}%` }} />
+        </div>
+        <span className="text-xs font-bold tabular-nums text-[var(--text)] w-7 text-right">{score?.toFixed(0)}</span>
       </div>
-      <ChevronRight size={14} className="text-neutral-300 group-hover:text-[#FF4D00] transition-colors shrink-0" />
+      <ChevronRight size={13} className="text-[var(--text-3)] group-hover:text-[var(--orange)] transition-colors shrink-0" />
     </Link>
   );
 }
 
-function SectorHealthRow({ row, index }) {
+function SectorRow({ row, index }) {
   const pct = Math.min(100, row.health_score || 0);
   return (
-    <div className="flex items-center gap-4 py-3 px-5 border-b border-neutral-100 dark:border-neutral-800/60 last:border-0 hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition-colors">
-      <span className="text-xs font-mono text-neutral-300 dark:text-neutral-600 w-5 shrink-0">{index + 1}</span>
-      <p className="flex-1 text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate">
-        {row.sectors?.name || `Sector ${row.sector_id}`}
-      </p>
+    <div className="flex items-center gap-4 px-5 py-3.5 border-b border-[var(--border)] last:border-0 hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition-colors">
+      <span className="text-xs font-mono text-[var(--text-3)] w-5 shrink-0">{index + 1}</span>
+      <p className="flex-1 text-sm font-medium text-[var(--text)] truncate">{row.sectors?.name || `Sector ${row.sector_id}`}</p>
       <SignalBadge value={row.signal} />
-      <div className="flex items-center gap-2 w-28 shrink-0">
+      <div className="flex items-center gap-2 w-24 shrink-0">
         <div className="flex-1 h-1 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-          <div className="h-full rounded-full bg-[#FF4D00]" style={{ width: `${pct}%` }} />
+          <div className="h-full rounded-full bg-[var(--orange)]" style={{ width: `${pct}%` }} />
         </div>
-        <span className="text-xs font-bold tabular-nums text-neutral-600 dark:text-neutral-400 w-7 text-right">{row.health_score?.toFixed(0) ?? "—"}</span>
+        <span className="text-xs font-bold tabular-nums text-[var(--text-2)] w-6 text-right">{row.health_score?.toFixed(0) ?? "—"}</span>
       </div>
     </div>
   );
 }
 
-/* ── Main Dashboard ───────────────────────────────────────────────────────── */
+/* ─── Main ───────────────────────────────────────────────────────────────── */
 
 export default function Dashboard() {
   const { latestSectorHealth, macro, portfolioStats, latestMl, companies, loading } = useAppData();
@@ -96,15 +92,11 @@ export default function Dashboard() {
 
   const sectorReturnData = latestMetrics
     .filter(r => r.daily_return != null)
-    .map(r => ({
-      name: r.sectors?.name?.replace(" Sector", "").replace(" Nifty", ""),
-      ret: +(r.daily_return * 100).toFixed(2),
-    }))
-    .sort((a, b) => b.ret - a.ret)
-    .slice(0, 8);
+    .map(r => ({ name: r.sectors?.name?.replace(" Sector","").replace(" Nifty",""), ret: +(r.daily_return * 100).toFixed(2) }))
+    .sort((a, b) => b.ret - a.ret).slice(0, 8);
 
   const compMap = useMemo(() => { const m = {}; companies.forEach(c => { m[c.id] = c; }); return m; }, [companies]);
-  const topPicks = useMemo(() => [...latestMl].filter(r => r.survival_score != null).sort((a, b) => b.survival_score - a.survival_score).slice(0, 7), [latestMl]);
+  const topPicks = useMemo(() => [...latestMl].filter(r => r.survival_score != null).sort((a, b) => b.survival_score - a.survival_score).slice(0, 6), [latestMl]);
   const atRisk   = useMemo(() => [...latestMl].filter(r => r.survival_score != null).sort((a, b) => a.survival_score - b.survival_score).slice(0, 5), [latestMl]);
 
   const macroRegime = macro?.macro_regime;
@@ -116,277 +108,293 @@ export default function Dashboard() {
     <PageLayout title="Dashboard">
       <div className="space-y-5 pb-10">
 
-        {/* ── Greeting + Live Bar ─────────────────────────── */}
+        {/* ── Hero header ─────────────────────────────────── */}
         <div className="animate-fade-in">
-          <h1 className="page-heading">Good morning 👋</h1>
-          <p className="page-subheading">Here's your AEGIS-FIN portfolio overview for today.</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--orange)] mb-2">AEGIS-FIN · Risk Intelligence</p>
+          <h1 className="page-heading">Portfolio Overview</h1>
+          <p className="page-subheading">
+            Real-time ML survival scores, macro regime analysis, and sector health signals — all in one place.
+            Updated daily after NSE market close.
+          </p>
         </div>
 
+        {/* ── Live market bar ──────────────────────────────── */}
         <LiveMarketBar />
 
-        {/* ── Row 1: 4 KPI cards ──────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-1">
-          {[
-            { label: "Total Companies", value: portfolioStats.total, sub: "tracked", icon: Building2 },
-            { label: "Healthy", value: portfolioStats.healthy, sub: "score ≥ 70", icon: TrendingUp },
-            { label: "Watch Zone", value: portfolioStats.watch, sub: "score 40–70", icon: Activity },
-            { label: "Distress", value: portfolioStats.distress, sub: "score < 40", icon: ShieldAlert },
-          ].map(({ label, value, sub, icon: Icon }, i) => (
-            <div key={label} className="card p-5 hover-lift">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-9 h-9 rounded-xl bg-[#FF4D00]/8 flex items-center justify-center">
-                  <Icon size={17} className="text-[#FF4D00]" />
+        {/* ── Row 1: Hero bento ───────────────────────────── */}
+        <div className="grid grid-cols-12 gap-4 stagger-1">
+
+          {/* Big hero card — portfolio score */}
+          <div className="col-span-12 lg:col-span-5 card p-7 flex flex-col justify-between min-h-[220px] relative overflow-hidden">
+            <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-[var(--orange)]/6 pointer-events-none" />
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-[var(--orange)]/4 pointer-events-none" />
+            <div className="relative">
+              <p className="label-caps mb-4">Portfolio Health Score</p>
+              <div className="flex items-end gap-4 mb-3">
+                <p className="value-xl" style={{ fontSize: "clamp(3rem,6vw,4.5rem)" }}>{portfolioStats.avgSurvival}</p>
+                <div className="mb-2">
+                  <p className="text-sm font-semibold text-[var(--text-2)]">/ 100</p>
+                  <p className="text-xs text-[var(--text-3)]">avg survival</p>
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 bg-neutral-50 dark:bg-neutral-800/60 px-2 py-1 rounded-lg">{sub}</span>
               </div>
-              <p className="value-xl text-neutral-900 dark:text-neutral-100">{value ?? "—"}</p>
-              <p className="text-xs font-medium text-neutral-400 mt-1.5">{label}</p>
+              <p className="text-sm text-[var(--text-2)] leading-relaxed max-w-xs">
+                Composite ML score across {portfolioStats.total} tracked companies.
+                {portfolioStats.healthy > 0 && ` ${portfolioStats.healthy} companies are in the healthy zone (≥70).`}
+              </p>
             </div>
-          ))}
-        </div>
-
-        {/* ── Row 2: Portfolio Score + Macro + Sector Returns ─ */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 stagger-2">
-
-          {/* Portfolio Score Card */}
-          <div className="lg:col-span-4 card p-6 flex flex-col">
-            <div className="flex items-center justify-between mb-5">
-              <p className="text-sm font-semibold text-neutral-500">Portfolio Health</p>
-              <Link to="/risk-engine" className="text-xs font-bold text-[#FF4D00] flex items-center gap-1 hover:underline">
-                Details <ArrowUpRight size={12} />
-              </Link>
-            </div>
-
-            {/* Big avg score */}
-            <div className="flex items-end gap-3 mb-5">
-              <p className="value-xl text-neutral-900 dark:text-neutral-100">{portfolioStats.avgSurvival}</p>
-              <p className="text-sm text-neutral-400 mb-2">/ 100 avg score</p>
-            </div>
-
             {/* Stacked bar */}
-            <div className="flex h-2.5 rounded-full overflow-hidden gap-0.5 mb-4">
-              {portfolioStats.total > 0 ? (
-                <>
-                  <div className="bg-[#FF4D00] rounded-l-full transition-all duration-1000" style={{ width: `${(portfolioStats.healthy / portfolioStats.total) * 100}%` }} />
-                  <div className="bg-[#FF4D00]/40 transition-all duration-1000" style={{ width: `${(portfolioStats.watch / portfolioStats.total) * 100}%` }} />
+            <div className="relative mt-5">
+              <div className="flex h-2 rounded-full overflow-hidden gap-0.5">
+                {portfolioStats.total > 0 ? <>
+                  <div className="bg-[var(--orange)] rounded-l-full transition-all duration-1000" style={{ width: `${(portfolioStats.healthy / portfolioStats.total) * 100}%` }} />
+                  <div className="bg-[var(--orange)]/35 transition-all duration-1000" style={{ width: `${(portfolioStats.watch / portfolioStats.total) * 100}%` }} />
                   <div className="bg-neutral-200 dark:bg-neutral-700 rounded-r-full transition-all duration-1000" style={{ width: `${(portfolioStats.distress / portfolioStats.total) * 100}%` }} />
-                </>
-              ) : (
-                <div className="w-full bg-neutral-100 dark:bg-neutral-800 rounded-full" />
-              )}
-            </div>
-
-            <div className="flex items-center gap-4 text-xs">
-              {[
-                { l: "Healthy", v: portfolioStats.healthy, c: "bg-[#FF4D00]" },
-                { l: "Watch",   v: portfolioStats.watch,   c: "bg-[#FF4D00]/40" },
-                { l: "Distress",v: portfolioStats.distress,c: "bg-neutral-200 dark:bg-neutral-700" },
-              ].map(({ l, v, c }) => (
-                <div key={l} className="flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${c}`} />
-                  <span className="text-neutral-500">{l}</span>
-                  <span className="font-bold text-neutral-900 dark:text-neutral-100">{v}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Quick nav pills */}
-            <div className="mt-auto pt-5 grid grid-cols-2 gap-2">
-              {[
-                { label: "Companies", path: "/companies", icon: Building2 },
-                { label: "Risk Engine", path: "/risk-engine", icon: ShieldAlert },
-                { label: "Sectors", path: "/sectors", icon: TrendingUp },
-                { label: "Pipeline", path: "/pipeline", icon: Activity },
-              ].map(({ label, path, icon: Icon }) => (
-                <Link key={path} to={path}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-100 dark:border-neutral-800/60 hover:border-[#FF4D00]/30 hover:bg-[#FF4D00]/4 transition-all group">
-                  <Icon size={14} className="text-neutral-400 group-hover:text-[#FF4D00] transition-colors" />
-                  <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-neutral-100 transition-colors">{label}</span>
-                </Link>
-              ))}
+                </> : <div className="w-full bg-neutral-100 dark:bg-neutral-800 rounded-full" />}
+              </div>
+              <div className="flex items-center gap-5 mt-3">
+                {[
+                  { l: "Healthy", v: portfolioStats.healthy, c: "bg-[var(--orange)]" },
+                  { l: "Watch",   v: portfolioStats.watch,   c: "bg-[var(--orange)]/35" },
+                  { l: "Distress",v: portfolioStats.distress,c: "bg-neutral-200 dark:bg-neutral-700" },
+                ].map(({ l, v, c }) => (
+                  <div key={l} className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${c}`} />
+                    <span className="text-xs text-[var(--text-3)]">{l} <span className="font-bold text-[var(--text)]">{v}</span></span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Macro Score Chart */}
-          <div className="lg:col-span-5 card p-6">
+          {/* 4 KPI mini cards */}
+          <div className="col-span-12 lg:col-span-7 grid grid-cols-2 gap-4">
+            <KpiCard label="Total Companies" value={portfolioStats.total} desc="Tracked across all NSE sectors" delay="stagger-1" />
+            <KpiCard label="Healthy ≥ 70" value={portfolioStats.healthy} desc="Low distress probability" accent delay="stagger-2" />
+            <KpiCard label="Watch Zone" value={portfolioStats.watch} desc="Score between 40 and 70" delay="stagger-3" />
+            <KpiCard label="Distress < 40" value={portfolioStats.distress} desc="Immediate review required" delay="stagger-4" />
+          </div>
+        </div>
+
+        {/* ── Row 2: Macro + Sector Returns ───────────────── */}
+        <div className="grid grid-cols-12 gap-4 stagger-2">
+
+          {/* Macro hero card */}
+          <div className="col-span-12 lg:col-span-7 card p-7">
             <div className="flex items-start justify-between mb-1">
               <div>
-                <p className="text-sm font-semibold text-neutral-500">Macro Score</p>
-                <p className="value-lg text-neutral-900 dark:text-neutral-100 mt-1">
-                  {macroScore != null ? macroScore.toFixed(2) : "—"}
-                </p>
-              </div>
-              {macroRegime && (
-                <div className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wide ${
-                  macroRegime === "RISK_ON"  ? "bg-[#FF4D00]/10 text-[#FF4D00]" :
-                  macroRegime === "RISK_OFF" ? "bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900" :
-                  "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
-                }`}>
-                  {macroRegime.replace("_", " ")}
+                <p className="label-caps mb-2">Macro Environment</p>
+                <div className="flex items-end gap-4">
+                  <p className="value-xl">{macroScore != null ? macroScore.toFixed(2) : "—"}</p>
+                  {macroRegime && (
+                    <div className={`mb-1 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wide ${
+                      macroRegime === "RISK_ON"  ? "bg-[var(--orange)] text-white" :
+                      macroRegime === "RISK_OFF" ? "bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900" :
+                      "bg-neutral-100 dark:bg-neutral-800 text-[var(--text-2)]"
+                    }`}>
+                      {macroRegime.replace("_", " ")}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+              <Link to="/macro" className="text-xs font-semibold text-[var(--orange)] flex items-center gap-1 hover:underline mt-1">
+                Full analysis <ArrowUpRight size={12} />
+              </Link>
             </div>
-            <p className="text-xs text-neutral-400 mb-4">30-day composite · VIX · USD-INR · Gold · Crude</p>
+            <p className="text-sm text-[var(--text-2)] mb-5 leading-relaxed">
+              Composite z-score of VIX, USD-INR, Gold and Crude Oil.
+              {macroRegime === "RISK_ON"  && " Macro tailwinds present — constructive environment for risk assets."}
+              {macroRegime === "RISK_OFF" && " Multiple macro headwinds active — consider defensive positioning."}
+              {macroRegime === "NEUTRAL"  && " Balanced environment — no strong directional signal."}
+              {!macroRegime && " Run the pipeline to populate macro data."}
+            </p>
+
             {macroChartData.length ? (
               <ResponsiveContainer width="100%" height={160}>
                 <AreaChart data={macroChartData} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
                   <defs>
                     <linearGradient id="mgGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%"   stopColor="#FF4D00" stopOpacity={0.15} />
-                      <stop offset="100%" stopColor="#FF4D00" stopOpacity={0} />
+                      <stop offset="0%"   stopColor="var(--orange)" stopOpacity={0.18} />
+                      <stop offset="100%" stopColor="var(--orange)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="2 4" stroke={ct.grid} vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: ct.tick, fontFamily: "DM Mono" }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: ct.tick, fontFamily: "DM Mono" }} tickLine={false} axisLine={false} />
                   <Tooltip {...ct.tooltip} />
-                  <Area type="monotone" dataKey="score" stroke="#FF4D00" strokeWidth={2} fill="url(#mgGrad)" dot={false} name="Score" />
+                  <Area type="monotone" dataKey="score" stroke="var(--orange)" strokeWidth={2.5} fill="url(#mgGrad)" dot={false} name="Macro Score" />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-40 flex items-center justify-center text-sm text-neutral-300">No data yet</div>
+              <div className="h-40 flex items-center justify-center text-sm text-[var(--text-3)] bg-neutral-50 dark:bg-neutral-900/40 rounded-xl">
+                No macro data — run the pipeline
+              </div>
             )}
 
-            {/* Macro mini stats */}
+            {/* Z-score pills */}
             <div className="grid grid-cols-4 gap-2 mt-4">
               {[
-                { l: "VIX Z",   v: macro?.vix_z?.toFixed(2)   ?? "—" },
-                { l: "USD Z",   v: macro?.usd_z?.toFixed(2)   ?? "—" },
-                { l: "Gold Z",  v: macro?.gold_z?.toFixed(2)  ?? "—" },
-                { l: "Crude Z", v: macro?.crude_z?.toFixed(2) ?? "—" },
-              ].map(({ l, v }) => (
-                <div key={l} className="bg-neutral-50 dark:bg-neutral-900/60 rounded-xl p-2.5 text-center">
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-400 mb-1">{l}</p>
-                  <p className="text-sm font-bold tabular-nums text-neutral-900 dark:text-neutral-100">{v}</p>
+                { l: "VIX Z",   v: macro?.vix_z?.toFixed(2)   ?? "—", desc: "Fear gauge" },
+                { l: "USD Z",   v: macro?.usd_z?.toFixed(2)   ?? "—", desc: "Currency" },
+                { l: "Gold Z",  v: macro?.gold_z?.toFixed(2)  ?? "—", desc: "Safe haven" },
+                { l: "Crude Z", v: macro?.crude_z?.toFixed(2) ?? "—", desc: "Input cost" },
+              ].map(({ l, v, desc }) => (
+                <div key={l} className="bg-neutral-50 dark:bg-neutral-900/60 rounded-xl p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-3)] mb-1">{l}</p>
+                  <p className="text-base font-bold tabular-nums text-[var(--text)]">{v}</p>
+                  <p className="text-[10px] text-[var(--text-3)] mt-0.5">{desc}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Sector Returns */}
-          <div className="lg:col-span-3 card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-semibold text-neutral-500">Sector Returns</p>
-              <Link to="/sectors" className="text-xs font-bold text-[#FF4D00] flex items-center gap-1 hover:underline">
-                All <ArrowUpRight size={12} />
+          {/* Sector returns */}
+          <div className="col-span-12 lg:col-span-5 card p-7">
+            <div className="flex items-center justify-between mb-1">
+              <p className="label-caps">Today's Sector Returns</p>
+              <Link to="/sectors" className="text-xs font-semibold text-[var(--orange)] flex items-center gap-1 hover:underline">
+                All sectors <ArrowUpRight size={12} />
               </Link>
             </div>
+            <p className="text-sm text-[var(--text-2)] mb-5">NSE sector index daily performance. Orange = positive, gray = negative.</p>
             {sectorReturnData.length ? (
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={sectorReturnData} layout="vertical" margin={{ top: 0, right: 4, left: 0, bottom: 0 }}>
-                  <XAxis type="number" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={52} />
+                  <XAxis type="number" tick={{ fontSize: 9, fill: ct.tick, fontFamily: "DM Mono" }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={54} />
                   <Tooltip {...ct.tooltip} formatter={v => [`${v}%`, "Return"]} />
-                  <Bar dataKey="ret" radius={[0, 4, 4, 0]} maxBarSize={12}>
+                  <Bar dataKey="ret" radius={[0, 5, 5, 0]} maxBarSize={14}>
                     {sectorReturnData.map((e, i) => (
-                      <Cell key={i} fill={e.ret >= 0 ? "#FF4D00" : "#E5E5E3"} fillOpacity={e.ret >= 0 ? 0.9 : 1} />
+                      <Cell key={i} fill={e.ret >= 0 ? "var(--orange)" : "#D1D1D1"} fillOpacity={e.ret >= 0 ? 0.9 : 0.7} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[220px] flex items-center justify-center text-sm text-neutral-300">No data yet</div>
+              <div className="h-[240px] flex items-center justify-center text-sm text-[var(--text-3)] bg-neutral-50 dark:bg-neutral-900/40 rounded-xl">
+                No sector data yet
+              </div>
             )}
           </div>
         </div>
 
         {/* ── Row 3: Top Picks + At Risk + Sector Health ──── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 stagger-3">
+        <div className="grid grid-cols-12 gap-4 stagger-3">
 
           {/* Top Picks */}
-          <div className="lg:col-span-4 card overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800/60">
-              <div>
-                <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">Top Picks</p>
-                <p className="text-xs text-neutral-400 mt-0.5">Highest survival scores</p>
+          <div className="col-span-12 lg:col-span-4 card overflow-hidden">
+            <div className="px-5 py-5 border-b border-[var(--border)]">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="title-md">Top Picks</p>
+                  <p className="text-xs text-[var(--text-3)] mt-1 leading-relaxed">Companies with the highest ML survival scores. Low distress probability.</p>
+                </div>
+                <Link to="/risk-engine" className="text-xs font-semibold text-[var(--orange)] flex items-center gap-1 hover:underline shrink-0 ml-3 mt-0.5">
+                  See all <ArrowUpRight size={12} />
+                </Link>
               </div>
-              <Link to="/risk-engine" className="text-xs font-bold text-[#FF4D00] flex items-center gap-1 hover:underline">
-                See all <ArrowUpRight size={12} />
-              </Link>
             </div>
             {topPicks.length ? (
               <div>
                 {topPicks.map((r, i) => {
                   const c = compMap[r.company_id];
-                  return (
-                    <CompanyRow
-                      key={r.id || r.company_id}
-                      rank={i + 1}
-                      name={c?.name || "—"}
-                      ticker={c?.ticker || "—"}
-                      score={r.survival_score}
-                      companyId={r.company_id}
-                    />
-                  );
+                  return <CompanyRow key={r.id || r.company_id} rank={i + 1} name={c?.name || "—"} ticker={c?.ticker || "—"} score={r.survival_score} companyId={r.company_id} />;
                 })}
               </div>
             ) : (
-              <div className="py-16 text-center text-sm text-neutral-300">
-                <Zap size={24} className="mx-auto mb-3 text-neutral-200" />
-                Run the pipeline to generate scores
+              <div className="py-14 flex flex-col items-center text-center px-6">
+                <div className="w-12 h-12 rounded-2xl bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center mb-3">
+                  <Zap size={20} className="text-[var(--text-3)]" />
+                </div>
+                <p className="text-sm font-semibold text-[var(--text-2)]">No predictions yet</p>
+                <p className="text-xs text-[var(--text-3)] mt-1">Run the pipeline to generate ML survival scores for all companies.</p>
               </div>
             )}
           </div>
 
           {/* At Risk */}
-          <div className="lg:col-span-4 card overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800/60">
-              <div>
-                <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">Needs Review</p>
-                <p className="text-xs text-neutral-400 mt-0.5">Lowest survival scores</p>
+          <div className="col-span-12 lg:col-span-4 card overflow-hidden">
+            <div className="px-5 py-5 border-b border-[var(--border)]">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="title-md">Needs Review</p>
+                  <p className="text-xs text-[var(--text-3)] mt-1 leading-relaxed">Lowest survival scores. These companies show elevated distress signals.</p>
+                </div>
+                <Link to="/risk-engine" className="text-xs font-semibold text-[var(--orange)] flex items-center gap-1 hover:underline shrink-0 ml-3 mt-0.5">
+                  See all <ArrowUpRight size={12} />
+                </Link>
               </div>
-              <Link to="/risk-engine" className="text-xs font-bold text-[#FF4D00] flex items-center gap-1 hover:underline">
-                See all <ArrowUpRight size={12} />
-              </Link>
             </div>
             {atRisk.length ? (
               <div>
                 {atRisk.map((r, i) => {
                   const c = compMap[r.company_id];
-                  return (
-                    <CompanyRow
-                      key={r.id || r.company_id}
-                      rank={i + 1}
-                      name={c?.name || "—"}
-                      ticker={c?.ticker || "—"}
-                      score={r.survival_score}
-                      companyId={r.company_id}
-                    />
-                  );
+                  return <CompanyRow key={r.id || r.company_id} rank={i + 1} name={c?.name || "—"} ticker={c?.ticker || "—"} score={r.survival_score} companyId={r.company_id} />;
                 })}
               </div>
             ) : (
-              <div className="py-16 text-center text-sm text-neutral-300">
-                <ShieldAlert size={24} className="mx-auto mb-3 text-neutral-200" />
-                No distress signals
+              <div className="py-14 flex flex-col items-center text-center px-6">
+                <div className="w-12 h-12 rounded-2xl bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center mb-3">
+                  <ShieldAlert size={20} className="text-[var(--text-3)]" />
+                </div>
+                <p className="text-sm font-semibold text-[var(--text-2)]">No distress signals</p>
+                <p className="text-xs text-[var(--text-3)] mt-1">All tracked companies are within acceptable risk thresholds.</p>
               </div>
             )}
           </div>
 
           {/* Sector Health */}
-          <div className="lg:col-span-4 card overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800/60">
-              <div>
-                <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">Sector Health</p>
-                <p className="text-xs text-neutral-400 mt-0.5">Rolling z-score signals</p>
+          <div className="col-span-12 lg:col-span-4 card overflow-hidden">
+            <div className="px-5 py-5 border-b border-[var(--border)]">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="title-md">Sector Health</p>
+                  <p className="text-xs text-[var(--text-3)] mt-1 leading-relaxed">Rolling z-score signals. Health score = percentile rank vs 60-day history.</p>
+                </div>
+                <Link to="/sectors" className="text-xs font-semibold text-[var(--orange)] flex items-center gap-1 hover:underline shrink-0 ml-3 mt-0.5">
+                  See all <ArrowUpRight size={12} />
+                </Link>
               </div>
-              <Link to="/sectors" className="text-xs font-bold text-[#FF4D00] flex items-center gap-1 hover:underline">
-                See all <ArrowUpRight size={12} />
-              </Link>
             </div>
             {latestSectorHealth.length ? (
               <div>
                 {latestSectorHealth.slice(0, 8).map((row, i) => (
-                  <SectorHealthRow key={row.id} row={row} index={i} />
+                  <SectorRow key={row.id} row={row} index={i} />
                 ))}
               </div>
             ) : (
-              <div className="py-16 text-center text-sm text-neutral-300">
-                <TrendingUp size={24} className="mx-auto mb-3 text-neutral-200" />
-                Run the pipeline to populate
+              <div className="py-14 flex flex-col items-center text-center px-6">
+                <div className="w-12 h-12 rounded-2xl bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center mb-3">
+                  <TrendingUp size={20} className="text-[var(--text-3)]" />
+                </div>
+                <p className="text-sm font-semibold text-[var(--text-2)]">No sector data</p>
+                <p className="text-xs text-[var(--text-3)] mt-1">Run the pipeline to populate sector health signals.</p>
               </div>
             )}
           </div>
+        </div>
+
+        {/* ── Row 4: Quick nav cards ───────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-4">
+          {[
+            { label: "Companies", path: "/companies", icon: Building2, desc: `${companies.length} companies tracked across all NSE sectors with daily ML scoring.` },
+            { label: "Risk Engine", path: "/risk-engine", icon: Brain, desc: "CatBoost survival model. Distress probability and tier classification." },
+            { label: "Correlation", path: "/correlation", icon: Activity, desc: "Company vs sector correlation heatmaps across 8 price metrics." },
+            { label: "Macro Overlay", path: "/macro", icon: Globe, desc: "VIX, USD-INR, Gold and Crude Oil z-scores driving the macro regime." },
+          ].map(({ label, path, icon: Icon, desc }) => (
+            <Link key={path} to={path}
+              className="card p-5 group hover-lift flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-[var(--orange)]/8 flex items-center justify-center group-hover:bg-[var(--orange)] transition-colors duration-200">
+                  <Icon size={17} className="text-[var(--orange)] group-hover:text-white transition-colors duration-200" />
+                </div>
+                <ArrowUpRight size={14} className="text-[var(--text-3)] group-hover:text-[var(--orange)] transition-colors" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-[var(--text)] group-hover:text-[var(--orange)] transition-colors">{label}</p>
+                <p className="text-xs text-[var(--text-3)] mt-1 leading-relaxed">{desc}</p>
+              </div>
+            </Link>
+          ))}
         </div>
 
       </div>
