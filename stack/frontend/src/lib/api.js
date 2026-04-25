@@ -175,14 +175,11 @@ export const checkTickersInDB = async (tickers) => {
   try {
     const { data, error } = await supabase
       .from("companies")
-      .select("id, ticker, name, composite_score:classifier(composite_score)")
+      .select("id, ticker, name")
       .in("ticker", tickers);
     if (error) return { existing: [], missing: tickers, error };
     const existingTickers = new Set((data || []).map(c => c.ticker));
-    const existing = (data || []).map(c => ({
-      ...c,
-      survival_score: c.composite_score?.[0]?.composite_score ?? null,
-    }));
+    const existing = (data || []).map(c => ({ ...c, survival_score: null }));
     const missing = tickers.filter(t => !existingTickers.has(t));
     return { existing, missing, error: null };
   } catch (e) {
