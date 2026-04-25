@@ -24,15 +24,7 @@ import Diagnostics     from "./pages/Diagnostics";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
-  // ── DEV BYPASS: remove this block to re-enable auth ──────────────────────
-  return <AppDataProvider>{children}</AppDataProvider>;
-  // ─────────────────────────────────────────────────────────────────────────
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-      <LoadingSpinner text="Loading..." />
-    </div>
-  );
-  if (!user) return <Navigate to="/login" replace />;
+  // Bypass auth for dev
   return <AppDataProvider>{children}</AppDataProvider>;
 }
 
@@ -51,11 +43,10 @@ function AppRoutes() {
       <Route path="/balance"           element={<ProtectedRoute><BalanceSheet /></ProtectedRoute>}  />
       <Route path="/profile"           element={<ProtectedRoute><Profile /></ProtectedRoute>}       />
       <Route path="/upload"            element={<ProtectedRoute><UploadCSV /></ProtectedRoute>}     />
-      <Route path="/pipeline"           element={<ProtectedRoute><PipelineMonitor /></ProtectedRoute>}  />
-      <Route path="/diagnostics"        element={<ProtectedRoute><Diagnostics /></ProtectedRoute>}      />
-      {/* FinPlan — standalone, no auth required */}
-      <Route path="/finplan"            element={<FinPlan />} />
-      <Route path="*"                   element={<Navigate to="/" replace />} />
+      <Route path="/pipeline"          element={<ProtectedRoute><PipelineMonitor /></ProtectedRoute>}  />
+      <Route path="/diagnostics"       element={<ProtectedRoute><Diagnostics /></ProtectedRoute>}      />
+      <Route path="/finplan"           element={<FinPlan />} />
+      <Route path="*"                  element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

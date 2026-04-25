@@ -22,62 +22,55 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen app-bg flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute top-20 right-20 w-72 h-72 rounded-full bg-[#52B788]/8 blur-[80px] pointer-events-none animate-float" />
-      <div className="absolute bottom-20 left-20 w-56 h-56 rounded-full bg-[#E8C547]/8 blur-[80px] pointer-events-none animate-float" style={{ animationDelay: "1.5s" }} />
-
-      <div className="w-full max-w-sm animate-slide-up relative">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm animate-slide-up">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-[#0D0D0D] dark:bg-[#E8C547] flex items-center justify-center mb-4 shadow-card-lg">
-            <ShieldAlert size={24} className="text-[#E8C547] dark:text-[#0D0D0D]" />
+          <div className="w-12 h-12 rounded-2xl bg-brand-orange flex items-center justify-center mb-4 shadow-card-md">
+            <ShieldAlert size={22} className="text-white" />
           </div>
-          <h1 className="text-2xl font-black text-[#0D0D0D] dark:text-[#E8E6E0] tracking-tight">AEGIS-FIN</h1>
-          <p className="text-xs text-[#9CA3AF] mt-1">Risk Intelligence Platform</p>
+          <h1 className="text-2xl font-black text-neutral-900 dark:text-neutral-100">AEGIS-FIN</h1>
+          <p className="text-xs text-neutral-500 mt-1">Risk Intelligence Platform</p>
         </div>
 
-        <div className="card p-6 shadow-card-lg">
+        <div className="card p-6 shadow-card-md">
           {done ? (
-            <div className="text-center py-6 animate-scale-in">
-              <div className="w-16 h-16 rounded-2xl bg-[#52B788]/10 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle size={32} className="text-[#52B788]" />
-              </div>
-              <h2 className="text-lg font-bold text-[#0D0D0D] dark:text-[#E8E6E0] mb-2">Check your email</h2>
-              <p className="text-xs text-[#9CA3AF] mb-5">We sent a confirmation link to <strong className="text-[#0D0D0D] dark:text-[#E8E6E0]">{email}</strong></p>
+            <div className="text-center py-4">
+              <CheckCircle size={40} className="text-emerald-500 mx-auto mb-3" />
+              <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-2">Check your email</h2>
+              <p className="text-xs text-neutral-500 mb-4">We sent a confirmation link to <strong>{email}</strong></p>
               <Link to="/login" className="btn-primary inline-flex">Back to Sign In</Link>
             </div>
           ) : (
             <>
-              <h2 className="text-lg font-bold text-[#0D0D0D] dark:text-[#E8E6E0] mb-1">Create account</h2>
-              <p className="text-xs text-[#9CA3AF] mb-6">Get access to the risk intelligence platform</p>
+              <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-1">Create account</h2>
+              <p className="text-xs text-neutral-500 mb-6">Get access to the risk intelligence platform</p>
 
               {error && (
-                <div className="mb-4 p-3 bg-red-500/8 border border-red-500/15 rounded-xl text-xs text-red-500 animate-scale-in">
-                  {error}
-                </div>
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400">{error}</div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="label mb-1.5 block">Email</label>
+                  <label className="label-caps mb-1.5 block">Email</label>
                   <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required className="input-base w-full" />
                 </div>
                 <div>
-                  <label className="label mb-1.5 block">Password</label>
+                  <label className="label-caps mb-1.5 block">Password</label>
                   <div className="relative">
                     <input type={show ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 8 characters" required minLength={8} className="input-base w-full pr-10" />
-                    <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#0D0D0D] dark:hover:text-white transition-colors">
+                    <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">
                       {show ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
                 </div>
-                <button type="submit" disabled={loading} className="btn-primary w-full py-3 mt-2">
+                <button type="submit" disabled={loading} className="btn-primary w-full py-2.5 mt-2">
                   {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Create Account <ArrowRight size={15} /></>}
                 </button>
               </form>
 
-              <p className="text-center text-xs text-[#9CA3AF] mt-6">
+              <p className="text-center text-xs text-neutral-500 mt-5">
                 Already have an account?{" "}
-                <Link to="/login" className="font-semibold text-[#E8C547] hover:text-[#D4B23E] transition-colors">Sign in</Link>
+                <Link to="/login" className="font-semibold text-brand-orange hover:underline">Sign in</Link>
               </p>
             </>
           )}
