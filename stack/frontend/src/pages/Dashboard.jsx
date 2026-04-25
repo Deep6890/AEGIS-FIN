@@ -169,11 +169,11 @@ const KPI_INSIGHT = {
 /** Orange insight box — replaces the original InsightBox */
 function InsightBox({ icon: Icon = Info, title, children }) {
   return (
-    <div className="flex gap-3 p-3 bg-orange-50 dark:bg-orange-950/20 rounded-xl border border-orange-100 dark:border-orange-900/30">
-      <Icon size={15} className="text-orange-500 shrink-0 mt-0.5" />
+    <div className="flex gap-3 p-4 bg-[#FFC224]/10 dark:bg-[#FFC224]/5 rounded-2xl border border-[#FFC224]/20">
+      <Icon size={15} className="text-[#FF8A00] shrink-0 mt-0.5" />
       <div>
         {title && (
-          <p className="text-xs font-bold text-orange-600 dark:text-orange-400 mb-0.5">
+          <p className="text-xs font-black text-[#FF8A00] mb-0.5 uppercase tracking-wide">
             {title}
           </p>
         )}
@@ -215,36 +215,36 @@ function ExplainableStatCard({ icon: Icon, label, value, sub, color = "orange", 
   const [showInsight, setShowInsight] = useState(false);
 
   const colorMap = {
-    orange: { icon: "bg-orange-50  dark:bg-orange-950/30  text-orange-500", bar: "bg-orange-400", border: "border-orange-200 dark:border-orange-900/40" },
-    emerald: { icon: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500", bar: "bg-emerald-400", border: "border-emerald-200 dark:border-emerald-900/40" },
-    amber: { icon: "bg-amber-50   dark:bg-amber-950/30   text-amber-500", bar: "bg-amber-400", border: "border-amber-200   dark:border-amber-900/40" },
-    red: { icon: "bg-red-50     dark:bg-red-950/30     text-red-500", bar: "bg-red-400", border: "border-red-200     dark:border-red-900/40" },
-    blue: { icon: "bg-blue-50    dark:bg-blue-950/30    text-blue-500", bar: "bg-blue-400", border: "border-blue-200    dark:border-blue-900/40" },
+    orange:  { icon: "bg-[#FF8A00]/10 text-[#FF8A00]",   border: "border-[#FF8A00]/20" },
+    emerald: { icon: "bg-[#00B341]/10 text-[#00B341]",   border: "border-[#00B341]/20" },
+    amber:   { icon: "bg-[#FFC224]/15 text-[#b38a00] dark:text-[#FFC224]", border: "border-[#FFC224]/30" },
+    red:     { icon: "bg-red-50 dark:bg-red-950/30 text-red-500", border: "border-red-200 dark:border-red-900" },
+    blue:    { icon: "bg-blue-50 dark:bg-blue-950/30 text-blue-500", border: "border-blue-200 dark:border-blue-900" },
   };
   const c = colorMap[color] || colorMap.orange;
 
   return (
     <div
-      className={`card p-4 cursor-pointer group transition-all duration-200 ${showInsight ? `border ${c.border}` : ""}`}
+      className={`card p-4 cursor-pointer group transition-all duration-200 ${showInsight ? `border-2 ${c.border}` : ""}`}
       onClick={() => setShowInsight((v) => !v)}
     >
       <div className="flex items-start justify-between mb-3">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${c.icon}`}>
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${c.icon}`}>
           <Icon size={15} />
         </div>
         <HelpCircle
           size={13}
-          className={`mt-0.5 transition-colors ${showInsight ? "text-orange-400" : "text-gray-300 dark:text-gray-600 group-hover:text-gray-400"}`}
+          className={`mt-0.5 transition-colors ${showInsight ? "text-[#FF8A00]" : "text-gray-300 dark:text-gray-600 group-hover:text-gray-400"}`}
         />
       </div>
 
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-gray-900 dark:text-white leading-none">{value ?? "—"}</p>
+      <p className="stat-label mb-1">{label}</p>
+      <p className="text-2xl font-black text-gray-900 dark:text-white leading-none">{value ?? "—"}</p>
       {sub && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{sub}</p>}
 
       {showInsight && (
-        <div className="mt-3 pt-3 border-t border-orange-100 dark:border-orange-900/30">
-          <p className="text-xs text-orange-700 dark:text-orange-300 leading-relaxed">{insightText}</p>
+        <div className="mt-3 pt-3 border-t border-[#FFC224]/20">
+          <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{insightText}</p>
         </div>
       )}
 
@@ -395,22 +395,25 @@ function SectorRow({ row }) {
 function SignalCell({ name, value }) {
   const [open, setOpen] = useState(false);
   const bg = {
-    STRONG: "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30",
+    STRONG: "bg-[#00B341]/10 border-[#00B341]/20",
     NEUTRAL: "bg-gray-50 dark:bg-[#1a1a1a] border-gray-100 dark:border-[#2a2a2a]",
-    WATCH: "bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/30",
-    WEAK: "bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900/30",
+    WATCH:   "bg-[#FFC224]/10 border-[#FFC224]/20",
+    WEAK:    "bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900",
+  };
+  const textColor = {
+    STRONG: "#00B341", NEUTRAL: "#6b7280", WATCH: "#b38a00", WEAK: "#ef4444",
   };
   return (
     <div
-      className={`flex flex-col items-center p-3 rounded-xl border cursor-pointer transition-all ${bg[name] || bg.NEUTRAL} ${open ? "ring-1 ring-orange-300 dark:ring-orange-700" : ""}`}
+      className={`flex flex-col items-center p-3 rounded-2xl border-2 cursor-pointer transition-all ${bg[name] || bg.NEUTRAL} ${open ? "ring-2 ring-[#FFC224]/40" : ""}`}
       onClick={() => setOpen((v) => !v)}
     >
-      <p className="text-2xl font-bold" style={{ color: SIGNAL_COLOR[name] }}>
+      <p className="text-3xl font-black" style={{ color: textColor[name] || "#6b7280" }}>
         {value}
       </p>
-      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-1">{name}</p>
+      <p className="text-xs font-black text-gray-500 dark:text-gray-400 mt-1">{name}</p>
       {open && (
-        <p className="text-[11px] text-gray-600 dark:text-gray-400 mt-2 text-center leading-relaxed border-t border-current/10 pt-2">
+        <p className="text-[11px] text-gray-600 dark:text-gray-400 mt-2 text-center leading-relaxed border-t border-black/10 dark:border-white/10 pt-2">
           {SIGNAL_EXPLAIN[name]}
         </p>
       )}
@@ -427,46 +430,44 @@ function PipelineExplainer() {
   const [activeStep, setActiveStep] = useState(null);
 
   return (
-    <div className="bg-orange-50 dark:bg-orange-950/20 rounded-xl border border-orange-100 dark:border-orange-900/30">
-      {/* Header — always visible */}
+    <div className="bg-black dark:bg-[#111] rounded-2xl overflow-hidden">
       <button
-        className="w-full flex items-center gap-3 p-3 text-left"
+        className="w-full flex items-center gap-3 p-4 text-left"
         onClick={() => setOpen((v) => !v)}
       >
-        <Layers size={15} className="text-orange-500 shrink-0" />
+        <div className="w-8 h-8 rounded-xl bg-[#FFC224] flex items-center justify-center shrink-0">
+          <Layers size={15} className="text-black" />
+        </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold text-orange-600 dark:text-orange-400">
+          <p className="text-xs font-black text-white">
             How AEGIS-FIN Works — 9-Layer Intelligence Engine
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
-            AEGIS-FIN fetches live market data, computes price metrics, balance sheet ratios, macro signals, and feeds them into an ML survival model.
-            The result: a{" "}
-            <span className="font-semibold text-orange-500">0–100 survival score</span>{" "}
-            per company — 100 = financially strongest, 0 = highest distress risk.
+          <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
+            Live market data → price metrics → balance sheet → macro signals → ML survival model →{" "}
+            <span className="font-bold text-[#FFC224]">0–100 survival score</span> per company daily.
           </p>
         </div>
         {open ? (
-          <ChevronUp size={14} className="text-orange-400 shrink-0" />
+          <ChevronUp size={14} className="text-gray-400 shrink-0" />
         ) : (
           <ChevronDown size={14} className="text-gray-400 shrink-0" />
         )}
       </button>
 
-      {/* Pipeline steps */}
       {open && (
-        <div className="px-3 pb-3 space-y-2">
-          {/* Step pills */}
+        <div className="px-4 pb-4 space-y-3">
           <div className="flex flex-wrap gap-1.5">
             {PIPELINE_STEPS.map((s, i) => (
               <button
                 key={i}
                 onClick={() => setActiveStep(activeStep === i ? null : i)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border ${activeStep === i
-                    ? "bg-orange-500 text-white border-orange-500"
-                    : "bg-white dark:bg-[#111] border-orange-100 dark:border-orange-900/30 text-gray-600 dark:text-gray-400 hover:border-orange-300 dark:hover:border-orange-700"
-                  }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                  activeStep === i
+                    ? "bg-[#FFC224] text-black border-[#FFC224]"
+                    : "bg-white/5 border-white/10 text-gray-400 hover:border-white/30 hover:text-white"
+                }`}
               >
-                <span className={`text-[10px] font-mono ${activeStep === i ? "text-orange-200" : "text-orange-400"}`}>
+                <span className={`text-[10px] font-mono ${activeStep === i ? "text-black/60" : "text-[#FFC224]"}`}>
                   {s.num}
                 </span>
                 {s.name}
@@ -474,13 +475,12 @@ function PipelineExplainer() {
             ))}
           </div>
 
-          {/* Active step detail */}
           {activeStep !== null && (
-            <div className="bg-white dark:bg-[#111] rounded-lg border border-orange-200 dark:border-orange-900/40 p-3">
-              <p className="text-xs font-bold text-orange-600 dark:text-orange-400 mb-1.5">
+            <div className="bg-white/5 rounded-xl border border-white/10 p-3">
+              <p className="text-xs font-black text-[#FFC224] mb-1.5">
                 Step {PIPELINE_STEPS[activeStep].num} — {PIPELINE_STEPS[activeStep].name}
               </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+              <p className="text-xs text-gray-400 leading-relaxed">
                 {PIPELINE_STEPS[activeStep].detail}
               </p>
             </div>
@@ -507,21 +507,21 @@ function SurvivalScoreFormula() {
         Each company receives a 0–100 score from a CatBoost ML survival model. Click any component below to see what it measures.
       </p>
 
-      {/* Formula row */}
       <div className="flex flex-wrap items-center gap-2">
         {FORMULA_COMPONENTS.map((fc, i) => (
           <React.Fragment key={i}>
             <button
               onClick={() => setActiveIdx(activeIdx === i ? null : i)}
-              className={`flex flex-col items-center px-3 py-2.5 rounded-xl border transition-all text-center ${activeIdx === i
-                  ? "bg-orange-500 border-orange-500"
-                  : "bg-gray-50 dark:bg-[#1a1a1a] border-gray-100 dark:border-[#2a2a2a] hover:border-orange-300 dark:hover:border-orange-700"
-                }`}
+              className={`flex flex-col items-center px-3 py-2.5 rounded-xl border-2 transition-all text-center ${
+                activeIdx === i
+                  ? "bg-black dark:bg-[#FFC224] border-black dark:border-[#FFC224]"
+                  : "bg-gray-50 dark:bg-[#1a1a1a] border-gray-100 dark:border-[#2a2a2a] hover:border-black dark:hover:border-[#FFC224]"
+              }`}
             >
-              <span className={`text-[10px] font-medium ${activeIdx === i ? "text-orange-200" : "text-gray-400 dark:text-gray-500"}`}>
+              <span className={`text-[10px] font-bold ${activeIdx === i ? "text-white/60 dark:text-black/60" : "text-gray-400"}`}>
                 {fc.label}
               </span>
-              <span className={`text-lg font-bold mt-0.5 ${activeIdx === i ? "text-white" : "text-orange-500"}`}>
+              <span className={`text-lg font-black mt-0.5 ${activeIdx === i ? "text-[#FFC224] dark:text-black" : "text-black dark:text-white"}`}>
                 {fc.weight}
               </span>
             </button>
@@ -531,16 +531,15 @@ function SurvivalScoreFormula() {
           </React.Fragment>
         ))}
         <span className="text-gray-300 dark:text-gray-600 font-light text-lg">=</span>
-        <div className="flex flex-col items-center px-3 py-2.5 rounded-xl border border-orange-200 dark:border-orange-900/40 bg-orange-50 dark:bg-orange-950/20 text-center">
-          <span className="text-[10px] font-medium text-orange-400">survival score</span>
-          <span className="text-lg font-bold text-orange-500 mt-0.5">0–100</span>
+        <div className="flex flex-col items-center px-3 py-2.5 rounded-xl border-2 border-[#FFC224] bg-[#FFC224]/10 text-center">
+          <span className="text-[10px] font-bold text-[#b38a00] dark:text-[#FFC224]">survival score</span>
+          <span className="text-lg font-black text-black dark:text-white mt-0.5">0–100</span>
         </div>
       </div>
 
-      {/* Active component detail */}
       {activeIdx !== null && (
-        <div className="mt-3 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30">
-          <p className="text-xs font-bold text-orange-600 dark:text-orange-400 mb-1">
+        <div className="mt-3 p-3 rounded-xl bg-[#FFC224]/10 border border-[#FFC224]/20">
+          <p className="text-xs font-black text-[#FF8A00] mb-1">
             {FORMULA_COMPONENTS[activeIdx].label} ({FORMULA_COMPONENTS[activeIdx].weight})
           </p>
           <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
@@ -618,9 +617,6 @@ export default function Dashboard() {
     <PageLayout title="Dashboard">
       <div className="space-y-5">
         {/* Live Market Bar */}
-        <LiveMarketBar />
-
-        {/* ── Live Market Ticker ── */}
         <LiveMarketBar />
 
         {/* ── Pipeline Explainer (replaces static InsightBox) ── */}

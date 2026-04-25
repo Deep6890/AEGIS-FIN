@@ -5,6 +5,13 @@ export default {
   theme: {
     extend: {
       colors: {
+        brand: {
+          yellow:  "#FFC224",
+          orange:  "#FF8A00",
+          green:   "#00B341",
+          black:   "#0a0a0a",
+          cream:   "#FDFBF7",
+        },
         orange: {
           50:  "#fff7ed",
           100: "#ffedd5",
@@ -20,6 +27,9 @@ export default {
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
+      },
+      borderRadius: {
+        "3xl": "1.5rem",
       },
     },
   },
