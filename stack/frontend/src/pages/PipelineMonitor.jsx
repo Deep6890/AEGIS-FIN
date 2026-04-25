@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+﻿import React, { useEffect, useState, useCallback } from "react";
 import {
   Activity, CheckCircle, XCircle, Clock, RefreshCw,
   Layers, Database, Play, ChevronDown, ChevronRight, Terminal
@@ -12,14 +12,14 @@ import { fetchPipelineLog, fetchPipelineStats } from "../lib/api";
 
 const LAYERS = [
   { id: 1, name: "Sector Engine",       desc: "Fetches OHLCV for 12 NSE sector indices from Yahoo Finance. Computes returns, volatility, ATR, drawdown, momentum, trend for every trading day." },
-  { id: 2, name: "Sector Health",       desc: "Runs rolling z-scores on each sector's own history. Outputs health_score (0–100 percentile rank), signal (STRONG/NEUTRAL/WATCH/WEAK), regime (BULL/BEAR/NEUTRAL), spike detection." },
+  { id: 2, name: "Sector Health",       desc: "Runs rolling z-scores on each sector's own history. Outputs health_score (0â€“100 percentile rank), signal (STRONG/NEUTRAL/WATCH/WEAK), regime (BULL/BEAR/NEUTRAL), spike detection." },
   { id: "2b", name: "Macro Overlay",    desc: "Derives daily macro regime from VIX, USD-INR, Gold, Crude Oil z-scores. RISK_OFF = multiple headwinds active. RISK_ON = tailwinds. Adjusts sector signals accordingly." },
   { id: 3, name: "Company Engine",      desc: "Fetches OHLCV for the company ticker. Computes the same 9 metric stems as sectors: returns (1d/5d/20d), volatility, ATR, drawdown, volume ratio, momentum, trend." },
   { id: 4, name: "Correlation Engine",  desc: "Builds static Pearson correlation matrix (company vs each sector) and full daily rolling correlation time-series for 20/60/100-day windows across all 8 metric stems." },
-  { id: 5, name: "Sector Sift",         desc: "Ranks sectors by 60-day rolling correlation with the company. Top-N most correlated sectors are stored — these drive the sector overlay in layers 6 & 7." },
+  { id: 5, name: "Sector Sift",         desc: "Ranks sectors by 60-day rolling correlation with the company. Top-N most correlated sectors are stored â€” these drive the sector overlay in layers 6 & 7." },
   { id: 6, name: "Balance Sheet",       desc: "Pulls 20 quarters of financial ratios from Yahoo Finance. Scores each ratio vs its own history (percentile rank), computes YoY change, applies sector pressure overlay from top correlated sectors." },
   { id: 7, name: "Holdings Engine",     desc: "Fetches shareholder data: HHI concentration, institutional holding %, promoter pledge. Applies sector health signal as overlay to adjust each metric's status." },
-  { id: 8, name: "ML Survival Model",   desc: "Feeds 8 features (D/E, current ratio, revenue growth, equity growth, sector correlation 60d, sector health score, HHI, institutional holding) into a trained survival model. Outputs 0–100 score + distress probability." },
+  { id: 8, name: "ML Survival Model",   desc: "Feeds 8 features (D/E, current ratio, revenue growth, equity growth, sector correlation 60d, sector health score, HHI, institutional holding) into a trained survival model. Outputs 0â€“100 score + distress probability." },
   { id: 9, name: "Feature Store",       desc: "Saves the exact 8 ML input features used for this run. Audit trail for model retraining and explainability. Stored per company per date." },
 ];
 
@@ -63,7 +63,7 @@ export default function PipelineMonitor() {
   const total   = stats.length;
   const ok      = stats.filter(r => r.status === "ok").length;
   const errors  = stats.filter(r => r.status === "error").length;
-  const lastRun = logs[0]?.run_at ? new Date(logs[0].run_at).toLocaleString("en-IN") : "—";
+  const lastRun = logs[0]?.run_at ? new Date(logs[0].run_at).toLocaleString("en-IN") : "â€”";
   const uniqueCompanies = new Set(stats.map(r => r.company)).size;
 
   const byDay = {};
@@ -89,7 +89,7 @@ export default function PipelineMonitor() {
             <p className="text-sm text-white/60 leading-relaxed max-w-xl">
               Every day after NSE market close, the scheduler processes{" "}
               <span className="font-bold text-[#E8C547]">134 SME companies</span> through all 9 layers.
-              Takes ~2–4 hours depending on API rate limits.
+              Takes ~2â€“4 hours depending on API rate limits.
             </p>
           </div>
         </div>
@@ -215,7 +215,7 @@ export default function PipelineMonitor() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
-              { title: "Run All Companies Once", cmd: "python run_pipeline.py", desc: "Processes all 134 companies sequentially. Takes 2–4 hours." },
+              { title: "Run All Companies Once", cmd: "python run_pipeline.py", desc: "Processes all 134 companies sequentially. Takes 2â€“4 hours." },
               { title: "Resume After Failure",   cmd: "python run_pipeline.py --resume", desc: "Skips completed companies. Use after crash or network error." },
               { title: "Start Daily Scheduler",  cmd: "python scheduler.py --run-now", desc: "Auto-runs every weekday at 18:30 IST after NSE close." },
             ].map(({ title, cmd, desc }) => (
@@ -238,3 +238,5 @@ export default function PipelineMonitor() {
     </PageLayout>
   );
 }
+
+

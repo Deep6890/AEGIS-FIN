@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Activity, BarChart2, Brain, TrendingUp, Users, ShieldAlert, Info, Building2, ArrowUpRight } from "lucide-react";
 import {
@@ -191,7 +191,7 @@ export default function CompanyDetail() {
                         <XAxis dataKey="date" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} />
                         <YAxis tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={40} />
                         <Tooltip {...ct.tooltip} />
-                        <Area type="monotone" dataKey="close" stroke={ct.yellow} strokeWidth={2} fill="url(#closeGrad)" dot={false} name="Close ₹" />
+                        <Area type="monotone" dataKey="close" stroke={ct.yellow} strokeWidth={2} fill="url(#closeGrad)" dot={false} name="Close â‚¹" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -229,13 +229,13 @@ export default function CompanyDetail() {
                   ];
                   return (
                     <div className="card p-5">
-                      <p className="title-md mb-4">Latest Snapshot · {l.date}</p>
+                      <p className="title-md mb-4">Latest Snapshot Â· {l.date}</p>
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                         {fields.map(([label, val, unit, desc]) => (
                           <div key={label} className="p-3 bg-[#F7F5F0] dark:bg-[#111318] rounded-xl border border-[#E5E1D8] dark:border-[#1F2128]">
                             <p className="label">{label}</p>
                             <p className="text-base font-bold text-[#0D0D0D] dark:text-[#E8E6E0] mt-1 tabular-nums">
-                              {val != null ? `${typeof val === "number" ? val.toFixed(3) : val}${unit}` : "—"}
+                              {val != null ? `${typeof val === "number" ? val.toFixed(3) : val}${unit}` : "â€”"}
                             </p>
                             <p className="text-[10px] text-[#9CA3AF] mt-1">{desc}</p>
                           </div>
@@ -282,19 +282,19 @@ export default function CompanyDetail() {
                           {rows.map(r => (
                             <tr key={r.id} className="hover:bg-neutral-900/[0.01] dark:hover:bg-white/[0.01] transition-colors group">
                               <td className="px-6 py-4">
-                                <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100 group-hover:text-brand-orange transition-colors">{r.ratio_definitions?.name}</p>
+                                <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100 group-hover:text-[var(--orange)] transition-colors">{r.ratio_definitions?.name}</p>
                                 <p className="text-[10px] text-neutral-400 mt-0.5 truncate max-w-[140px]">{r.ratio_definitions?.description}</p>
                               </td>
-                              <td className="px-4 py-4 text-sm font-mono font-bold text-neutral-900 dark:text-neutral-100">{r.value != null ? r.value.toFixed(2) : "—"}</td>
+                              <td className="px-4 py-4 text-sm font-mono font-bold text-neutral-900 dark:text-neutral-100">{r.value != null ? r.value.toFixed(2) : "â€”"}</td>
                               <td className="px-4 py-4">
                                 <span className={`text-xs font-bold tabular-nums ${r.yoy_pct > 0 ? "text-[#00B341]" : r.yoy_pct < 0 ? "text-[#FF3B30]" : "text-neutral-400"}`}>
-                                  {r.yoy_pct != null ? `${r.yoy_pct > 0 ? "▲" : "▼"} ${Math.abs(r.yoy_pct).toFixed(1)}%` : "—"}
+                                  {r.yoy_pct != null ? `${r.yoy_pct > 0 ? "â–²" : "â–¼"} ${Math.abs(r.yoy_pct).toFixed(1)}%` : "â€”"}
                                 </span>
                               </td>
-                              <td className="px-4 py-4 text-[10px] font-bold text-neutral-500 uppercase">{r.hist_pct_rank != null ? `${(r.hist_pct_rank * 100).toFixed(0)}p` : "—"}</td>
+                              <td className="px-4 py-4 text-[10px] font-bold text-neutral-500 uppercase">{r.hist_pct_rank != null ? `${(r.hist_pct_rank * 100).toFixed(0)}p` : "â€”"}</td>
                               <td className="px-4 py-4"><SignalBadge value={r.status} /></td>
-                              <td className="px-4 py-4 text-[10px] font-bold uppercase tracking-widest text-neutral-500">{r.trend || "—"}</td>
-                              <td className="px-4 py-4 text-[10px] font-mono font-bold text-neutral-400">{r.sector_pressure != null ? r.sector_pressure.toFixed(2) : "—"}</td>
+                              <td className="px-4 py-4 text-[10px] font-bold uppercase tracking-widest text-neutral-500">{r.trend || "â€”"}</td>
+                              <td className="px-4 py-4 text-[10px] font-mono font-bold text-neutral-400">{r.sector_pressure != null ? r.sector_pressure.toFixed(2) : "â€”"}</td>
                               <td className="px-6 py-4"><SignalBadge value={r.adjusted_status} /></td>
                             </tr>
                           ))}
@@ -332,11 +332,11 @@ export default function CompanyDetail() {
                             <p className="text-xs font-semibold text-[#0D0D0D] dark:text-[#E8E6E0]">{r.holding_metric_definitions?.name}</p>
                             {r.holding_metric_definitions?.description && <p className="text-[10px] text-[#9CA3AF] mt-0.5">{r.holding_metric_definitions?.description}</p>}
                           </td>
-                          <td className="td-base text-xs font-mono font-semibold tabular-nums">{r.value?.toFixed(3) ?? "—"}</td>
+                          <td className="td-base text-xs font-mono font-semibold tabular-nums">{r.value?.toFixed(3) ?? "â€”"}</td>
                           <td className="td-base"><SignalBadge value={r.status} /></td>
-                          <td className="td-base text-xs text-[#9CA3AF]">{r.trend || "—"}</td>
-                          <td className="td-base text-xs text-[#9CA3AF]">{r.holding_metric_definitions?.category || "—"}</td>
-                          <td className="td-base text-xs text-[#9CA3AF]">{r.sector_signal || "—"}</td>
+                          <td className="td-base text-xs text-[#9CA3AF]">{r.trend || "â€”"}</td>
+                          <td className="td-base text-xs text-[#9CA3AF]">{r.holding_metric_definitions?.category || "â€”"}</td>
+                          <td className="td-base text-xs text-[#9CA3AF]">{r.sector_signal || "â€”"}</td>
                           <td className="td-base"><SignalBadge value={r.adjusted_status} /></td>
                         </tr>
                       ))}
@@ -457,13 +457,13 @@ export default function CompanyDetail() {
                   {features.map(r => (
                     <tr key={r.id} className="tr-base">
                       <td className="td-base text-xs text-[#9CA3AF]">{r.date}</td>
-                      <td className="td-base text-xs font-mono">{r.debt_to_equity?.toFixed(2) ?? "—"}</td>
-                      <td className="td-base text-xs font-mono">{r.current_ratio?.toFixed(2) ?? "—"}</td>
-                      <td className="td-base text-xs font-mono">{r.revenue_growth != null ? `${(r.revenue_growth*100).toFixed(1)}%` : "—"}</td>
-                      <td className="td-base text-xs font-mono">{r.sector_correlation_60d?.toFixed(3) ?? "—"}</td>
-                      <td className="td-base text-xs font-mono">{r.sector_health_score?.toFixed(1) ?? "—"}</td>
-                      <td className="td-base text-xs font-mono">{r.hhi_concentration?.toFixed(3) ?? "—"}</td>
-                      <td className="td-base text-xs font-mono">{r.institutional_holding != null ? `${(r.institutional_holding*100).toFixed(1)}%` : "—"}</td>
+                      <td className="td-base text-xs font-mono">{r.debt_to_equity?.toFixed(2) ?? "â€”"}</td>
+                      <td className="td-base text-xs font-mono">{r.current_ratio?.toFixed(2) ?? "â€”"}</td>
+                      <td className="td-base text-xs font-mono">{r.revenue_growth != null ? `${(r.revenue_growth*100).toFixed(1)}%` : "â€”"}</td>
+                      <td className="td-base text-xs font-mono">{r.sector_correlation_60d?.toFixed(3) ?? "â€”"}</td>
+                      <td className="td-base text-xs font-mono">{r.sector_health_score?.toFixed(1) ?? "â€”"}</td>
+                      <td className="td-base text-xs font-mono">{r.hhi_concentration?.toFixed(3) ?? "â€”"}</td>
+                      <td className="td-base text-xs font-mono">{r.institutional_holding != null ? `${(r.institutional_holding*100).toFixed(1)}%` : "â€”"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -480,3 +480,5 @@ export default function CompanyDetail() {
     </PageLayout>
   );
 }
+
+

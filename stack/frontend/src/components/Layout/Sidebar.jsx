@@ -26,9 +26,12 @@ function Tip({ label, children }) {
   return (
     <div className="relative group/tip flex items-center justify-center w-full">
       {children}
-      <div className="absolute left-full ml-3 z-50 px-3 py-2 rounded-xl bg-neutral-900 dark:bg-neutral-800 text-white text-[11px] font-medium whitespace-nowrap shadow-lg opacity-0 pointer-events-none translate-x-1 group-hover/tip:opacity-100 group-hover/tip:translate-x-0 transition-all duration-200">
+      <div className="absolute left-full ml-3 z-[100] px-3 py-2 rounded-xl whitespace-nowrap shadow-lg pointer-events-none
+        bg-neutral-900/90 dark:bg-neutral-800/90 backdrop-blur-xl text-white text-[11px] font-medium
+        opacity-0 translate-x-1 group-hover/tip:opacity-100 group-hover/tip:translate-x-0
+        transition-all duration-200 border border-white/10">
         {label}
-        <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-neutral-900 dark:border-r-neutral-800" />
+        <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-neutral-900/90 dark:border-r-neutral-800/90" />
       </div>
     </div>
   );
@@ -42,70 +45,103 @@ export default function Sidebar() {
   const initials = user?.email?.slice(0, 2).toUpperCase() || "U";
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[64px] bg-[var(--surface)] border-r border-[var(--border)] flex flex-col items-center py-5 z-40 transition-colors duration-300">
-      {/* Logo */}
-      <Tip label="AEGIS-FIN">
-        <div className="w-9 h-9 rounded-2xl bg-[var(--orange)] flex items-center justify-center mb-5 cursor-pointer shadow-orange hover:scale-105 transition-transform duration-200 shrink-0">
+    <aside
+      className="fixed left-3 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center py-4 px-2 gap-1"
+      style={{
+        width: 56,
+        background: "rgba(255,255,255,0.72)",
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
+        border: "1px solid rgba(255,255,255,0.85)",
+        borderRadius: 28,
+        boxShadow: "0 8px 40px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9)",
+        overflowX: "hidden",
+        overflowY: "hidden",
+      }}
+    >
+      {/* Dark mode override */}
+      <style>{`.dark aside[class*="fixed left-3"] { background: rgba(18,18,16,0.82) !important; border-color: rgba(255,255,255,0.08) !important; box-shadow: 0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04) !important; }`}</style>
+
+      {/* AEGIS Logo */}
+      <Tip label="AEGIS-FIN · Risk Intelligence">
+        <div className="w-9 h-9 rounded-2xl flex items-center justify-center mb-2 cursor-pointer hover:scale-105 transition-transform duration-200 shrink-0 shadow-orange"
+          style={{ background: "var(--orange)" }}>
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-            <path d="M10 2L3 6V10C3 13.87 6.13 17.5 10 18C13.87 17.5 17 13.87 17 10V6L10 2Z" fill="white" fillOpacity=".9"/>
-            <path d="M7 10L9 12L13 8" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M10 2L3 6V10C3 13.87 6.13 17.5 10 18C13.87 17.5 17 13.87 17 10V6L10 2Z" fill="white" fillOpacity=".95"/>
+            <path d="M7 10L9 12L13 8" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
       </Tip>
 
-      <div className="w-6 h-px bg-[var(--border)] mb-3 shrink-0" />
+      {/* Divider */}
+      <div className="w-6 h-px bg-black/10 dark:bg-white/10 my-1 shrink-0" />
 
       {/* Nav */}
-      <nav className="flex-1 flex flex-col items-center gap-0.5 w-full px-2.5 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+      <nav className="flex flex-col items-center gap-0.5 w-full min-h-0"
+        style={{ overflowY: "auto", overflowX: "hidden", scrollbarWidth: "none" }}>
         {NAV.map(({ to, icon: Icon, label }) => (
           <Tip key={to} label={label}>
             <NavLink to={to} end={to === "/"}
               className={({ isActive }) =>
-                `w-full h-10 flex items-center justify-center rounded-xl transition-all duration-150 group ${
+                `w-full h-9 flex items-center justify-center rounded-xl transition-all duration-150 group shrink-0 ${
                   isActive
-                    ? "bg-[var(--orange)] text-white shadow-orange"
-                    : "text-[var(--text-3)] hover:bg-[rgba(0,0,0,.05)] dark:hover:bg-[rgba(255,255,255,.05)] hover:text-[var(--text)]"
+                    ? "text-white shadow-orange"
+                    : "text-neutral-500 dark:text-neutral-400 hover:bg-black/[.06] dark:hover:bg-white/[.06] hover:text-neutral-900 dark:hover:text-white"
                 }`
               }
+              style={({ isActive }) => isActive ? { background: "var(--orange)" } : {}}
             >
               {({ isActive }) => (
-                <Icon size={18} strokeWidth={isActive ? 2.5 : 1.75} className="transition-transform duration-150 group-hover:scale-110" />
+                <Icon size={17} strokeWidth={isActive ? 2.5 : 1.75} className="transition-transform duration-150 group-hover:scale-110" />
               )}
             </NavLink>
           </Tip>
         ))}
       </nav>
 
-      <div className="w-6 h-px bg-[var(--border)] my-3 shrink-0" />
+      {/* Divider */}
+      <div className="w-6 h-px bg-black/10 dark:bg-white/10 my-1 shrink-0" />
 
       {/* Bottom */}
-      <div className="flex flex-col items-center gap-0.5 w-full px-2.5 shrink-0">
+      <div className="flex flex-col items-center gap-0.5 w-full shrink-0">
         <Tip label={dark ? "Light Mode" : "Dark Mode"}>
-          <button onClick={toggle} className="w-full h-10 flex items-center justify-center rounded-xl text-[var(--text-3)] hover:bg-[rgba(0,0,0,.05)] dark:hover:bg-[rgba(255,255,255,.05)] hover:text-[var(--text)] transition-all duration-150 group">
-            {dark ? <Sun size={18} strokeWidth={1.75} className="group-hover:rotate-45 transition-transform duration-300" /> : <Moon size={18} strokeWidth={1.75} className="group-hover:-rotate-12 transition-transform duration-300" />}
+          <button onClick={toggle}
+            className="w-full h-9 flex items-center justify-center rounded-xl text-neutral-500 dark:text-neutral-400 hover:bg-black/[.06] dark:hover:bg-white/[.06] hover:text-neutral-900 dark:hover:text-white transition-all duration-150 group">
+            {dark
+              ? <Sun size={17} strokeWidth={1.75} className="group-hover:rotate-45 transition-transform duration-300" />
+              : <Moon size={17} strokeWidth={1.75} className="group-hover:-rotate-12 transition-transform duration-300" />
+            }
           </button>
         </Tip>
+
         <Tip label={user?.email || "Profile"}>
           <NavLink to="/profile"
             className={({ isActive }) =>
-              `w-full h-10 flex items-center justify-center rounded-xl transition-all duration-150 ${
-                isActive ? "bg-[var(--orange)] text-white" : "text-[var(--text-3)] hover:bg-[rgba(0,0,0,.05)] dark:hover:bg-[rgba(255,255,255,.05)] hover:text-[var(--text)]"
+              `w-full h-9 flex items-center justify-center rounded-xl transition-all duration-150 ${
+                isActive
+                  ? "text-white"
+                  : "text-neutral-500 dark:text-neutral-400 hover:bg-black/[.06] dark:hover:bg-white/[.06] hover:text-neutral-900 dark:hover:text-white"
               }`
             }
+            style={({ isActive }) => isActive ? { background: "var(--orange)" } : {}}
           >
             {({ isActive }) =>
               user ? (
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${isActive ? "bg-white/20 text-white" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"}`}>{initials}</div>
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${
+                  isActive ? "bg-white/20 text-white" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"
+                }`}>{initials}</div>
               ) : (
-                <User size={18} strokeWidth={1.75} />
+                <User size={17} strokeWidth={1.75} />
               )
             }
           </NavLink>
         </Tip>
+
         {user && (
           <Tip label="Sign Out">
-            <button onClick={handleSignOut} className="w-full h-10 flex items-center justify-center rounded-xl text-[var(--text-3)] hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 transition-all duration-150">
-              <LogOut size={18} strokeWidth={1.75} />
+            <button onClick={handleSignOut}
+              className="w-full h-9 flex items-center justify-center rounded-xl text-neutral-500 dark:text-neutral-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 transition-all duration-150">
+              <LogOut size={17} strokeWidth={1.75} />
             </button>
           </Tip>
         )}
