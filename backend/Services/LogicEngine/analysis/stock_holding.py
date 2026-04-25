@@ -149,7 +149,7 @@ def run_stock_holding(holder_data, sector_health_results=None, top_sectors=None,
             "holding_signal": "STABLE",
         }
     for w in vr.warnings:
-        log.warning("stock_holding.input_warning", ticker=holder_data.get("ticker"), msg=w)
+        log.warning("stock_holding.input_warning", ticker=holder_data.get("ticker"), warning=w)
 
     metrics = compute_holding_metrics(holder_data, lookback_days)
     log.info("stock_holding.metrics_computed", ticker=holder_data.get("ticker"),

@@ -208,8 +208,15 @@ def save_balance_sheet(ticker: str, result: dict) -> None:
             r["ticker"]           = ticker
             r["period"]           = period
             r["sector_direction"] = overlay.get("direction")
-            r["sector_pressure"]  = _safe(overlay.get("pressure"))
+            # Clamp sector_pressure to [-9999.9999, 9999.9999] — NUMERIC(8,4)
+            sp = overlay.get("pressure")
+            r["sector_pressure"]  = _safe(max(-9999.9999, min(9999.9999, float(sp))) if sp is not None and sp == sp else sp)
             r["sector_narrative"] = overlay.get("narrative")
+            # Clamp yoy_pct and hist_pct_rank to safe ranges
+            if r.get("YoY_pct") is not None and r["YoY_pct"] == r["YoY_pct"]:
+                r["YoY_pct"] = max(-99999999.0, min(99999999.0, float(r["YoY_pct"])))
+            if r.get("HistPctRank") is not None and r["HistPctRank"] == r["HistPctRank"]:
+                r["HistPctRank"] = max(-9999.9999, min(9999.9999, float(r["HistPctRank"])))
             ratio_rows.append(r)
         if ratio_rows:
             get_store().write_balance_sheet_ratios(ticker, ratio_rows)
