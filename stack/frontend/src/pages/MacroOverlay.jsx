@@ -44,6 +44,10 @@ export default function MacroOverlay() {
     return counts;
   }, [history]);
 
+  // Determine current macro card style
+  const isRiskOff = macro?.macro_regime === "RISK_OFF";
+  const isRiskOn  = macro?.macro_regime === "RISK_ON";
+
   if (loading || histLoading) return <PageLayout title="Macro Overlay"><LoadingSpinner /></PageLayout>;
 
   return (
@@ -52,13 +56,25 @@ export default function MacroOverlay() {
 
         {/* Current Macro State */}
         {macro && (
-          <div className="card p-6 border-l-4 border-orange-400">
+          <div className={`rounded-2xl p-6 ${
+            isRiskOff
+              ? "bg-black dark:bg-[#111] text-white"
+              : isRiskOn
+              ? "bg-[#1a3a1a] text-white"
+              : "card"
+          }`}>
             <div className="flex items-start justify-between">
               <div>
-                <p className="stat-label">Current Macro Regime</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{macro.macro_regime?.replace("_"," ")}</p>
+                <p className={`stat-label ${isRiskOff || isRiskOn ? "text-white/60" : ""}`}>Current Macro Regime</p>
+                <p className={`text-3xl font-black mt-1 ${
+                  isRiskOff ? "text-red-400" : isRiskOn ? "text-[#00B341]" : "text-gray-900 dark:text-white"
+                }`}>
+                  {macro.macro_regime?.replace("_"," ")}
+                </p>
                 {macro.macro_narrative && (
-                  <p className="text-sm text-gray-500 mt-2 max-w-xl">{macro.macro_narrative}</p>
+                  <p className={`text-sm mt-2 max-w-xl ${isRiskOff || isRiskOn ? "text-white/70" : "text-gray-500"}`}>
+                    {macro.macro_narrative}
+                  </p>
                 )}
               </div>
               <SignalBadge value={macro.macro_regime} />
@@ -70,12 +86,16 @@ export default function MacroOverlay() {
                 { label: "USD Z-Score", value: macro.usd_z?.toFixed(2),       icon: DollarSign },
                 { label: "Gold Z-Score",value: macro.gold_z?.toFixed(2),      icon: Globe },
               ].map(({ label, value, icon: Icon }) => (
-                <div key={label} className="bg-gray-50 rounded-xl p-3">
+                <div key={label} className={`rounded-2xl p-3 ${
+                  isRiskOff || isRiskOn
+                    ? "bg-white/10"
+                    : "bg-[#FFC224]/10 border border-[#FFC224]/20"
+                }`}>
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Icon size={13} className="text-orange-400" />
-                    <p className="stat-label">{label}</p>
+                    <Icon size={13} className={isRiskOff ? "text-red-400" : isRiskOn ? "text-[#00B341]" : "text-[#FF8A00]"} />
+                    <p className={`stat-label ${isRiskOff || isRiskOn ? "text-white/60" : ""}`}>{label}</p>
                   </div>
-                  <p className="text-xl font-bold text-gray-900">{value ?? "—"}</p>
+                  <p className={`text-xl font-black ${isRiskOff || isRiskOn ? "text-white" : "text-gray-900 dark:text-white"}`}>{value ?? "—"}</p>
                 </div>
               ))}
             </div>
@@ -84,17 +104,17 @@ export default function MacroOverlay() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-red-500">{regimeDist.RISK_OFF}</p>
-            <p className="text-xs text-gray-500 mt-1">Risk-Off Days</p>
+          <div className="bento-white text-center">
+            <p className="text-2xl font-black text-red-500">{regimeDist.RISK_OFF}</p>
+            <p className="stat-label mt-1">Risk-Off Days</p>
           </div>
-          <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-gray-500">{regimeDist.NEUTRAL}</p>
-            <p className="text-xs text-gray-500 mt-1">Neutral Days</p>
+          <div className="bento-white text-center">
+            <p className="text-2xl font-black text-[#FFC224]">{regimeDist.NEUTRAL}</p>
+            <p className="stat-label mt-1">Neutral Days</p>
           </div>
-          <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-emerald-500">{regimeDist.RISK_ON}</p>
-            <p className="text-xs text-gray-500 mt-1">Risk-On Days</p>
+          <div className="bento-white text-center">
+            <p className="text-2xl font-black text-[#00B341]">{regimeDist.RISK_ON}</p>
+            <p className="stat-label mt-1">Risk-On Days</p>
           </div>
         </div>
 
@@ -107,16 +127,16 @@ export default function MacroOverlay() {
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="macroGrad2" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#f97316" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#f97316" stopOpacity={0}    />
+                      <stop offset="5%"  stopColor="#FF8A00" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#FF8A00" stopOpacity={0}    />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f9fafb" />
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 12 }} />
                   <ReferenceLine y={0} stroke="#e5e7eb" strokeDasharray="4 4" />
-                  <Area type="monotone" dataKey="score" stroke="#f97316" strokeWidth={2} fill="url(#macroGrad2)" dot={false} name="Macro Score" />
+                  <Area type="monotone" dataKey="score" stroke="#FF8A00" strokeWidth={2} fill="url(#macroGrad2)" dot={false} name="Macro Score" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -128,13 +148,13 @@ export default function MacroOverlay() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f9fafb" />
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 12 }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <ReferenceLine y={0} stroke="#e5e7eb" strokeDasharray="4 4" />
                   <Line type="monotone" dataKey="vix_z"   stroke="#ef4444" dot={false} strokeWidth={1.5} name="VIX Z"   />
-                  <Line type="monotone" dataKey="usd_z"   stroke="#6366f1" dot={false} strokeWidth={1.5} name="USD Z"   />
-                  <Line type="monotone" dataKey="gold_z"  stroke="#f59e0b" dot={false} strokeWidth={1.5} name="Gold Z"  />
-                  <Line type="monotone" dataKey="crude_z" stroke="#10b981" dot={false} strokeWidth={1.5} name="Crude Z" />
+                  <Line type="monotone" dataKey="usd_z"   stroke="#3b82f6" dot={false} strokeWidth={1.5} name="USD Z"   />
+                  <Line type="monotone" dataKey="gold_z"  stroke="#FFC224" dot={false} strokeWidth={1.5} name="Gold Z"  />
+                  <Line type="monotone" dataKey="crude_z" stroke="#00B341" dot={false} strokeWidth={1.5} name="Crude Z" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -144,23 +164,23 @@ export default function MacroOverlay() {
               <p className="section-title mb-3">Macro Regime Log</p>
               <div className="overflow-x-auto max-h-72 overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-white">
-                    <tr className="border-b border-gray-100">
+                  <thead className="sticky top-0 bg-white dark:bg-[#111]">
+                    <tr className="border-b border-gray-100 dark:border-[#1f1f1f]">
                       {["Date","Regime","Score","VIX Z","USD Z","Gold Z","Crude Z"].map(h => (
-                        <th key={h} className="text-left py-2 px-3 stat-label">{h}</th>
+                        <th key={h} className="th-base">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {[...history].reverse().map(r => (
-                      <tr key={r.id} className="border-b border-gray-50 hover:bg-orange-50/20">
-                        <td className="py-2 px-3 text-xs text-gray-600">{r.date}</td>
-                        <td className="py-2 px-3"><SignalBadge value={r.macro_regime} /></td>
-                        <td className="py-2 px-3 text-xs font-mono">{r.macro_score?.toFixed(2)}</td>
-                        <td className="py-2 px-3 text-xs">{r.vix_z?.toFixed(2)}</td>
-                        <td className="py-2 px-3 text-xs">{r.usd_z?.toFixed(2)}</td>
-                        <td className="py-2 px-3 text-xs">{r.gold_z?.toFixed(2)}</td>
-                        <td className="py-2 px-3 text-xs">{r.crude_z?.toFixed(2)}</td>
+                      <tr key={r.id} className="tr-base">
+                        <td className="td-base text-xs text-gray-600 dark:text-gray-400">{r.date}</td>
+                        <td className="td-base"><SignalBadge value={r.macro_regime} /></td>
+                        <td className="td-base text-xs font-mono font-bold">{r.macro_score?.toFixed(2)}</td>
+                        <td className="td-base text-xs">{r.vix_z?.toFixed(2)}</td>
+                        <td className="td-base text-xs">{r.usd_z?.toFixed(2)}</td>
+                        <td className="td-base text-xs">{r.gold_z?.toFixed(2)}</td>
+                        <td className="td-base text-xs">{r.crude_z?.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>

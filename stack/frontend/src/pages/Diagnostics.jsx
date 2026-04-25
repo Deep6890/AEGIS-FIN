@@ -85,11 +85,11 @@ export default function Diagnostics() {
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Database size={16} className="text-orange-500" />
+              <Database size={16} className="text-[#FF8A00]" />
               <p className="section-title">Supabase Diagnostics</p>
             </div>
             <button onClick={run} disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-orange-500 border border-orange-200 dark:border-orange-800 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-colors disabled:opacity-50">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-black dark:text-[#FFC224] border border-black dark:border-[#FFC224] rounded-xl hover:bg-black hover:text-[#FFC224] dark:hover:bg-[#FFC224] dark:hover:text-black transition-all disabled:opacity-50">
               <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Re-run
             </button>
           </div>
@@ -97,55 +97,57 @@ export default function Diagnostics() {
           {/* Summary */}
           {!loading && Object.keys(results).length > 0 && (
             <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl text-center">
-                <p className="text-xl font-bold text-emerald-500">{hasData.length}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Tables with data</p>
+              <div className="bento-green text-center">
+                <p className="text-xl font-black text-white">{hasData.length}</p>
+                <p className="text-xs text-white/70 mt-0.5">Tables with data</p>
               </div>
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 rounded-xl text-center">
-                <p className="text-xl font-bold text-amber-500">{empty.length}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Empty tables</p>
+              <div className="bento-yellow text-center">
+                <p className="text-xl font-black text-black">{empty.length}</p>
+                <p className="text-xs text-black/60 mt-0.5">Empty tables</p>
               </div>
-              <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-xl text-center">
-                <p className="text-xl font-bold text-red-500">{rlsBlocked.length}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Blocked (RLS)</p>
+              <div className="bento-white text-center">
+                <p className="text-xl font-black text-red-500">{rlsBlocked.length}</p>
+                <p className="stat-label mt-0.5">Blocked (RLS)</p>
               </div>
             </div>
           )}
 
           {/* RLS fix */}
           {rlsBlocked.length > 0 && (
-            <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl mb-4">
-              <div className="flex items-center justify-between mb-2">
+            <div className="mb-4 rounded-2xl overflow-hidden">
+              <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-t-2xl">
                 <div className="flex items-center gap-2">
                   <AlertCircle size={14} className="text-red-500" />
-                  <p className="text-xs font-bold text-red-600 dark:text-red-400">
+                  <p className="text-xs font-black text-red-600 dark:text-red-400">
                     RLS is blocking {rlsBlocked.length} table(s) — anon key can't read
                   </p>
                 </div>
                 <button onClick={copy}
-                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 transition-colors">
+                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-black bg-black text-[#FFC224] rounded-xl hover:opacity-80 transition-opacity">
                   <Copy size={10} /> {copied ? "Copied!" : "Copy SQL"}
                 </button>
               </div>
-              <p className="text-xs text-red-600 dark:text-red-400 mb-2">
-                Go to <strong>Supabase Dashboard → SQL Editor → New Query</strong>, paste and run:
-              </p>
-              <pre className="text-[10px] font-mono bg-white dark:bg-[#0a0a0a] border border-red-200 dark:border-red-900 p-3 rounded-lg overflow-x-auto text-gray-700 dark:text-gray-300 max-h-48 overflow-y-auto">
-                {RLS_SQL}
-              </pre>
+              <div className="p-4 bg-red-50 dark:bg-red-950/20 border-x border-b border-red-200 dark:border-red-900 rounded-b-2xl">
+                <p className="text-xs text-red-600 dark:text-red-400 mb-2">
+                  Go to <strong>Supabase Dashboard → SQL Editor → New Query</strong>, paste and run:
+                </p>
+                <pre className="text-[10px] font-mono bg-black text-[#FFC224] p-3 rounded-2xl overflow-x-auto max-h-48 overflow-y-auto">
+                  {RLS_SQL}
+                </pre>
+              </div>
             </div>
           )}
 
           {/* Empty tables */}
           {empty.length > 0 && rlsBlocked.length === 0 && (
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-xl mb-4">
+            <div className="p-3 bg-[#FFC224]/10 border border-[#FFC224]/20 rounded-2xl mb-4">
               <div className="flex items-start gap-2">
-                <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                <AlertCircle size={14} className="text-[#b38a00] dark:text-[#FFC224] shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mb-1">
+                  <p className="text-xs font-black text-[#b38a00] dark:text-[#FFC224] mb-1">
                     {empty.length} tables are empty — run the pipeline
                   </p>
-                  <code className="text-[10px] font-mono text-amber-700 dark:text-amber-300">
+                  <code className="text-[10px] font-mono text-[#b38a00] dark:text-[#FFC224]">
                     cd backend &amp;&amp; python run_pipeline.py --start 0 --end 5
                   </code>
                 </div>
@@ -154,10 +156,10 @@ export default function Diagnostics() {
           )}
 
           {hasData.length === TABLES.length && (
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 rounded-xl mb-4">
+            <div className="p-3 bg-[#00B341]/10 border border-[#00B341]/20 rounded-2xl mb-4">
               <div className="flex items-center gap-2">
-                <CheckCircle size={14} className="text-emerald-500" />
-                <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                <CheckCircle size={14} className="text-[#00B341]" />
+                <p className="text-xs font-black text-[#00B341]">
                   All tables have data — everything is working
                 </p>
               </div>
@@ -168,7 +170,7 @@ export default function Diagnostics() {
         {/* Table list */}
         <div className="card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-[#1a1a1a] border-b border-gray-100 dark:border-[#2a2a2a]">
+            <thead className="bg-[#FDFBF7] dark:bg-[#0a0a0a] border-b border-gray-100 dark:border-[#1f1f1f]">
               <tr>
                 <th className="th-base">Table</th>
                 <th className="th-base">Status</th>
@@ -191,7 +193,7 @@ export default function Diagnostics() {
                     </td>
                     <td className="td-base text-xs font-mono">
                       {r?.status === "ok"
-                        ? <span className={r.sample === 0 ? "text-amber-500" : "text-emerald-500 font-bold"}>
+                        ? <span className={r.sample === 0 ? "text-[#FFC224] font-bold" : "text-[#00B341] font-black"}>
                             {r.sample === 0 ? "empty" : `${r.sample} rows`}
                           </span>
                         : "—"}

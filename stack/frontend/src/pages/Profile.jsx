@@ -23,14 +23,14 @@ export default function Profile() {
       <div className="max-w-lg space-y-4">
 
         {/* Avatar card */}
-        <div className="card p-6 flex items-center gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-2xl font-bold flex items-center justify-center">
+        <div className="bento-black flex items-center gap-5">
+          <div className="w-16 h-16 rounded-2xl bg-[#FFC224]/20 text-[#FFC224] text-2xl font-black flex items-center justify-center shrink-0">
             {initials}
           </div>
           <div>
-            <p className="text-base font-bold text-gray-900 dark:text-white">{user?.email}</p>
-            <p className="text-xs text-gray-400 mt-0.5">Member since {joined}</p>
-            <span className="badge-orange mt-2 inline-flex">Analyst</span>
+            <p className="text-base font-black text-white">{user?.email}</p>
+            <p className="text-xs text-white/50 mt-0.5">Member since {joined}</p>
+            <span className="badge-amber mt-2 inline-flex">Analyst</span>
           </div>
         </div>
 
@@ -43,12 +43,12 @@ export default function Profile() {
             { icon: User,   label: "User ID", value: user?.id?.slice(0, 16) + "..." },
           ].map(({ icon: Icon, label, value }) => (
             <div key={label} className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
-                <Icon size={15} className="text-orange-500" />
+              <div className="w-9 h-9 rounded-xl bg-[#FFC224]/10 flex items-center justify-center shrink-0">
+                <Icon size={15} className="text-[#b38a00] dark:text-[#FFC224]" />
               </div>
               <div>
                 <p className="stat-label">{label}</p>
-                <p className="text-sm text-gray-800 dark:text-gray-200 font-medium mt-0.5">{value || "—"}</p>
+                <p className="text-sm text-gray-800 dark:text-gray-200 font-bold mt-0.5">{value || "—"}</p>
               </div>
             </div>
           ))}
@@ -59,17 +59,17 @@ export default function Profile() {
           <p className="section-title mb-4">Preferences</p>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
-                {dark ? <Moon size={15} className="text-orange-500" /> : <Sun size={15} className="text-orange-500" />}
+              <div className="w-9 h-9 rounded-xl bg-[#FFC224]/10 flex items-center justify-center shrink-0">
+                {dark ? <Moon size={15} className="text-[#b38a00] dark:text-[#FFC224]" /> : <Sun size={15} className="text-[#b38a00] dark:text-[#FFC224]" />}
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Theme</p>
+                <p className="text-sm font-black text-gray-800 dark:text-gray-200">Theme</p>
                 <p className="text-xs text-gray-400">{dark ? "Dark mode" : "Light mode"}</p>
               </div>
             </div>
             <button
               onClick={toggle}
-              className={`relative w-11 h-6 rounded-full transition-colors ${dark ? "bg-orange-500" : "bg-gray-200 dark:bg-gray-700"}`}
+              className={`relative w-11 h-6 rounded-full transition-colors ${dark ? "bg-[#FFC224]" : "bg-gray-200 dark:bg-gray-700"}`}
             >
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${dark ? "translate-x-5" : ""}`} />
             </button>
@@ -79,7 +79,7 @@ export default function Profile() {
         {/* Sign out */}
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-semibold rounded-2xl border border-red-200 dark:border-red-800 transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-3 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-black rounded-2xl border border-red-200 dark:border-red-800 transition-colors"
         >
           <LogOut size={16} /> Sign Out
         </button>

@@ -11,7 +11,7 @@ import EmptyState from "../components/ui/EmptyState";
 import { useAppData } from "../context/AppDataContext";
 import { Link } from "react-router-dom";
 
-const SCORE_COLOR = s => s >= 70 ? "#10b981" : s >= 40 ? "#f59e0b" : "#ef4444";
+const SCORE_COLOR = s => s >= 70 ? "#00B341" : s >= 40 ? "#FFC224" : "#ef4444";
 
 export default function RiskEngine() {
   const { latestMl, portfolioStats, companies, loading } = useAppData();
@@ -45,11 +45,11 @@ export default function RiskEngine() {
 
   // Distribution buckets
   const buckets = [
-    { label: "0–20",  count: latestMl.filter(r => r.survival_score < 20).length },
-    { label: "20–40", count: latestMl.filter(r => r.survival_score >= 20 && r.survival_score < 40).length },
-    { label: "40–60", count: latestMl.filter(r => r.survival_score >= 40 && r.survival_score < 60).length },
-    { label: "60–80", count: latestMl.filter(r => r.survival_score >= 60 && r.survival_score < 80).length },
-    { label: "80–100",count: latestMl.filter(r => r.survival_score >= 80).length },
+    { label: "0–20",   count: latestMl.filter(r => r.survival_score < 20).length },
+    { label: "20–40",  count: latestMl.filter(r => r.survival_score >= 20 && r.survival_score < 40).length },
+    { label: "40–60",  count: latestMl.filter(r => r.survival_score >= 40 && r.survival_score < 60).length },
+    { label: "60–80",  count: latestMl.filter(r => r.survival_score >= 60 && r.survival_score < 80).length },
+    { label: "80–100", count: latestMl.filter(r => r.survival_score >= 80).length },
   ];
 
   if (loading) return <PageLayout title="Risk Engine"><LoadingSpinner /></PageLayout>;
@@ -60,10 +60,10 @@ export default function RiskEngine() {
 
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={Brain}         label="Companies Scored"  value={latestMl.length}            color="orange"  />
-          <StatCard icon={CheckCircle}   label="Healthy (≥70)"     value={portfolioStats.healthy}      color="emerald" />
-          <StatCard icon={Eye}           label="Watch (40–70)"      value={portfolioStats.watch}        color="amber"   />
-          <StatCard icon={AlertTriangle} label="Distress (<40)"    value={portfolioStats.distress}     color="red"     />
+          <StatCard icon={Brain}         label="Companies Scored"  value={latestMl.length}        color="black"   />
+          <StatCard icon={CheckCircle}   label="Healthy (≥70)"     value={portfolioStats.healthy}  color="emerald" />
+          <StatCard icon={Eye}           label="Watch (40–70)"      value={portfolioStats.watch}    color="amber"   />
+          <StatCard icon={AlertTriangle} label="Distress (<40)"    value={portfolioStats.distress} color="red"     />
         </div>
 
         {/* Charts Row */}
@@ -78,10 +78,10 @@ export default function RiskEngine() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 12 }} />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                     {buckets.map((b, i) => (
-                      <Cell key={i} fill={["#ef4444","#f97316","#f59e0b","#84cc16","#10b981"][i]} />
+                      <Cell key={i} fill={["#ef4444","#FF8A00","#FFC224","#00B341","#00B341"][i]} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -98,8 +98,8 @@ export default function RiskEngine() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                   <XAxis dataKey="x" name="Survival" type="number" domain={[0,100]} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} label={{ value: "Survival Score", position: "insideBottom", offset: -2, fontSize: 10 }} />
                   <YAxis dataKey="y" name="Distress" type="number" domain={[0,100]} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} label={{ value: "Distress %", angle: -90, position: "insideLeft", fontSize: 10 }} />
-                  <Tooltip cursor={{ strokeDasharray: "3 3" }} contentStyle={{ fontSize: 10, borderRadius: 8 }} formatter={(v, n) => [`${v.toFixed(1)}`, n]} />
-                  <Scatter data={scatterData} fill="#f97316">
+                  <Tooltip cursor={{ strokeDasharray: "3 3" }} contentStyle={{ fontSize: 10, borderRadius: 12 }} formatter={(v, n) => [`${v.toFixed(1)}`, n]} />
+                  <Scatter data={scatterData} fill="#FF8A00">
                     {scatterData.map((d, i) => (
                       <Cell key={i} fill={SCORE_COLOR(d.x)} fillOpacity={0.7} />
                     ))}
@@ -119,7 +119,7 @@ export default function RiskEngine() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search..."
-                className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+                className="px-3 py-1.5 text-xs input-base"
               />
               {[
                 { key: "score_asc",  label: "Worst First" },
@@ -129,8 +129,10 @@ export default function RiskEngine() {
                 <button
                   key={key}
                   onClick={() => setSort(key)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
-                    sort === key ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
+                  className={`px-3 py-1.5 text-xs font-black rounded-xl border transition-all ${
+                    sort === key
+                      ? "bg-black dark:bg-[#FFC224] text-[#FFC224] dark:text-black border-black dark:border-[#FFC224]"
+                      : "bg-white dark:bg-[#111] border-gray-200 dark:border-[#2a2a2a] text-gray-600 dark:text-gray-400 hover:border-black dark:hover:border-[#FFC224]"
                   }`}
                 >
                   {label}
@@ -143,9 +145,9 @@ export default function RiskEngine() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100">
+                  <tr className="border-b border-gray-100 dark:border-[#1f1f1f]">
                     {["Company","Ticker","Survival Score","Distress %","Model","Date","Action"].map(h => (
-                      <th key={h} className="text-left py-2 px-3 stat-label">{h}</th>
+                      <th key={h} className="th-base">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -154,22 +156,22 @@ export default function RiskEngine() {
                     const c = compMap[r.company_id];
                     const score = r.survival_score;
                     return (
-                      <tr key={r.id} className="border-b border-gray-50 hover:bg-orange-50/20 transition-colors">
-                        <td className="py-2.5 px-3 font-medium text-gray-900">{c?.name || `Company ${r.company_id}`}</td>
-                        <td className="py-2.5 px-3 text-xs font-mono text-gray-500">{c?.ticker || "—"}</td>
-                        <td className="py-2.5 px-3">
+                      <tr key={r.id} className="tr-base">
+                        <td className="td-base font-bold text-gray-900 dark:text-white">{c?.name || `Company ${r.company_id}`}</td>
+                        <td className="td-base text-xs font-mono text-gray-500">{c?.ticker || "—"}</td>
+                        <td className="td-base">
                           <div className="flex items-center gap-2">
-                            <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="w-16 h-1.5 bg-gray-100 dark:bg-[#2a2a2a] rounded-full overflow-hidden">
                               <div className="h-full rounded-full" style={{ width: `${score || 0}%`, background: SCORE_COLOR(score) }} />
                             </div>
-                            <span className="text-xs font-bold" style={{ color: SCORE_COLOR(score) }}>{score?.toFixed(0)}</span>
+                            <span className="text-xs font-black" style={{ color: SCORE_COLOR(score) }}>{score?.toFixed(0)}</span>
                           </div>
                         </td>
-                        <td className="py-2.5 px-3 text-xs text-red-500 font-medium">{r.distress_probability?.toFixed(1)}%</td>
-                        <td className="py-2.5 px-3 text-xs font-mono text-gray-500">{r.model_version}</td>
-                        <td className="py-2.5 px-3 text-xs text-gray-400">{r.date}</td>
-                        <td className="py-2.5 px-3">
-                          <Link to={`/companies/${r.company_id}`} className="text-xs text-orange-500 hover:text-orange-600 font-medium">
+                        <td className="td-base text-xs text-red-500 font-bold">{r.distress_probability?.toFixed(1)}%</td>
+                        <td className="td-base text-xs font-mono text-gray-500">{r.model_version}</td>
+                        <td className="td-base text-xs text-gray-400">{r.date}</td>
+                        <td className="td-base">
+                          <Link to={`/companies/${r.company_id}`} className="text-xs text-black dark:text-white font-black hover:text-[#FF8A00] transition-colors">
                             Details →
                           </Link>
                         </td>

@@ -9,14 +9,14 @@ import EmptyState from "../components/ui/EmptyState";
 import { useAppData } from "../context/AppDataContext";
 import { fetchStaticCorr, fetchRollingCorr, fetchTopSectors } from "../lib/api";
 
-const COLORS = ["#f97316","#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#84cc16","#ec4899","#14b8a6","#f43f5e","#a78bfa"];
+const COLORS = ["#FF8A00","#3b82f6","#00B341","#FFC224","#ef4444","#8b5cf6","#06b6d4","#84cc16","#ec4899","#14b8a6","#f43f5e","#a78bfa"];
 
 function CorrCell({ value }) {
-  if (value == null) return <td className="py-1.5 px-2 text-xs text-gray-300 text-center">—</td>;
+  if (value == null) return <td className="py-1.5 px-2 text-xs text-gray-300 dark:text-gray-600 text-center">—</td>;
   const abs = Math.abs(value);
   const bg = value > 0
-    ? `rgba(249,115,22,${abs * 0.8})`
-    : `rgba(99,102,241,${abs * 0.8})`;
+    ? `rgba(255,138,0,${abs * 0.8})`
+    : `rgba(59,130,246,${abs * 0.8})`;
   return (
     <td className="py-1.5 px-2 text-xs text-center font-mono" style={{ background: bg, color: abs > 0.5 ? "#fff" : "#374151" }}>
       {value.toFixed(2)}
@@ -88,7 +88,7 @@ export default function Correlation() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search company..."
-              className="w-full pl-8 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white"
+              className="w-full pl-8 pr-3 py-2 text-xs input-base"
             />
           </div>
           <div className="space-y-1 max-h-[calc(100vh-200px)] overflow-y-auto">
@@ -96,14 +96,14 @@ export default function Correlation() {
               <button
                 key={c.id}
                 onClick={() => setSelectedCompany(c.id)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all ${
+                className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-all ${
                   selectedCompany === c.id
-                    ? "bg-orange-500 text-white"
-                    : "hover:bg-orange-50 text-gray-700"
+                    ? "bg-black dark:bg-[#FFC224] text-[#FFC224] dark:text-black font-black"
+                    : "hover:bg-gray-100 dark:hover:bg-[#1a1a1a] text-gray-700 dark:text-gray-300"
                 }`}
               >
-                <p className="font-medium">{c.name}</p>
-                <p className={`font-mono ${selectedCompany === c.id ? "text-orange-100" : "text-gray-400"}`}>{c.ticker}</p>
+                <p className="font-bold">{c.name}</p>
+                <p className={`font-mono text-[10px] ${selectedCompany === c.id ? "text-[#FFC224]/70 dark:text-black/60" : "text-gray-400"}`}>{c.ticker}</p>
               </button>
             ))}
           </div>
@@ -124,8 +124,10 @@ export default function Correlation() {
                     <button
                       key={w}
                       onClick={() => setWindow(w)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
-                        window_ === w ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
+                      className={`px-3 py-1.5 text-xs font-black rounded-xl border transition-all ${
+                        window_ === w
+                          ? "bg-black dark:bg-[#FFC224] text-[#FFC224] dark:text-black border-black dark:border-[#FFC224]"
+                          : "bg-white dark:bg-[#111] border-gray-200 dark:border-[#2a2a2a] text-gray-600 dark:text-gray-400 hover:border-black dark:hover:border-[#FFC224]"
                       }`}
                     >
                       {w}d
@@ -140,9 +142,9 @@ export default function Correlation() {
                   <p className="section-title mb-3">Top Correlated Sectors</p>
                   <div className="flex flex-wrap gap-2">
                     {topSectors.slice(0, 5).map(r => (
-                      <div key={r.id} className="flex items-center gap-2 px-3 py-2 bg-orange-50 rounded-xl border border-orange-100">
-                        <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center">{r.rank}</span>
-                        <span className="text-xs font-medium text-gray-800">{r.sectors?.name}</span>
+                      <div key={r.id} className="flex items-center gap-2 px-3 py-2 bg-[#FFC224]/10 border border-[#FFC224]/20 rounded-2xl">
+                        <span className="w-5 h-5 rounded-full bg-black text-[#FFC224] text-xs font-black flex items-center justify-center">{r.rank}</span>
+                        <span className="text-xs font-bold text-gray-800 dark:text-gray-200">{r.sectors?.name}</span>
                       </div>
                     ))}
                   </div>
@@ -156,16 +158,16 @@ export default function Correlation() {
                   <table className="text-xs border-collapse">
                     <thead>
                       <tr>
-                        <th className="py-1.5 px-2 text-left stat-label">Sector</th>
+                        <th className="py-1.5 px-2 text-left th-base">Sector</th>
                         {["return_1d","return_5d","return_20d","volatility_20d","atr","drawdown_20d","volume_ratio","momentum"].map(m => (
-                          <th key={m} className="py-1.5 px-2 stat-label text-center">{m.replace(/_/g," ")}</th>
+                          <th key={m} className="py-1.5 px-2 th-base text-center">{m.replace(/_/g," ")}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {Object.values(staticMap).map(r => (
-                        <tr key={r.sector_id} className="border-b border-gray-50">
-                          <td className="py-1.5 px-2 font-medium text-gray-800 whitespace-nowrap">{r.sectors?.name || `S${r.sector_id}`}</td>
+                        <tr key={r.sector_id} className="border-b border-gray-50 dark:border-[#1a1a1a]">
+                          <td className="py-1.5 px-2 font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">{r.sectors?.name || `S${r.sector_id}`}</td>
                           <CorrCell value={r.return_1d} />
                           <CorrCell value={r.return_5d} />
                           <CorrCell value={r.return_20d} />
@@ -189,7 +191,7 @@ export default function Correlation() {
                     <LineChart data={rollingChartData}>
                       <XAxis dataKey="date" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
                       <YAxis domain={[-1, 1]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
-                      <Tooltip contentStyle={{ fontSize: 10, borderRadius: 8 }} />
+                      <Tooltip contentStyle={{ fontSize: 10, borderRadius: 12 }} />
                       <Legend wrapperStyle={{ fontSize: 10 }} />
                       {sectorNames.map((name, i) => (
                         <Line key={name} type="monotone" dataKey={name} stroke={COLORS[i % COLORS.length]} dot={false} strokeWidth={1.5} />

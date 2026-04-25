@@ -65,7 +65,7 @@ export default function BalanceSheet() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search company..."
-              className="w-full pl-8 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white"
+              className="w-full pl-8 pr-3 py-2 text-xs input-base"
             />
           </div>
           <div className="space-y-1 max-h-[calc(100vh-200px)] overflow-y-auto">
@@ -73,14 +73,14 @@ export default function BalanceSheet() {
               <button
                 key={c.id}
                 onClick={() => setSelectedCompany(c.id)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all ${
+                className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-all ${
                   selectedCompany === c.id
-                    ? "bg-orange-500 text-white"
-                    : "hover:bg-orange-50 text-gray-700"
+                    ? "bg-black dark:bg-[#FFC224] text-[#FFC224] dark:text-black font-black"
+                    : "hover:bg-gray-100 dark:hover:bg-[#1a1a1a] text-gray-700 dark:text-gray-300"
                 }`}
               >
-                <p className="font-medium">{c.name}</p>
-                <p className={`font-mono ${selectedCompany === c.id ? "text-orange-100" : "text-gray-400"}`}>{c.ticker}</p>
+                <p className="font-bold">{c.name}</p>
+                <p className={`font-mono text-[10px] ${selectedCompany === c.id ? "text-[#FFC224]/70 dark:text-black/60" : "text-gray-400"}`}>{c.ticker}</p>
               </button>
             ))}
           </div>
@@ -103,17 +103,22 @@ export default function BalanceSheet() {
                 statuses.forEach(s => { if (counts[s] !== undefined) counts[s]++; });
                 return (
                   <div className="grid grid-cols-4 gap-3">
-                    {[
-                      { label: "Healthy",  count: counts.green, color: "text-emerald-600" },
-                      { label: "Caution",  count: counts.amber, color: "text-amber-600"   },
-                      { label: "Critical", count: counts.red,   color: "text-red-600"     },
-                      { label: "No Data",  count: counts.gray,  color: "text-gray-400"    },
-                    ].map(({ label, count, color }) => (
-                      <div key={label} className="card p-4 text-center">
-                        <p className={`text-2xl font-bold ${color}`}>{count}</p>
-                        <p className="text-xs text-gray-500 mt-1">{label}</p>
-                      </div>
-                    ))}
+                    <div className="bento-green text-center">
+                      <p className="text-2xl font-black text-white">{counts.green}</p>
+                      <p className="text-xs text-white/70 mt-1">Healthy</p>
+                    </div>
+                    <div className="bento-yellow text-center">
+                      <p className="text-2xl font-black text-black">{counts.amber}</p>
+                      <p className="text-xs text-black/60 mt-1">Caution</p>
+                    </div>
+                    <div className="bento-white text-center">
+                      <p className="text-2xl font-black text-red-500">{counts.red}</p>
+                      <p className="stat-label mt-1">Critical</p>
+                    </div>
+                    <div className="bento-white text-center">
+                      <p className="text-2xl font-black text-gray-400">{counts.gray}</p>
+                      <p className="stat-label mt-1">No Data</p>
+                    </div>
                   </div>
                 );
               })()}
@@ -126,8 +131,8 @@ export default function BalanceSheet() {
                     <LineChart data={ratioHistory}>
                       <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                       <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                      <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
-                      <Line type="monotone" dataKey="value" stroke="#f97316" strokeWidth={2} dot={{ r: 3, fill: "#f97316" }} name={selectedRatio} />
+                      <Tooltip contentStyle={{ fontSize: 11, borderRadius: 12 }} />
+                      <Line type="monotone" dataKey="value" stroke="#FF8A00" strokeWidth={2} dot={{ r: 3, fill: "#FF8A00" }} name={selectedRatio} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -142,9 +147,9 @@ export default function BalanceSheet() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="border-b border-gray-100">
+                          <tr className="border-b border-gray-100 dark:border-[#1f1f1f]">
                             {["Ratio","Value","YoY %","Hist Rank","Status","Trend","Sector Pressure","Adj Status"].map(h => (
-                              <th key={h} className="text-left py-2 px-3 stat-label">{h}</th>
+                              <th key={h} className="th-base">{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -153,30 +158,32 @@ export default function BalanceSheet() {
                             <tr
                               key={r.id}
                               onClick={() => setSelectedRatio(r.ratio)}
-                              className={`border-b border-gray-50 cursor-pointer transition-colors ${
-                                selectedRatio === r.ratio ? "bg-orange-50" : "hover:bg-orange-50/20"
+                              className={`border-b border-gray-50 dark:border-[#1a1a1a] cursor-pointer transition-colors ${
+                                selectedRatio === r.ratio
+                                  ? "bg-[#FFC224]/10"
+                                  : "hover:bg-[#FFC224]/5"
                               }`}
                             >
-                              <td className="py-2 px-3 font-medium text-gray-800 text-xs">{r.ratio}</td>
-                              <td className="py-2 px-3 text-xs">{r.value_str || r.value?.toFixed(2) || "—"}</td>
-                              <td className="py-2 px-3 text-xs">
+                              <td className="td-base font-bold text-gray-800 dark:text-gray-200 text-xs">{r.ratio}</td>
+                              <td className="td-base text-xs">{r.value_str || r.value?.toFixed(2) || "—"}</td>
+                              <td className="td-base text-xs">
                                 {r.yoy_pct != null ? (
-                                  <span className={r.yoy_pct >= 0 ? "text-emerald-600" : "text-red-500"}>
+                                  <span className={r.yoy_pct >= 0 ? "text-[#00B341] font-bold" : "text-red-500 font-bold"}>
                                     {r.yoy_pct >= 0 ? "▲" : "▼"} {Math.abs(r.yoy_pct).toFixed(1)}%
                                   </span>
                                 ) : "—"}
                               </td>
-                              <td className="py-2 px-3 text-xs">{r.hist_pct_rank != null ? `${r.hist_pct_rank.toFixed(0)}p` : "—"}</td>
-                              <td className="py-2 px-3"><SignalBadge value={r.status} /></td>
-                              <td className="py-2 px-3 text-xs">{r.trend || "—"}</td>
-                              <td className="py-2 px-3 text-xs">{r.sector_pressure?.toFixed(2) ?? "—"}</td>
-                              <td className="py-2 px-3"><SignalBadge value={r.adjusted_status} /></td>
+                              <td className="td-base text-xs">{r.hist_pct_rank != null ? `${r.hist_pct_rank.toFixed(0)}p` : "—"}</td>
+                              <td className="td-base"><SignalBadge value={r.status} /></td>
+                              <td className="td-base text-xs">{r.trend || "—"}</td>
+                              <td className="td-base text-xs">{r.sector_pressure?.toFixed(2) ?? "—"}</td>
+                              <td className="td-base"><SignalBadge value={r.adjusted_status} /></td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                    {selectedRatio && <p className="text-xs text-orange-400 mt-2">Click a ratio row to view its historical trend</p>}
+                    {selectedRatio && <p className="text-xs text-[#FF8A00] mt-2">Click a ratio row to view its historical trend</p>}
                   </div>
                 );
               }) : <EmptyState title="No balance sheet data" sub="Run the pipeline to populate financial ratios." />}
