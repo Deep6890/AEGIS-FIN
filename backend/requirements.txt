@@ -1,7 +1,7 @@
-# AEGIS-FIN Backend — Production requirements for Railway deployment
-# Install with: pip install -r requirements.txt
+# AEGIS-FIN Backend — Production requirements for Railway
+# pip install -r requirements.txt --prefer-binary
 
-# ── Core data / numerics ──────────────────────────────────────────────────────
+# ── Core ──────────────────────────────────────────────────────────────────────
 pandas>=2.2.0,<3.0.0
 numpy>=1.26.0,<2.0.0
 scipy>=1.13.0
@@ -9,13 +9,13 @@ scipy>=1.13.0
 # ── Market data ───────────────────────────────────────────────────────────────
 yfinance>=0.2.50
 
-# ── Database backend ──────────────────────────────────────────────────────────
+# ── Database ──────────────────────────────────────────────────────────────────
 supabase>=2.0.0
 storage3<0.12.0
 
 # ── ML ────────────────────────────────────────────────────────────────────────
 scikit-learn>=1.5.0
-catboost>=1.2.0
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
 python-dotenv>=1.0.0
+httpx>=0.27.0

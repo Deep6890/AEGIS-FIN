@@ -2,7 +2,10 @@
 nixPkgs = ["python311"]
 
 [phases.install]
-cmds = ["pip install -r requirements.txt --prefer-binary"]
+cmds = [
+  "pip install --upgrade pip",
+  "pip install -r requirements.txt --prefer-binary --no-cache-dir"
+]
 
 [start]
 cmd = "python scheduler.py"
