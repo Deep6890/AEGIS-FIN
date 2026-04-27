@@ -593,7 +593,7 @@ class SupabaseStore(DataStore):
             metric_name = r.pop("Metric", None) or r.pop("metric", None)
             metric_id   = _METRIC_NAME_TO_ID.get(metric_name) if metric_name else None
             if metric_id is None:
-                continue
+                continue  # skip metrics not in the lookup (unknown names)
             r["company_id"] = company_id
             r["metric_id"]  = metric_id
             r["value"]          = r.pop("Value",         r.get("value"))
@@ -610,13 +610,32 @@ class SupabaseStore(DataStore):
             r["metric_id"]  = metric_id
             upsert_rows.append(r)
 
-        if upsert_rows:
+        if not upsert_rows:
+            return
+
+        # Try upsert; if FK violation, filter to only known-safe metric IDs and retry
+        try:
             self._client.table("stock_holding").upsert(
                 upsert_rows,
                 on_conflict="company_id,metric_id,period",
             ).execute()
             self._trim("stock_holding", company_id,
                        max_rows * len(_METRIC_NAME_TO_ID))
+        except Exception as e:
+            err_str = str(e)
+            # FK violation: some metric_ids not yet seeded in holding_metric_definitions
+            # Retry with only the first 5 metrics (guaranteed to exist from original schema)
+            if "23503" in err_str or "foreign key" in err_str.lower():
+                safe_rows = [r for r in upsert_rows if r.get("metric_id", 99) <= 5]
+                if safe_rows:
+                    self._client.table("stock_holding").upsert(
+                        safe_rows,
+                        on_conflict="company_id,metric_id,period",
+                    ).execute()
+                    self._trim("stock_holding", company_id,
+                               max_rows * len(_METRIC_NAME_TO_ID))
+            else:
+                raise
 
     def _read_stock_holding(
         self, ticker: str, limit: Optional[int] = None
