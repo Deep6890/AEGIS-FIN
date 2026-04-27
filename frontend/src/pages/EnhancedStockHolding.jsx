@@ -172,9 +172,45 @@ export default function EnhancedStockHolding() {
     if (!selectedCompany) return;
     setLoading(true);
     fetchHoldingMetrics(selectedCompany).then(res => {
-      setData(res.data || null);
+      const rows = res.data || [];
+      // rows is a flat array from stock_holding table
+      // Build the data structure the page expects
+      setData({
+        holdings: rows,
+        breakdown: {
+          ownership_pie: buildOwnershipPie(rows),
+          top_holders: [],
+        },
+        enhanced_insights: {
+          key_insights: [],
+          risk_factors: [],
+          sector_comparison: {},
+        },
+        it_sector_correlation: {},
+      });
     }).finally(() => setLoading(false));
   }, [selectedCompany]);
+
+  // Build ownership pie from flat metric rows
+  function buildOwnershipPie(rows) {
+    const ownershipMetrics = [
+      "Institutional Ownership %",
+      "Insider Ownership %",
+      "Promoter Holding %",
+      "Public Float %",
+      "FII Holding %",
+      "DII Holding %",
+    ];
+    return rows
+      .filter(r => {
+        const name = r.holding_metric_definitions?.name || "";
+        return ownershipMetrics.includes(name) && r.value != null;
+      })
+      .map(r => ({
+        name: (r.holding_metric_definitions?.name || "").replace(" %", ""),
+        value: parseFloat((r.value * (r.value <= 1 ? 100 : 1)).toFixed(1)),
+      }));
+  }
 
   const selectedComp = companies.find(c => c.id === selectedCompany);
   

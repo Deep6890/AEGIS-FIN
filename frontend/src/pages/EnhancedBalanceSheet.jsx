@@ -107,7 +107,44 @@ export default function EnhancedBalanceSheet() {
     if (!selectedCompany) return;
     setLoading(true);
     fetchBalanceSheet(selectedCompany).then(res => {
-      setData(res.data || null);
+      const rows = res.data || [];
+      // rows is a flat array from balance_sheet_ratios table
+      // Build the structure the page expects
+      const categoryScores = {};
+      const byCategory = {};
+      rows.forEach(r => {
+        const cat = r.ratio_definitions?.category || "Other";
+        if (!byCategory[cat]) byCategory[cat] = [];
+        byCategory[cat].push(r);
+      });
+      Object.entries(byCategory).forEach(([cat, items]) => {
+        const green = items.filter(r => r.status === "green").length;
+        categoryScores[cat] = {
+          score: items.length ? Math.round(green / items.length * 100) : 0,
+          green,
+          total: items.length,
+          status: green / items.length >= 0.75 ? "strong" : green / items.length >= 0.5 ? "moderate" : "weak",
+        };
+      });
+      setData({
+        ratios: rows,
+        insights: {
+          key_strengths: rows.filter(r => r.status === "green" && r.value != null)
+            .slice(0, 3).map(r => `${r.ratio_definitions?.name || "Ratio"}: ${parseFloat(r.value).toFixed(2)}`),
+          key_concerns: rows.filter(r => r.status === "red" && r.value != null)
+            .slice(0, 3).map(r => `${r.ratio_definitions?.name || "Ratio"}: ${parseFloat(r.value).toFixed(2)}`),
+          recommendations: [],
+          sector_comparison: {},
+          trend_analysis: {},
+        },
+        breakdown: {
+          category_scores: categoryScores,
+          profitability_pie: rows
+            .filter(r => r.ratio_definitions?.category === "Profitability" && r.value != null)
+            .map(r => ({ name: r.ratio_definitions?.name?.replace(" %", "") || "", value: Math.max(0, parseFloat(r.value)) })),
+        },
+        it_sector_correlation: {},
+      });
     }).finally(() => setLoading(false));
   }, [selectedCompany]);
 
