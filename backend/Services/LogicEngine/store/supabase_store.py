@@ -152,8 +152,7 @@ _TABLE_COLUMNS: Dict[str, set] = {
     "stock_holding": {
         "metric_id", "period", "value", "status", "adjusted_status", "trend",
         "holding_signal", "sector_signal", "sector_pressure",
-    },
-}
+    },}
 
 
 class SupabaseStore(DataStore):
@@ -602,8 +601,13 @@ class SupabaseStore(DataStore):
             r["adjusted_status"]= r.pop("AdjustedStatus", r.get("adjusted_status"))
             r["trend"]          = r.pop("Trend",          r.get("trend"))
             for col in ("ticker", "sector", "name", "Description", "Category",
-                        "description", "category"):
+                        "description", "category", "Insight", "InsightSeverity",
+                        "insight", "insight_severity"):
                 r.pop(col, None)
+            # Apply column filter to drop anything not in schema
+            r = self._filter_columns(r, "stock_holding")
+            r["company_id"] = company_id
+            r["metric_id"]  = metric_id
             upsert_rows.append(r)
 
         if upsert_rows:
