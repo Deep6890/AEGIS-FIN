@@ -346,38 +346,117 @@ export default function CompanyDetail() {
         {/* HOLDINGS TAB */}
         {tab === "holdings" && (
           <div className="space-y-4 animate-fade-in">
-            <div className="card overflow-hidden">
-              {holdings.length ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        {["Metric","Value","Status","Trend","Category","Sector Signal","Adj Status"].map(h => (
-                          <th key={h} className="th-base">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {holdings.map(r => (
-                        <tr key={r.id} className="tr-base">
-                          <td className="td-base">
-                            <p className="text-xs font-semibold text-[#0D0D0D] dark:text-[#E8E6E0]">{r.holding_metric_definitions?.name}</p>
-                            {r.holding_metric_definitions?.description && <p className="text-[10px] text-[#9CA3AF] mt-0.5">{r.holding_metric_definitions?.description}</p>}
-                          </td>
-                          <td className="td-base text-xs font-mono font-semibold tabular-nums">{r.value?.toFixed(3) ?? "—"}</td>
-                          <td className="td-base"><SignalBadge value={r.status} /></td>
-                          <td className="td-base text-xs text-[#9CA3AF]">{r.trend || "—"}</td>
-                          <td className="td-base text-xs text-[#9CA3AF]">{r.holding_metric_definitions?.category || "—"}</td>
-                          <td className="td-base text-xs text-[#9CA3AF]">{r.sector_signal || "—"}</td>
-                          <td className="td-base"><SignalBadge value={r.adjusted_status} /></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            {holdings.length ? (
+              <>
+                {/* Summary cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                  {holdings.map(r => {
+                    const name = r.holding_metric_definitions?.name || r.Metric || "Metric";
+                    const val  = r.value ?? r.Value;
+                    const status = r.status || r.Status || "gray";
+                    const adjStatus = r.adjusted_status || r.AdjustedStatus || status;
+                    const trend = r.trend || r.Trend || "";
+                    const desc  = r.holding_metric_definitions?.description || "";
+                    const isPercent = name.includes("%");
+                    const displayVal = val != null
+                      ? isPercent ? `${(val * (val <= 1 ? 100 : 1)).toFixed(1)}%`
+                      : name.includes("HHI") ? val.toFixed(4)
+                      : val.toFixed(2)
+                      : "—";
+                    const statusColor = adjStatus === "green" ? "text-[#00B341]"
+                      : adjStatus === "red" ? "text-[#FF3B30]"
+                      : adjStatus === "amber" ? "text-[#FFC224]"
+                      : "text-[var(--text-3)]";
+                    return (
+                      <div key={r.id || name} className="card p-5 hover-lift">
+                        <div className="flex items-start justify-between mb-3">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-3)] leading-tight max-w-[140px]">{name}</p>
+                          <SignalBadge value={adjStatus} />
+                        </div>
+                        <p className={`text-2xl font-bold tabular-nums ${statusColor}`}>{displayVal}</p>
+                        {trend && (
+                          <p className={`text-xs font-semibold mt-1 flex items-center gap-1 ${trend === "up" ? "text-[var(--orange)]" : "text-[var(--text-3)]"}`}>
+                            {trend === "up" ? "↑" : "↓"} {trend}
+                          </p>
+                        )}
+                        {desc && <p className="text-[10px] text-[var(--text-3)] mt-2 leading-relaxed">{desc}</p>}
+                        {r.sector_signal && (
+                          <div className="mt-2 pt-2 border-t border-[var(--border)] flex items-center gap-2">
+                            <span className="text-[9px] font-bold uppercase text-[var(--text-3)]">Sector</span>
+                            <SignalBadge value={r.sector_signal} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              ) : <EmptyState title="No holding metrics" />}
-            </div>
-             <InsightBox title="Holdings Diagnostics">
+
+                {/* Holding signal summary */}
+                {(() => {
+                  const instRow = holdings.find(r => (r.holding_metric_definitions?.name || "").includes("Institutional"));
+                  const hhiRow  = holdings.find(r => (r.holding_metric_definitions?.name || "").includes("HHI"));
+                  const insiderRow = holdings.find(r => (r.holding_metric_definitions?.name || "").includes("Insider Ownership"));
+                  return (
+                    <div className="card p-5">
+                      <p className="title-md mb-4">Ownership Pattern Analysis</p>
+                      <div className="space-y-3">
+                        {instRow && (
+                          <div className="flex items-center gap-3">
+                            <div className="w-32 shrink-0">
+                              <p className="text-xs font-semibold text-[var(--text-2)]">Institutional</p>
+                              <p className="text-[10px] text-[var(--text-3)]">% held by institutions</p>
+                            </div>
+                            <div className="flex-1 h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full bg-[var(--orange)]"
+                                style={{ width: `${Math.min(100, (instRow.value ?? 0) * (instRow.value <= 1 ? 100 : 1))}%` }} />
+                            </div>
+                            <span className="text-sm font-bold tabular-nums text-[var(--text)] w-12 text-right">
+                              {instRow.value != null ? `${(instRow.value * (instRow.value <= 1 ? 100 : 1)).toFixed(1)}%` : "—"}
+                            </span>
+                          </div>
+                        )}
+                        {insiderRow && (
+                          <div className="flex items-center gap-3">
+                            <div className="w-32 shrink-0">
+                              <p className="text-xs font-semibold text-[var(--text-2)]">Insider/Promoter</p>
+                              <p className="text-[10px] text-[var(--text-3)]">% held by insiders</p>
+                            </div>
+                            <div className="flex-1 h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full bg-neutral-400 dark:bg-neutral-600"
+                                style={{ width: `${Math.min(100, (insiderRow.value ?? 0) * (insiderRow.value <= 1 ? 100 : 1))}%` }} />
+                            </div>
+                            <span className="text-sm font-bold tabular-nums text-[var(--text)] w-12 text-right">
+                              {insiderRow.value != null ? `${(insiderRow.value * (insiderRow.value <= 1 ? 100 : 1)).toFixed(1)}%` : "—"}
+                            </span>
+                          </div>
+                        )}
+                        {hhiRow && (
+                          <div className="flex items-center gap-3">
+                            <div className="w-32 shrink-0">
+                              <p className="text-xs font-semibold text-[var(--text-2)]">Concentration (HHI)</p>
+                              <p className="text-[10px] text-[var(--text-3)]">0 = diversified, 1 = concentrated</p>
+                            </div>
+                            <div className="flex-1 h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full"
+                                style={{ 
+                                  width: `${Math.min(100, (hhiRow.value ?? 0) * 100)}%`,
+                                  background: (hhiRow.value ?? 0) > 0.25 ? "#FF3B30" : (hhiRow.value ?? 0) > 0.15 ? "#FFC224" : "#00B341"
+                                }} />
+                            </div>
+                            <span className="text-sm font-bold tabular-nums text-[var(--text)] w-12 text-right">
+                              {hhiRow.value?.toFixed(4) ?? "—"}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </>
+            ) : (
+              <EmptyState title="No holding metrics" sub="Run the pipeline to populate shareholding data." />
+            )}
+            <InsightBox title="Holdings Diagnostics">
               Shareholder mapping identifies concentration risk (HHI) and tracks institutional confidence alongside promoter pledge levels.
             </InsightBox>
           </div>

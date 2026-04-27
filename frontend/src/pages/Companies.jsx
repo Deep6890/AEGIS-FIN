@@ -33,21 +33,25 @@ export default function Companies() {
     return m;
   }, [latestMl]);
 
+  const getScore    = r => r?.composite_score ?? r?.survival_score ?? null;
+  const getDistress = r => { const s = getScore(r); return s != null ? Math.max(0, 100 - s) : null; };
+
   const filtered = companies.filter(c => {
     const ml = mlMap[c.id];
+    const s  = getScore(ml);
     const q  = search.toLowerCase();
     if (q && !c.name.toLowerCase().includes(q) && !(c.ticker || "").toLowerCase().includes(q)) return false;
-    if (filter === "healthy")  return (ml?.survival_score ?? 0) >= 70;
-    if (filter === "watch")    return (ml?.survival_score ?? 0) >= 40 && (ml?.survival_score ?? 0) < 70;
-    if (filter === "distress") return (ml?.survival_score ?? 101) < 40;
+    if (filter === "healthy")  return (s ?? 0) >= 70;
+    if (filter === "watch")    return (s ?? 0) >= 40 && (s ?? 0) < 70;
+    if (filter === "distress") return s != null && s < 40;
     return true;
   });
 
   const stats = React.useMemo(() => ({
     total:    companies.length,
-    healthy:  latestMl.filter(r => r.survival_score >= 70).length,
-    watch:    latestMl.filter(r => r.survival_score >= 40 && r.survival_score < 70).length,
-    distress: latestMl.filter(r => r.survival_score < 40).length,
+    healthy:  latestMl.filter(r => (getScore(r) ?? 0) >= 70).length,
+    watch:    latestMl.filter(r => { const s = getScore(r); return s != null && s >= 40 && s < 70; }).length,
+    distress: latestMl.filter(r => { const s = getScore(r); return s != null && s < 40; }).length,
   }), [companies, latestMl]);
 
   if (loading) return <PageLayout title="Companies"><PageSkeleton /></PageLayout>;
@@ -168,13 +172,15 @@ export default function Companies() {
                         <td className="td-base">
                           <span className="text-xs text-[var(--text-3)] font-mono">{c.exchange || "NSE"}</span>
                         </td>
-                        <td className="td-base"><ScoreBar score={score} /></td>
+                        <td className="td-base"><ScoreBar score={getScore(mlMap[c.id])} /></td>
                         <td className="td-base">
                           <span className="text-sm font-bold tabular-nums text-[var(--text-2)]">
-                            {distress != null ? `${distress.toFixed(1)}%` : "—"}
+                            {getDistress(mlMap[c.id]) != null ? `${getDistress(mlMap[c.id]).toFixed(1)}%` : "—"}
                           </span>
                         </td>
-                        <td className="td-base"><SignalBadge value={status} /></td>
+                        <td className="td-base">
+                          <SignalBadge value={(() => { const s = getScore(mlMap[c.id]); return s == null ? "gray" : s >= 70 ? "green" : s >= 40 ? "amber" : "red"; })()} />
+                        </td>
                         <td className="td-base">
                           <Link
                             to={`/companies/${c.id}`}

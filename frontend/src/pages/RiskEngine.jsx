@@ -23,16 +23,34 @@ export default function RiskEngine() {
   const [search, setSearch] = useState("");
 
   const compMap = React.useMemo(() => { const m = {}; companies.forEach(c => { m[c.id] = c; }); return m; }, [companies]);
+  
+  // Use composite_score as canonical — no ML means we show what we have
   const sorted = React.useMemo(() => {
-    let data = latestMl.filter(r => { const c = compMap[r.company_id]; return !search || c?.name?.toLowerCase().includes(search.toLowerCase()); });
-    if (sort === "score_asc")  data = [...data].sort((a, b) => (a.survival_score || 0) - (b.survival_score || 0));
-    if (sort === "score_desc") data = [...data].sort((a, b) => (b.survival_score || 0) - (a.survival_score || 0));
-    if (sort === "distress")   data = [...data].sort((a, b) => (b.distress_probability || 0) - (a.distress_probability || 0));
+    let data = latestMl.filter(r => { 
+      const c = compMap[r.company_id]; 
+      return !search || c?.name?.toLowerCase().includes(search.toLowerCase()) || c?.ticker?.toLowerCase().includes(search.toLowerCase());
+    });
+    const score = r => r.composite_score ?? r.survival_score ?? 0;
+    const distress = r => r.distress_probability ?? (100 - score(r));
+    if (sort === "score_asc")  data = [...data].sort((a, b) => score(a) - score(b));
+    if (sort === "score_desc") data = [...data].sort((a, b) => score(b) - score(a));
+    if (sort === "distress")   data = [...data].sort((a, b) => distress(b) - distress(a));
     return data;
   }, [latestMl, sort, search, compMap]);
 
-  const scatterData = latestMl.map(r => ({ x: r.survival_score || 0, y: r.distress_probability || 0, name: compMap[r.company_id]?.name || "" }));
-  const bucketData  = BUCKETS.map((b, i) => { const ranges = [[0,20],[20,40],[40,60],[60,80],[80,100]]; const [lo, hi] = ranges[i]; return { ...b, count: latestMl.filter(r => (r.survival_score || 0) >= lo && (r.survival_score || 0) < hi).length }; });
+  const getScore   = r => r.composite_score ?? r.survival_score ?? null;
+  const getDistress = r => { const s = getScore(r); return s != null ? Math.max(0, 100 - s) : null; };
+
+  const scatterData = latestMl.map(r => ({ 
+    x: getScore(r) || 0, 
+    y: getDistress(r) || 0, 
+    name: compMap[r.company_id]?.name || "" 
+  }));
+  const bucketData = BUCKETS.map((b, i) => { 
+    const ranges = [[0,20],[20,40],[40,60],[60,80],[80,100]]; 
+    const [lo, hi] = ranges[i]; 
+    return { ...b, count: latestMl.filter(r => (getScore(r) || 0) >= lo && (getScore(r) || 0) < hi).length }; 
+  });
 
   if (loading) return <PageLayout title="Risk Engine"><PageSkeleton /></PageLayout>;
 
@@ -41,9 +59,9 @@ export default function RiskEngine() {
       <div className="space-y-5 pb-10">
 
         <div className="animate-fade-in">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--orange)] mb-2">ML Intelligence</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--orange)] mb-2">Intelligence</p>
           <h1 className="page-heading">Risk Engine</h1>
-          <p className="page-subheading">CatBoost-powered survival predictions and distress probability modeling across all tracked companies.</p>
+          <p className="page-subheading">Composite survival scores and distress probability modeling across all tracked companies.</p>
         </div>
 
         {/* Hero stats — glass card */}
@@ -156,9 +174,10 @@ export default function RiskEngine() {
                 <tbody>
                   {sorted.map(r => {
                     const c = compMap[r.company_id];
-                    const s = r.survival_score;
+                    const s = getScore(r);
+                    const d = getDistress(r);
                     return (
-                      <tr key={r.id} className="tr-base group">
+                      <tr key={r.id || r.company_id} className="tr-base group">
                         <td className="td-base">
                           <p className="text-sm font-semibold text-[var(--text)] group-hover:text-[var(--orange)] transition-colors">{c?.name || "—"}</p>
                         </td>
@@ -170,11 +189,11 @@ export default function RiskEngine() {
                             <div className="w-20 h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                               <div className="h-full rounded-full bg-[var(--orange)]" style={{ width: `${s || 0}%` }} />
                             </div>
-                            <span className="text-sm font-bold tabular-nums text-[var(--text)]">{s?.toFixed(0)}</span>
+                            <span className="text-sm font-bold tabular-nums text-[var(--text)]">{s?.toFixed(0) ?? "—"}</span>
                           </div>
                         </td>
                         <td className="td-base">
-                          <span className="text-sm font-bold tabular-nums text-[var(--text-2)]">{r.distress_probability?.toFixed(1)}%</span>
+                          <span className="text-sm font-bold tabular-nums text-[var(--text-2)]">{d != null ? `${d.toFixed(1)}%` : "—"}</span>
                         </td>
                         <td className="td-base">
                           <span className="text-[11px] font-mono text-[var(--text-3)]">{r.date}</span>
