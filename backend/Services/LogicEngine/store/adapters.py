@@ -115,6 +115,9 @@ def save_ohlcv_history(ticker: str, df: pd.DataFrame) -> None:
     # Normalise OHLCV column names to lowercase for Supabase schema compatibility
     rename = {c: c.lower() for c in ("Open", "High", "Low", "Close", "Volume", "Adj Close")}
     df = df.rename(columns=rename)
+    # Drop rows where close is null — DB has NOT NULL constraint
+    if "close" in df.columns:
+        df = df[df["close"].notna() & (df["close"] != 0)]
     df["ticker"] = ticker
     get_store().write_ohlcv_raw(ticker, _df_to_rows(df))
 
@@ -139,6 +142,9 @@ def save_sector_history(sector: str, df: pd.DataFrame) -> None:
     # Normalise OHLCV column names to lowercase for Supabase schema compatibility
     rename = {c: c.lower() for c in ("Open", "High", "Low", "Close", "Volume", "Adj Close")}
     df = df.rename(columns=rename)
+    # Drop rows where close is null — DB has NOT NULL constraint
+    if "close" in df.columns:
+        df = df[df["close"].notna() & (df["close"] != 0)]
     df["sector"] = sector
     get_store().write_sector_ohlcv_raw(sector, _df_to_rows(df))
 
