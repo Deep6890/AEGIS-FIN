@@ -212,6 +212,10 @@ def run_daily(
             out["errors"].append(f"OHLCV fetch failed: {today_data.get('error')}")
             log.error("pipeline.company.ohlcv_fetch_failed", ticker=ticker,
                       error=today_data.get("error"))
+        elif today_data.get("close") is None:
+            log.warning("pipeline.company.ohlcv_null_close", ticker=ticker,
+                        date=today_data.get("date"),
+                        note="Market closed or data unavailable — skipping today's row")
         else:
             save_ohlcv_today(ticker, today_data)
             store.delete("ohlcv_raw", ticker, before_date=cutoff)

@@ -97,6 +97,9 @@ def save_ohlcv_today(ticker: str, ohlcv_dict: dict) -> None:
     """Save one-day OHLCV record from fetch_ohlcv_today()."""
     if ohlcv_dict.get("error") or not ohlcv_dict.get("date"):
         return
+    # Skip if close is None — DB has NOT NULL constraint on close
+    if ohlcv_dict.get("close") is None:
+        return
     row = {k: _safe(v) for k, v in ohlcv_dict.items() if k != "error"}
     row["ticker"] = ticker
     get_store().write_ohlcv_raw(ticker, [row])
@@ -118,6 +121,9 @@ def save_ohlcv_history(ticker: str, df: pd.DataFrame) -> None:
 
 def save_sector_ohlcv_today(sector: str, ohlcv_dict: dict) -> None:
     if ohlcv_dict.get("error") or not ohlcv_dict.get("date"):
+        return
+    # Skip if close is None — DB has NOT NULL constraint on close
+    if ohlcv_dict.get("close") is None:
         return
     row = {k: _safe(v) for k, v in ohlcv_dict.items() if k != "error"}
     row["sector"] = sector
