@@ -101,15 +101,22 @@ def run_ohlcv_health(ohlcv_df, name, label_col="Sector", window_short=20, window
     log_c             = np.log(df["Close"].replace(0, np.nan))
     slope_s           = ols_slope(log_c, window_short)
     out["slope_z"]    = rolling_z(slope_s, window_long)
-    out["composite"]  = out[["ret_z", "vol_z", "momentum_z", "slope_z"]].mean(axis=1)
+
+    # Weighted composite — ret and momentum carry more weight than slope and vol
+    # All z-scores are already clipped to ±3 by rolling_z
+    out["composite"] = (
+        out["ret_z"]      * 0.35 +
+        out["momentum_z"] * 0.30 +
+        out["slope_z"]    * 0.20 +
+        out["vol_z"]      * 0.15
+    )
     out["health_score"] = rolling_pct_rank(out["composite"], window_long)
 
-    hs  = out["health_score"]
-    q75 = hs.rolling(window_long, min_periods=10).quantile(0.75)
-    q50 = hs.rolling(window_long, min_periods=10).quantile(0.50)
-    q25 = hs.rolling(window_long, min_periods=10).quantile(0.25)
+    # Fixed signal thresholds based on health_score directly
+    # (not rolling quantiles of health_score — that was circular)
+    hs = out["health_score"]
     out["signal"] = np.select(
-        [hs.isna() | q75.isna(), hs >= q75, hs >= q50, hs >= q25],
+        [hs.isna(), hs >= 75, hs >= 50, hs >= 25],
         ["INSUFFICIENT_DATA", "STRONG", "NEUTRAL", "WATCH"],
         default="WEAK",
     )

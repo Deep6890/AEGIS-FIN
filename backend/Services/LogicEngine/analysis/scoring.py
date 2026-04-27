@@ -42,7 +42,8 @@ def pct_status(value, history) -> str:
 
 def sector_pressure(health_results: dict, top_names: list, window: int = 20) -> tuple:
     """
-    Aggregate recent health scores from top sectors into a single pressure scalar.
+    Aggregate recent health scores from top correlated sectors into a pressure scalar.
+    Uses mean (not median) for a smoother, less noisy signal.
 
     Returns (pressure, pct_rank, q75, q25, named_str)
     Returns (nan, nan, nan, nan, '') when data is insufficient.
@@ -57,11 +58,11 @@ def sector_pressure(health_results: dict, top_names: list, window: int = 20) -> 
         all_s.extend(hist.tolist())
         rec = hist.tail(window)
         if not rec.empty:
-            recent_s.append(float(rec.median()))
+            recent_s.append(float(rec.mean()))   # mean, not median
     if not recent_s or not all_s:
         return np.nan, np.nan, np.nan, np.nan, ""
     arr = np.array(all_s)
-    p   = float(np.median(recent_s))
+    p   = float(np.mean(recent_s))
     return (p, float(np.mean(arr < p) * 100),
             float(np.percentile(arr, 75)), float(np.percentile(arr, 25)),
             ", ".join(top_names[:3]))

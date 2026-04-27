@@ -209,8 +209,15 @@ def _score_fundamental(balance_result: dict) -> dict:
         return {"score": None, "grade": "F", "label": "No Scoreable Ratios",
                 "confidence": "LOW", "signals": ["All ratios returned gray."]}
 
-    # Normalise to 0-100
-    score = ((weighted_sum + max_possible) / (2 * max_possible)) * 100
+    # Normalise to 0-100 using min-max of the theoretical range
+    # min possible: all red+down = (-1 - 0.5) * w * max_cat_weight
+    # max possible: all green+up = (2 + 0.5) * w * max_cat_weight
+    # Formula: (actual - min) / (max - min) * 100
+    # Since max_possible = sum of (2+0.5)*w per ratio, and min = -(1+0.5)*w per ratio:
+    # min_possible = -max_possible * (1.5/2.5) = -max_possible * 0.6
+    min_possible = -max_possible * 0.6
+    score = (weighted_sum - min_possible) / (max_possible - min_possible) * 100
+    score = max(0.0, min(100.0, score))
 
     # Sector overlay adjustment
     overlay   = balance_result.get("sector_overlay", {})
@@ -267,13 +274,17 @@ def _score_ownership(holding_result: dict) -> dict:
     holding_signal = holding_result.get("holding_signal", "STABLE")
 
     metric_weights = {
-        "Institutional Ownership %":  {"green": 15, "amber":  5, "red":  -5},
-        "Holder Concentration (HHI)": {"green": 10, "amber":  5, "red": -15},
-        "Annualised Volatility % (30d)": {"green": 10, "amber": 5, "red": -10},
+        "Institutional Ownership %":     {"green": 15, "amber":  5, "red":  -5},
+        "Holder Concentration (HHI)":    {"green": 10, "amber":  5, "red": -15},
+        "Annualised Volatility % (30d)": {"green": 10, "amber":  5, "red": -10},
     }
     insider_buy_weight = {"green": 20, "amber": 0, "red": -15}
 
-    base   = 50.0   # neutral starting point
+    # Score accumulates from 0; max possible = 15+10+20+10 = 55 pts
+    # Neutral baseline = 50% of max = 27.5 → normalise to 0-100 at end
+    raw    = 0.0
+    max_pts = 55.0   # sum of all green pts
+    min_pts = -35.0  # sum of all red pts (5+15+15+10 negatives)
     total  = 0
     scored = 0
     signals = []
@@ -286,27 +297,32 @@ def _score_ownership(holding_result: dict) -> dict:
                 continue
             total += 1
 
-            # Insider net buy — dynamic key name
             if "Insider Net Buy" in name:
                 pts = insider_buy_weight.get(status, 0)
-                base += pts; scored += 1
+                raw += pts; scored += 1
                 signals.append(f"Insider activity: {status.upper()} ({pts:+d}pts)")
                 continue
 
             w = metric_weights.get(name)
             if w:
                 pts = w.get(status, 0)
-                base += pts; scored += 1
+                raw += pts; scored += 1
                 signals.append(f"{name}: {status.upper()} ({pts:+d}pts)")
 
     # Holding signal from sector overlay
     sig_adj = {"ACCUMULATION": 10, "STABLE": 0, "DISTRIBUTION": -10}.get(holding_signal, 0)
-    base += sig_adj
+    raw += sig_adj
     if sig_adj != 0:
         signals.append(f"Sector holding signal: {holding_signal} ({sig_adj:+d}pts)")
         total += 1; scored += 1
 
-    score = max(0.0, min(100.0, base))
+    # Normalise raw score to 0-100
+    # If no data at all, return 50 (neutral) with LOW confidence
+    if total == 0:
+        score = 50.0
+    else:
+        score = (raw - min_pts) / (max_pts - min_pts) * 100
+        score = max(0.0, min(100.0, score))
 
     if score >= 70:   label = "Strong Institutional Backing"
     elif score >= 55: label = "Stable Ownership"
@@ -357,15 +373,19 @@ def _score_sector_fit(correlation_result: dict) -> dict:
     scored  = 0
     signals = []
 
-    # a) Correlation strength of #1 sector
+    # a) Correlation strength of #1 sector — use best available window
     if top_sectors:
         t1   = top_sectors[0]
-        corr = _safe_float(t1.get(f"corr_100d"))
+        # Prefer longer windows (more stable), fall back to shorter
+        corr = (_safe_float(t1.get("corr_100d")) or
+                _safe_float(t1.get("corr_full")) or
+                _safe_float(t1.get("corr_60d"))  or
+                _safe_float(t1.get("corr_20d")))
         if corr is not None:
             abs_c = abs(corr)
-            pts   = 30 if abs_c >= 0.7 else 20 if abs_c >= 0.5 else 10 if abs_c >= 0.3 else 0
+            pts   = 30 if abs_c >= 0.7 else 20 if abs_c >= 0.5 else 10 if abs_c >= 0.3 else 5
             score += pts; scored += 1
-            signals.append(f"Top sector {t1['sector']} corr_100d={corr:.3f} ({pts}pts)")
+            signals.append(f"Top sector {t1['sector']} corr={corr:.3f} ({pts}pts)")
 
     # b) Health alignment
     alignment = health_ctx.get("health_alignment", "")
