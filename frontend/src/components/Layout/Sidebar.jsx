@@ -145,9 +145,10 @@ export default function Sidebar() {
   // Desktop sidebar layout
   return (
     <aside
-      className="fixed left-3 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center py-4 px-2 gap-1"
+      className="fixed left-3 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center py-3 px-2 gap-1"
       style={{
         width: 56,
+        maxHeight: "calc(100vh - 40px)",
         background: "rgba(255,255,255,0.72)",
         backdropFilter: "blur(24px) saturate(180%)",
         WebkitBackdropFilter: "blur(24px) saturate(180%)",
@@ -159,11 +160,21 @@ export default function Sidebar() {
       }}
     >
       {/* Dark mode override */}
-      <style>{`.dark aside[class*="fixed left-3"] { background: rgba(18,18,16,0.82) !important; border-color: rgba(255,255,255,0.08) !important; box-shadow: 0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04) !important; }`}</style>
+      <style>{`
+        .dark aside[class*="fixed left-3"] { 
+          background: rgba(18,18,16,0.82) !important; 
+          border-color: rgba(255,255,255,0.08) !important; 
+          box-shadow: 0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04) !important; 
+        }
+        .sidebar-nav::-webkit-scrollbar { width: 3px; }
+        .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 10px; }
+        .dark .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
+      `}</style>
 
       {/* AEGIS Logo */}
       <Tip label="AEGIS-FIN · Risk Intelligence">
-        <div className="w-9 h-9 rounded-2xl flex items-center justify-center mb-2 cursor-pointer hover:scale-105 transition-transform duration-200 shrink-0 shadow-orange"
+        <div className="w-9 h-9 rounded-2xl flex items-center justify-center mb-1 cursor-pointer hover:scale-105 transition-transform duration-200 shrink-0 shadow-orange"
           style={{ background: "var(--orange)" }}>
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
             <path d="M10 2L3 6V10C3 13.87 6.13 17.5 10 18C13.87 17.5 17 13.87 17 10V6L10 2Z" fill="white" fillOpacity=".95"/>
@@ -173,16 +184,16 @@ export default function Sidebar() {
       </Tip>
 
       {/* Divider */}
-      <div className="w-6 h-px bg-black/10 dark:bg-white/10 my-1 shrink-0" />
+      <div className="w-6 h-px bg-black/10 dark:bg-white/10 my-0.5 shrink-0" />
 
-      {/* Nav */}
-      <nav className="flex flex-col items-center gap-0.5 w-full min-h-0"
-        style={{ overflowY: "auto", overflowX: "hidden", scrollbarWidth: "none" }}>
+      {/* Nav - Scrollable */}
+      <nav className="sidebar-nav flex flex-col items-center gap-0.5 w-full flex-1 min-h-0 py-1"
+        style={{ overflowY: "auto", overflowX: "hidden" }}>
         {NAV.map(({ to, icon: Icon, label }) => (
           <Tip key={to} label={label}>
             <NavLink to={to} end={to === "/"}
               className={({ isActive }) =>
-                `w-full h-9 flex items-center justify-center rounded-xl transition-all duration-150 group shrink-0 ${
+                `w-full h-8 flex items-center justify-center rounded-xl transition-all duration-150 group shrink-0 ${
                   isActive
                     ? "text-white shadow-orange"
                     : "text-neutral-500 dark:text-neutral-400 hover:bg-black/[.06] dark:hover:bg-white/[.06] hover:text-neutral-900 dark:hover:text-white"
@@ -191,7 +202,7 @@ export default function Sidebar() {
               style={({ isActive }) => isActive ? { background: "var(--orange)" } : {}}
             >
               {({ isActive }) => (
-                <Icon size={17} strokeWidth={isActive ? 2.5 : 1.75} className="transition-transform duration-150 group-hover:scale-110" />
+                <Icon size={16} strokeWidth={isActive ? 2.5 : 1.75} className="transition-transform duration-150 group-hover:scale-110" />
               )}
             </NavLink>
           </Tip>
@@ -199,16 +210,16 @@ export default function Sidebar() {
       </nav>
 
       {/* Divider */}
-      <div className="w-6 h-px bg-black/10 dark:bg-white/10 my-1 shrink-0" />
+      <div className="w-6 h-px bg-black/10 dark:bg-white/10 my-0.5 shrink-0" />
 
       {/* Bottom */}
       <div className="flex flex-col items-center gap-0.5 w-full shrink-0">
         <Tip label={dark ? "Light Mode" : "Dark Mode"}>
           <button onClick={toggle}
-            className="w-full h-9 flex items-center justify-center rounded-xl text-neutral-500 dark:text-neutral-400 hover:bg-black/[.06] dark:hover:bg-white/[.06] hover:text-neutral-900 dark:hover:text-white transition-all duration-150 group">
+            className="w-full h-8 flex items-center justify-center rounded-xl text-neutral-500 dark:text-neutral-400 hover:bg-black/[.06] dark:hover:bg-white/[.06] hover:text-neutral-900 dark:hover:text-white transition-all duration-150 group">
             {dark
-              ? <Sun size={17} strokeWidth={1.75} className="group-hover:rotate-45 transition-transform duration-300" />
-              : <Moon size={17} strokeWidth={1.75} className="group-hover:-rotate-12 transition-transform duration-300" />
+              ? <Sun size={16} strokeWidth={1.75} className="group-hover:rotate-45 transition-transform duration-300" />
+              : <Moon size={16} strokeWidth={1.75} className="group-hover:-rotate-12 transition-transform duration-300" />
             }
           </button>
         </Tip>
@@ -216,7 +227,7 @@ export default function Sidebar() {
         <Tip label={user?.email || "Profile"}>
           <NavLink to="/profile"
             className={({ isActive }) =>
-              `w-full h-9 flex items-center justify-center rounded-xl transition-all duration-150 ${
+              `w-full h-8 flex items-center justify-center rounded-xl transition-all duration-150 ${
                 isActive
                   ? "text-white"
                   : "text-neutral-500 dark:text-neutral-400 hover:bg-black/[.06] dark:hover:bg-white/[.06] hover:text-neutral-900 dark:hover:text-white"
@@ -226,11 +237,11 @@ export default function Sidebar() {
           >
             {({ isActive }) =>
               user ? (
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${
+                <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-bold ${
                   isActive ? "bg-white/20 text-white" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"
                 }`}>{initials}</div>
               ) : (
-                <User size={17} strokeWidth={1.75} />
+                <User size={16} strokeWidth={1.75} />
               )
             }
           </NavLink>
@@ -239,8 +250,8 @@ export default function Sidebar() {
         {user && (
           <Tip label="Sign Out">
             <button onClick={handleSignOut}
-              className="w-full h-9 flex items-center justify-center rounded-xl text-neutral-500 dark:text-neutral-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 transition-all duration-150">
-              <LogOut size={17} strokeWidth={1.75} />
+              className="w-full h-8 flex items-center justify-center rounded-xl text-neutral-500 dark:text-neutral-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 transition-all duration-150">
+              <LogOut size={16} strokeWidth={1.75} />
             </button>
           </Tip>
         )}

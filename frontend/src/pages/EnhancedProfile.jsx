@@ -4,11 +4,11 @@ import PageLayout from "../components/Layout/PageLayout";
 import { useAuth } from "../context/AuthContext";
 
 const ROLES = [
-  { id: 'investor', label: 'Investor', icon: '💰' },
-  { id: 'analyst', label: 'Analyst', icon: '📊' },
-  { id: 'trader', label: 'Trader', icon: '📈' },
-  { id: 'researcher', label: 'Researcher', icon: '🔬' },
-  { id: 'advisor', label: 'Advisor', icon: '🎯' }
+  { id: 'investor', label: 'Investor', icon: 'INV' },
+  { id: 'analyst', label: 'Analyst', icon: 'ANL' },
+  { id: 'trader', label: 'Trader', icon: 'TRD' },
+  { id: 'researcher', label: 'Researcher', icon: 'RES' },
+  { id: 'advisor', label: 'Advisor', icon: 'ADV' }
 ];
 
 const EXPERTISE_AREAS = [
@@ -383,7 +383,9 @@ export default function EnhancedProfile() {
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Role</p>
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl">{ROLES.find(r => r.id === profileData.role)?.icon}</span>
+                  <div className="w-8 h-8 rounded-lg bg-[var(--orange)]/10 flex items-center justify-center text-xs font-bold text-[var(--orange)]">
+                    {ROLES.find(r => r.id === profileData.role)?.icon}
+                  </div>
                   <p className="text-base font-medium text-gray-900 dark:text-white">
                     {ROLES.find(r => r.id === profileData.role)?.label}
                   </p>
