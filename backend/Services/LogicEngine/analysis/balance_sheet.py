@@ -62,8 +62,15 @@ def _ratio_hist(nc, dc, sn, sd, scale=1.0):
     shared = sorted(set(n.index) & set(d.index), reverse=True)
     vals, dates = [], []
     for dt in shared:
-        v = safe_div(float(n[dt]), float(d[dt]))
-        if not pd.isna(v): vals.append(v * scale); dates.append(dt)
+        try:
+            n_val = float(n[dt])
+            d_val = float(d[dt])
+            v = safe_div(n_val, d_val)
+            if not pd.isna(v): 
+                vals.append(v * scale)
+                dates.append(dt)
+        except (ValueError, TypeError):
+            continue
     return pd.Series(vals, index=dates, dtype=float) if vals else pd.Series(dtype=float)
 
 
@@ -222,12 +229,16 @@ def compute_ratios(bs_data):
         h   = hs.dropna()
         pct = float(np.mean(h < val) * 100) if (not pd.isna(val) and len(h) >= 4) else np.nan
         yoy = _yoy(yc, yp)
+        
+        # Safely determine status
+        status = pct_status(val, hs) if not pd.isna(val) else "gray"
+        
         ratios.append({
             "Ratio":       name,
             "Value":       round(val, 4) if not pd.isna(val) else None,
             "YoY_pct":     round(yoy, 2) if not pd.isna(yoy) else None,
             "HistPctRank": round(pct, 1) if not pd.isna(pct) else None,
-            "Status":      pct_status(val, hs),
+            "Status":      status,
             "Trend":       "up" if (not pd.isna(yoy) and yoy > 0) else "down",
             "Description": desc,
             "Category":    cat,

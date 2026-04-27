@@ -120,8 +120,9 @@ def run_sectors(force: bool = False) -> dict:
                 save_sector_health(sector_name, result)
             store.delete("sector_health", sector_name, before_date=cutoff)
 
+            health_score = result.get("health_score")
             log.info("pipeline.sectors.health_ok", sector=sector_name,
-                     health_score=result.get("health_score"),
+                     health_score=round(health_score, 2) if health_score is not None else None,
                      signal=result.get("signal"))
 
         except Exception as exc:

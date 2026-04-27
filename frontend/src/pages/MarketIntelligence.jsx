@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Search, Globe, TrendingUp, BarChart3, Activity, Target, Zap, Filter, Eye, PieChart } from "lucide-react";
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, BarChart, Bar } from "recharts";
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, BarChart, Bar } from "recharts";
 import PageLayout from "../components/Layout/PageLayout";
 import StunningEmptyState from "../components/ui/StunningEmptyState";
 import BoxPlotChart from "../components/charts/BoxPlotChart";
@@ -11,9 +11,9 @@ import { useAppData } from "../context/AppDataContext";
 const COLORS = ['#FF6B35', '#F7931E', '#FFD23F', '#06FFA5', '#118AB2', '#073B4C', '#8B5CF6', '#EF4444'];
 
 const MARKET_SEGMENTS = [
-  { id: 'large_cap', name: 'Large Cap', color: '#10B981', threshold: 20000 },
-  { id: 'mid_cap', name: 'Mid Cap', color: '#F59E0B', threshold: 5000 },
-  { id: 'small_cap', name: 'Small Cap', color: '#EF4444', threshold: 0 }
+  { id: 'large_cap', name: 'Large Cap', color: '#FF6B35', threshold: 20000 },
+  { id: 'mid_cap', name: 'Mid Cap', color: '#F7931E', threshold: 5000 },
+  { id: 'small_cap', name: 'Small Cap', color: '#FFD23F', threshold: 0 }
 ];
 
 const SECTORS = [
@@ -21,28 +21,20 @@ const SECTORS = [
   'Realty Sector', 'FMCG Sector', 'Pharma Sector', 'Energy Sector'
 ];
 
-function MarketOverviewCard({ title, value, change, trend, icon: Icon, color = "blue" }) {
-  const colorClasses = {
-    blue: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600",
-    green: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-600",
-    red: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600",
-    orange: "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-600"
-  };
-
+function MarketOverviewCard({ title, value, change, icon: Icon }) {
   return (
-    <div className={`card p-6 border-l-4 ${colorClasses[color]}`}>
+    <div className="card p-6 border-l-4 border-[var(--orange)]">
       <div className="flex items-center justify-between mb-4">
-        <div className={`w-12 h-12 rounded-2xl ${colorClasses[color].replace('text-', 'bg-').replace('600', '100')} flex items-center justify-center`}>
-          <Icon size={24} className={colorClasses[color].split(' ').find(c => c.startsWith('text-'))} />
+        <div className="w-12 h-12 rounded-lg bg-[var(--orange)]/10 flex items-center justify-center">
+          <Icon size={24} className="text-[var(--orange)]" />
         </div>
-        {trend && <SignalBadge value={trend} />}
       </div>
       <div>
         <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">{title}</h3>
         <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{value}</p>
-        {change && (
+        {change !== undefined && (
           <p className={`text-sm font-medium ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {change >= 0 ? '↗' : '↘'} {Math.abs(change).toFixed(2)}%
+            {change >= 0 ? '+' : ''}{change.toFixed(2)}%
           </p>
         )}
       </div>
@@ -55,7 +47,7 @@ function SectorPerformanceChart({ data }) {
 
   return (
     <div className="card p-6">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Sector Performance</h3>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Sector Performance</h3>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -87,7 +79,7 @@ function MarketCapDistribution({ data }) {
 
   return (
     <div className="card p-6">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Market Cap Distribution</h3>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Market Cap Distribution</h3>
       <ResponsiveContainer width="100%" height={250}>
         <RechartsPieChart>
           <Pie

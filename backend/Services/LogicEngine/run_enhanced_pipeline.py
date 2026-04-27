@@ -102,33 +102,33 @@ def run_enhanced_pipeline(companies=None, force=False):
         companies = DEFAULT_COMPANIES
     
     log.info("enhanced_pipeline.start", companies=len(companies), force=force)
-    print(f"🚀 Starting Enhanced Analytics Pipeline")
-    print(f"📊 Processing {len(companies)} companies")
-    print(f"🔄 Force refresh: {'Yes' if force else 'No'}")
+    print(f"Starting Enhanced Analytics Pipeline")
+    print(f"Processing {len(companies)} companies")
+    print(f"Force refresh: {'Yes' if force else 'No'}")
     
     # Step 1: Run sectors first
-    print("\n📈 Step 1: Processing sectors and macro data...")
+    print("\nStep 1: Processing sectors and macro data...")
     try:
         sector_results = run_sectors(force=force)
-        print(f"✅ Processed {len(sector_results)} sectors successfully")
+        print(f"Processed {len(sector_results)} sectors successfully")
         
         # Ensure IT Sector is available for correlation
         if "IT Sector" not in sector_results:
-            print("⚠️  IT Sector data not available - correlation analysis will be limited")
+            print("IT Sector data not available - correlation analysis will be limited")
         else:
             it_health = sector_results["IT Sector"].get("health_score")
             if it_health is not None:
-                print(f"💻 IT Sector health score: {it_health:.1f}")
+                print(f"IT Sector health score: {it_health:.1f}")
             else:
-                print("⚠️  IT Sector health score not yet available")
+                print("IT Sector health score not yet available")
             
     except Exception as e:
-        print(f"❌ Sector processing failed: {e}")
+        print(f"Sector processing failed: {e}")
         log.error("enhanced_pipeline.sectors_failed", error=str(e))
         return False
     
     # Step 2: Process companies with enhanced analytics
-    print(f"\n🏢 Step 2: Processing {len(companies)} companies with enhanced analytics...")
+    print(f"\nStep 2: Processing {len(companies)} companies with enhanced analytics...")
     
     results = []
     successful = 0
@@ -150,10 +150,10 @@ def run_enhanced_pipeline(companies=None, force=False):
             is_valid, issues = validate_data_quality(result)
             
             if is_valid:
-                print(f"✅ {name}: Enhanced analytics completed successfully")
+                print(f"{name}: Enhanced analytics completed successfully")
                 successful += 1
             else:
-                print(f"⚠️  {name}: Completed with data quality issues:")
+                print(f"{name}: Completed with data quality issues:")
                 for issue in issues:
                     print(f"    - {issue}")
                 successful += 1  # Still count as successful, just with warnings
@@ -163,49 +163,54 @@ def run_enhanced_pipeline(companies=None, force=False):
                 bs_insights = result["balance_sheet"]["insights"]
                 strengths = len(bs_insights.get("key_strengths", []))
                 concerns = len(bs_insights.get("key_concerns", []))
-                print(f"    📊 Balance Sheet: {strengths} strengths, {concerns} concerns")
+                print(f"    Balance Sheet: {strengths} strengths, {concerns} concerns")
             
             if result.get("stock_holding") and result["stock_holding"].get("enhanced_insights"):
                 sh_insights = result["stock_holding"]["enhanced_insights"]
                 insights_count = len(sh_insights.get("key_insights", []))
                 risks_count = len(sh_insights.get("risk_factors", []))
-                print(f"    👥 Stock Holding: {insights_count} insights, {risks_count} risk factors")
+                print(f"    Stock Holding: {insights_count} insights, {risks_count} risk factors")
             
             results.append(result)
             
         except Exception as e:
-            print(f"❌ {name}: Processing failed - {e}")
+            print(f"{name}: Processing failed - {e}")
             log.error("enhanced_pipeline.company_failed", ticker=ticker, error=str(e))
             failed += 1
     
     # Step 3: Summary and validation
-    print(f"\n📋 Pipeline Summary:")
-    print(f"✅ Successful: {successful}/{len(companies)} companies")
-    print(f"❌ Failed: {failed}/{len(companies)} companies")
+    print(f"\nPipeline Summary:")
+    print(f"Successful: {successful}/{len(companies)} companies")
+    print(f"Failed: {failed}/{len(companies)} companies")
     
     if successful > 0:
-        print(f"\n🎯 Enhanced Analytics Features:")
-        print(f"   📊 Balance sheet insights with category scoring")
-        print(f"   👥 Stock holding patterns with pie charts")
-        print(f"   💻 IT sector correlation analysis")
-        print(f"   🔍 Comprehensive data validation (no nulls)")
-        print(f"   📈 Multi-page analytics ready")
+        print(f"\nEnhanced Analytics Features:")
+        print(f"   Balance sheet insights with category scoring")
+        print(f"   Stock holding patterns with pie charts")
+        print(f"   IT sector correlation analysis")
+        print(f"   Comprehensive data validation (no nulls)")
+        print(f"   Multi-page analytics ready")
         
-        # Check for IT correlations
-        it_correlations = sum(1 for r in results if r.get("balance_sheet", {}).get("it_sector_correlation"))
-        print(f"   🔗 IT correlations: {it_correlations}/{successful} companies")
+        # Check for IT correlations - safely handle None results
+        it_correlations = 0
+        for r in results:
+            if r and isinstance(r, dict):
+                bs = r.get("balance_sheet")
+                if bs and isinstance(bs, dict) and bs.get("it_sector_correlation"):
+                    it_correlations += 1
+        print(f"   IT correlations: {it_correlations}/{successful} companies")
     
     success_rate = (successful / len(companies)) * 100 if companies else 0
     
     if success_rate >= 80:
-        print(f"\n🎉 Pipeline completed successfully! ({success_rate:.1f}% success rate)")
-        print(f"💡 You can now access the enhanced analytics in the frontend:")
+        print(f"\nPipeline completed successfully! ({success_rate:.1f}% success rate)")
+        print(f"You can now access the enhanced analytics in the frontend:")
         print(f"   - Enhanced Balance Sheet: /enhanced-balance")
         print(f"   - Enhanced Stock Holdings: /enhanced-holdings") 
         print(f"   - Filtering & Classification: /filtering")
         return True
     else:
-        print(f"\n⚠️  Pipeline completed with issues ({success_rate:.1f}% success rate)")
+        print(f"\nPipeline completed with issues ({success_rate:.1f}% success rate)")
         return False
 
 def main():
@@ -226,10 +231,10 @@ def main():
     success = run_enhanced_pipeline(companies=companies, force=args.force)
     
     if success:
-        print(f"\n🚀 Ready to explore enhanced analytics!")
+        print(f"\nReady to explore enhanced analytics!")
         sys.exit(0)
     else:
-        print(f"\n❌ Pipeline completed with errors. Check logs for details.")
+        print(f"\nPipeline completed with errors. Check logs for details.")
         sys.exit(1)
 
 if __name__ == "__main__":

@@ -11,14 +11,14 @@ import { useAppData } from "../context/AppDataContext";
 const COLORS = ['#FF6B35', '#F7931E', '#FFD23F', '#06FFA5', '#118AB2', '#073B4C', '#8B5CF6', '#EF4444'];
 
 const SECTORS = [
-  { id: 'it', name: 'IT Sector', icon: '💻', companies: 12, performance: 8.5 },
-  { id: 'banking', name: 'Banking', icon: '🏦', companies: 8, performance: 5.2 },
-  { id: 'auto', name: 'Auto', icon: '🚗', companies: 6, performance: -2.3 },
-  { id: 'pharma', name: 'Pharma', icon: '💊', companies: 5, performance: 3.1 },
-  { id: 'fmcg', name: 'FMCG', icon: '🛒', companies: 4, performance: 1.8 },
-  { id: 'metal', name: 'Metal', icon: '⚙️', companies: 3, performance: 6.7 },
-  { id: 'realty', name: 'Realty', icon: '🏢', companies: 4, performance: 4.2 },
-  { id: 'energy', name: 'Energy', icon: '⚡', companies: 3, performance: 2.9 }
+  { id: 'it', name: 'IT Sector', icon: 'IT', companies: 12, performance: 8.5 },
+  { id: 'banking', name: 'Banking', icon: 'BK', companies: 8, performance: 5.2 },
+  { id: 'auto', name: 'Auto', icon: 'AU', companies: 6, performance: -2.3 },
+  { id: 'pharma', name: 'Pharma', icon: 'PH', companies: 5, performance: 3.1 },
+  { id: 'fmcg', name: 'FMCG', icon: 'FM', companies: 4, performance: 1.8 },
+  { id: 'metal', name: 'Metal', icon: 'MT', companies: 3, performance: 6.7 },
+  { id: 'realty', name: 'Realty', icon: 'RE', companies: 4, performance: 4.2 },
+  { id: 'energy', name: 'Energy', icon: 'EN', companies: 3, performance: 2.9 }
 ];
 
 function SectorCard({ sector, isSelected, onClick }) {
@@ -32,7 +32,9 @@ function SectorCard({ sector, isSelected, onClick }) {
       }`}
     >
       <div className="flex items-center justify-between mb-4">
-        <span className="text-3xl">{sector.icon}</span>
+        <div className="w-10 h-10 rounded-lg bg-[var(--orange)]/10 flex items-center justify-center text-sm font-bold text-[var(--orange)]">
+          {sector.icon}
+        </div>
         <SignalBadge value={sector.performance > 0 ? "bullish" : sector.performance < -2 ? "bearish" : "neutral"} />
       </div>
       <h3 className="font-semibold text-gray-900 dark:text-white mb-2">{sector.name}</h3>
@@ -246,7 +248,9 @@ export default function SectorIntelligence() {
             <div className="card-glass p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <span className="text-5xl">{selectedSector.icon}</span>
+                  <div className="w-16 h-16 rounded-lg bg-[var(--orange)]/10 flex items-center justify-center text-lg font-bold text-[var(--orange)]">
+                    {selectedSector.icon}
+                  </div>
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedSector.name}</h2>
                     <p className="text-sm text-gray-600 dark:text-gray-400">{selectedSector.companies} companies tracked</p>
