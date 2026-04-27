@@ -116,8 +116,11 @@ def run_enhanced_pipeline(companies=None, force=False):
         if "IT Sector" not in sector_results:
             print("⚠️  IT Sector data not available - correlation analysis will be limited")
         else:
-            it_health = sector_results["IT Sector"].get("health_score", 0)
-            print(f"💻 IT Sector health score: {it_health:.1f}")
+            it_health = sector_results["IT Sector"].get("health_score")
+            if it_health is not None:
+                print(f"💻 IT Sector health score: {it_health:.1f}")
+            else:
+                print("⚠️  IT Sector health score not yet available")
             
     except Exception as e:
         print(f"❌ Sector processing failed: {e}")
