@@ -11,12 +11,21 @@ export const fetchCompanyById = (id) =>
 export const fetchSectors = () =>
   supabase.from("sectors").select("*").order("name");
 
-// ── Sector OHLC (sector_ohlcv_raw) ───────────────────────────────────────────
-export const fetchSectorOHLC = (sectorId, days = 90) =>
+// ── Sector OHLCV history for overlay charts ───────────────────────────────────
+export const fetchSectorOHLCVHistory = (sectorName, days = 90) =>
   supabase
-    .from("sector_ohlcv_raw")
-    .select("date, open, high, low, close, volume")
-    .eq("sector_id", sectorId)
+    .from("sector_health")
+    .select("date, close, health_score, signal, ret_z, composite, sectors!inner(name)")
+    .eq("sectors.name", sectorName)
+    .order("date", { ascending: true })
+    .limit(days);
+
+// ── Company OHLCV for overlay with sector ─────────────────────────────────────
+export const fetchCompanyOHLCVHistory = (companyId, days = 90) =>
+  supabase
+    .from("ohlcv_health")
+    .select("date, close, health_score, signal, ret_z, composite")
+    .eq("company_id", companyId)
     .order("date", { ascending: true })
     .limit(days);
 

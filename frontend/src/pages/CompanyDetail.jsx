@@ -12,7 +12,8 @@ import EmptyState from "../components/ui/EmptyState";
 import { useChartTheme } from "../hooks/useChartTheme";
 import {
   fetchCompanyById, fetchLatestCompanyMetrics, fetchBalanceSheet,
-  fetchHoldingMetrics, fetchMlPredictions, fetchTopSectors, fetchFeatureStore
+  fetchHoldingMetrics, fetchMlPredictions, fetchTopSectors, fetchFeatureStore,
+  fetchCompanyOHLCVHistory, fetchSectorOHLCVHistory
 } from "../lib/api";
 
 const TAB_ICONS = { metrics: Activity, balance: BarChart2, holdings: Users, ml: Brain, sectors: TrendingUp, features: ShieldAlert };
@@ -53,6 +54,8 @@ export default function CompanyDetail() {
   const [features, setFeatures] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [tab, setTab]           = useState("metrics");
+  const [overlayData, setOverlayData] = useState([]);
+  const [overlayLoading, setOverlayLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -70,6 +73,35 @@ export default function CompanyDetail() {
       setFeatures((fs.data || []).reverse());
     }).finally(() => setLoading(false));
   }, [id]);
+
+  // Load sector overlay when sectors tab opened
+  useEffect(() => {
+    if (tab !== "sectors" || !id) return;
+    const latest = topSec[0];
+    const rawTop = latest?.top_sectors || [];
+    const topList = Array.isArray(rawTop) ? rawTop : [];
+    const topSectorName = topList[0]?.sector || topList[0]?.name;
+    if (!topSectorName) return;
+
+    setOverlayLoading(true);
+    Promise.all([
+      fetchCompanyOHLCVHistory(id, 90),
+      fetchSectorOHLCVHistory(topSectorName, 90),
+    ]).then(([compRes, secRes]) => {
+      const compRows = compRes.data || [];
+      const secRows  = secRes.data || [];
+      const secMap = {};
+      secRows.forEach(r => { secMap[r.date] = r; });
+      const merged = compRows.map(r => ({
+        date:           r.date?.slice(5),
+        company_health: r.health_score ?? null,
+        company_ret:    r.ret_z ?? null,
+        sector_health:  secMap[r.date]?.health_score ?? null,
+        sector_ret:     secMap[r.date]?.ret_z ?? null,
+      })).filter(r => r.company_health != null || r.sector_health != null);
+      setOverlayData(merged);
+    }).finally(() => setOverlayLoading(false));
+  }, [tab, id, topSec]);
 
   if (loading) return <PageLayout title="Company Detail"><PageSkeleton /></PageLayout>;
   if (!company) return <PageLayout title="Company Detail"><EmptyState title="Company not found" /></PageLayout>;
@@ -96,30 +128,30 @@ export default function CompanyDetail() {
             <ArrowLeft size={13} /> Back to Companies
           </Link>
           <div className="card p-6 flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#E8C547]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--orange)]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             <div className="flex items-center gap-4 relative z-10">
-              <div className="w-12 h-12 rounded-2xl bg-[#0D0D0D] dark:bg-[#E8C547] flex items-center justify-center shrink-0 shadow-card-lg">
-                <Building2 size={24} className="text-[#E8C547] dark:text-[#0D0D0D]" />
+              <div className="w-12 h-12 rounded-2xl bg-[var(--orange)]/10 flex items-center justify-center shrink-0">
+                <Building2 size={24} className="text-[var(--orange)]" />
               </div>
               <div>
-                <h2 className="title-xl tracking-tight text-[#0D0D0D] dark:text-[#E8E6E0]">{company.name}</h2>
+                <h2 className="title-xl tracking-tight text-[var(--text)]">{company.name}</h2>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs font-mono text-[#E8C547] bg-[#E8C547]/10 px-1.5 py-0.5 rounded">{company.ticker}</span>
-                  <span className="text-xs text-[#9CA3AF]">{company.exchange || "NSE"}</span>
+                  <span className="text-xs font-mono text-[var(--orange)] bg-[var(--orange)]/10 px-1.5 py-0.5 rounded">{company.ticker}</span>
+                  <span className="text-xs text-[var(--text-3)]">{company.exchange || "NSE"}</span>
                 </div>
               </div>
             </div>
 
             {score != null && (
-              <div className="flex items-center gap-4 bg-[#F7F5F0] dark:bg-[#111318] p-3 rounded-2xl border border-[#E5E1D8] dark:border-[#1F2128]">
+              <div className="flex items-center gap-4 bg-neutral-50 dark:bg-neutral-900/60 p-3 rounded-2xl border border-[var(--border)]">
                 <ScoreGauge score={score} />
                 <div className="pr-2">
-                  <p className="label">Survival Score</p>
+                  <p className="label-caps">Composite Score</p>
                   <p className={`text-sm font-bold mt-0.5 ${scoreColor}`}>
                     {score >= 70 ? "Low Risk" : score >= 40 ? "Watch Zone" : "High Distress"}
                   </p>
-                  {latestMl?.distress_probability != null && (
-                    <p className="text-[10px] text-red-500 mt-1 font-semibold tabular-nums">{latestMl.distress_probability.toFixed(1)}% distress</p>
+                  {distress != null && (
+                    <p className="text-[10px] text-[var(--text-3)] mt-1 font-semibold tabular-nums">{distress.toFixed(1)}% distress prob.</p>
                   )}
                 </div>
               </div>
@@ -529,34 +561,105 @@ export default function CompanyDetail() {
         {/* SECTORS TAB */}
         {tab === "sectors" && (
           <div className="space-y-4 animate-fade-in">
-            <div className="card p-5">
-              <p className="title-md mb-4">Top Correlated Sectors (60d)</p>
-              {topSec.length ? (() => {
-                // topSec is from correlation table — extract top_sectors JSONB
-                const latest = topSec[0];
-                const topSectors = latest?.top_sectors || [];
-                return topSectors.length ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {topSectors.slice(0, 10).map((s, i) => (
-                      <div key={i} className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-900/60 rounded-xl border border-[var(--border)]">
-                        <span className="w-8 h-8 rounded-xl bg-[var(--orange)] text-white text-xs font-bold flex items-center justify-center shrink-0">
-                          #{i + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-[var(--text)] truncate">{s.sector || s.name || "Unknown"}</p>
-                          {s.corr_60d != null && (
-                            <p className="text-[10px] text-[var(--text-3)]">Correlation: {s.corr_60d.toFixed(3)}</p>
-                          )}
-                        </div>
-                        <span className="text-[10px] text-[var(--text-3)]">{latest.date}</span>
+            {topSec.length ? (() => {
+              const latest    = topSec[0];
+              const topList   = Array.isArray(latest?.top_sectors) ? latest.top_sectors : [];
+              const topSector = topList[0];
+              const topName   = topSector?.sector || topSector?.name;
+
+              return (
+                <>
+                  {/* Top sectors ranked list */}
+                  <div className="card p-5">
+                    <p className="title-md mb-1">Top Correlated Sectors</p>
+                    <p className="text-xs text-[var(--text-3)] mb-4">
+                      Ranked by 60-day Pearson correlation. These sectors drive the balance sheet and holding overlays.
+                    </p>
+                    {topList.length > 0 ? (
+                      <div className="space-y-2">
+                        {topList.slice(0, 5).map((s, i) => {
+                          const corr = s.corr_60d ?? s.corr_20d ?? s.corr_100d ?? 0;
+                          return (
+                            <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border)] bg-neutral-50 dark:bg-neutral-900/60">
+                              <span className="w-7 h-7 rounded-lg bg-[var(--orange)] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                                #{s.rank || i + 1}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-1">
+                                  <p className="text-sm font-semibold text-[var(--text)] truncate">{s.sector || s.name}</p>
+                                  <span className="text-xs font-bold tabular-nums text-[var(--orange)] ml-2 shrink-0">
+                                    {corr > 0 ? "+" : ""}{(corr * 100).toFixed(1)}%
+                                  </span>
+                                </div>
+                                <div className="h-1 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full bg-[var(--orange)]"
+                                    style={{ width: `${Math.min(100, Math.abs(corr) * 100)}%` }} />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
+                    ) : (
+                      <EmptyState title="No top sectors" sub="Run the pipeline to compute correlations." />
+                    )}
                   </div>
-                ) : <EmptyState title="No top sectors in correlation data" />;
-              })() : <EmptyState title="No sector correlation data" sub="Run the pipeline to compute sector correlations." />}
-            </div>
+
+                  {/* Overlay charts */}
+                  {overlayLoading ? (
+                    <div className="card p-8 flex items-center justify-center"><LoadingSpinner /></div>
+                  ) : overlayData.length > 0 && topName ? (
+                    <>
+                      <div className="card p-5">
+                        <p className="title-md mb-1">{company.name} vs {topName}</p>
+                        <p className="text-xs text-[var(--text-3)] mb-5">
+                          Health score comparison (90d). Solid = company, dashed = top sector.
+                        </p>
+                        <ResponsiveContainer width="100%" height={220}>
+                          <LineChart data={overlayData}>
+                            <CartesianGrid strokeDasharray="2 4" stroke={ct.grid} vertical={false} />
+                            <XAxis dataKey="date" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} />
+                            <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={28} />
+                            <Tooltip {...ct.tooltip} />
+                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                            <Line type="monotone" dataKey="company_health" stroke="var(--orange)" strokeWidth={2.5} dot={false} name={company.ticker} />
+                            <Line type="monotone" dataKey="sector_health"  stroke="#3B82F6" strokeWidth={2} dot={false} strokeDasharray="4 2" name={topName} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      <div className="card p-5">
+                        <p className="title-md mb-1">Return Z-Score Overlay</p>
+                        <p className="text-xs text-[var(--text-3)] mb-5">
+                          When lines move together, correlation is high. Divergence = company decoupling from sector.
+                        </p>
+                        <ResponsiveContainer width="100%" height={180}>
+                          <LineChart data={overlayData}>
+                            <CartesianGrid strokeDasharray="2 4" stroke={ct.grid} vertical={false} />
+                            <XAxis dataKey="date" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} />
+                            <YAxis tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={28} />
+                            <Tooltip {...ct.tooltip} />
+                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                            <ReferenceLine y={0} stroke={ct.grid} strokeDasharray="3 3" />
+                            <Line type="monotone" dataKey="company_ret" stroke="var(--orange)" strokeWidth={2} dot={false} name={company.ticker} />
+                            <Line type="monotone" dataKey="sector_ret"  stroke="#3B82F6" strokeWidth={1.5} dot={false} strokeDasharray="4 2" name={topName} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </>
+                  ) : topName ? (
+                    <div className="card p-6">
+                      <EmptyState title="No overlay data" sub="Run the pipeline to populate health history." />
+                    </div>
+                  ) : null}
+                </>
+              );
+            })() : (
+              <EmptyState title="No sector correlation data" sub="Run the pipeline to compute sector correlations." />
+            )}
             <InsightBox title="Sector Risk Transmission">
               High correlation drives sector overlays into the balance sheet and holding engines.
+              When the company health score diverges from its top sector, it signals a decoupling event.
             </InsightBox>
           </div>
         )}
