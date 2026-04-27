@@ -89,6 +89,74 @@ def load_active_companies() -> list:
     return [(r["ticker"], r["name"]) for r in (resp.data or [])]
 
 
+def onboard_pending_companies():
+    """
+    Check csv_sessions for pending new companies.
+    For each new company not yet in ohlcv_raw, fetch 1 year history + run full pipeline.
+    Marks session as 'done' when complete.
+    """
+    from supabase import create_client
+    from LogicEngine.store.data_store import get_store
+    from LogicEngine.fetching.fetcher import fetch_ohlcv_history
+    from LogicEngine.store.adapters import save_ohlcv_history
+
+    url    = os.environ["SUPABASE_URL"]
+    key    = os.environ["SUPABASE_KEY"]
+    client = create_client(url, key)
+    store  = get_store()
+
+    # Find pending sessions
+    resp = client.table("csv_sessions").select("id, result").eq("status", "pending").execute()
+    sessions = resp.data or []
+    if not sessions:
+        return
+
+    log.info(f"Found {len(sessions)} pending CSV session(s) — onboarding new companies")
+
+    for session in sessions:
+        result       = session.get("result") or {}
+        new_tickers  = result.get("new_tickers", [])
+        session_id   = session["id"]
+
+        if not new_tickers:
+            client.table("csv_sessions").update({"status": "done"}).eq("id", session_id).execute()
+            continue
+
+        onboarded = []
+        for entry in new_tickers:
+            ticker = entry.get("ticker")
+            name   = entry.get("name", ticker)
+            if not ticker:
+                continue
+
+            # Skip if already has history
+            try:
+                count = store.row_count("ohlcv_raw", ticker)
+                if count > 0:
+                    log.info(f"onboard.skip_existing ticker={ticker} rows={count}")
+                    onboarded.append(ticker)
+                    continue
+            except Exception:
+                pass
+
+            # Fetch 1 year of history
+            log.info(f"onboard.fetch_history ticker={ticker}")
+            try:
+                df = fetch_ohlcv_history(ticker, name, period="1y")
+                if df.empty:
+                    log.warning(f"onboard.no_data ticker={ticker}")
+                    continue
+                save_ohlcv_history(ticker, df)
+                log.info(f"onboard.history_saved ticker={ticker} rows={len(df)}")
+                onboarded.append(ticker)
+            except Exception as e:
+                log.error(f"onboard.history_failed ticker={ticker} error={e}")
+
+        # Mark session done
+        client.table("csv_sessions").update({"status": "done"}).eq("id", session_id).execute()
+        log.info(f"onboard.session_done id={session_id} onboarded={len(onboarded)}")
+
+
 def log_pipeline_run(results: list, run_date: str, duration_s: float):
     """Write pipeline run summary to pipeline_log table."""
     try:
@@ -132,6 +200,12 @@ def run_pipeline():
     log.info(f"=== AEGIS-FIN Daily Pipeline — {run_date} ===")
 
     t0 = time.time()
+
+    # Step 0: Onboard any new companies from CSV uploads
+    try:
+        onboard_pending_companies()
+    except Exception as e:
+        log.error(f"Onboarding check failed: {e}")
 
     # Step 1: Load companies
     try:

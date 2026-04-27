@@ -2,39 +2,38 @@ import React, { useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   Upload, FileText, CheckCircle, AlertCircle, X,
-  Building2, TrendingUp, DollarSign, Tag, Search,
-  RefreshCw, ChevronRight, Database, AlertTriangle,
-  Eye, Filter, Zap, ArrowUpRight
+  Building2, Database, AlertTriangle,
+  Search, RefreshCw, ChevronRight, Filter,
+  Zap, ArrowUpRight, Info
 } from "lucide-react";
 import PageLayout from "../components/Layout/PageLayout";
-import SignalBadge from "../components/ui/SignalBadge";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
 import { useAppData } from "../context/AppDataContext";
+import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 import { checkTickersInDB } from "../lib/api";
 
-/* ── CSV parsing ─────────────────────────────────────────────────────────────── */
+// ── Expected CSV format (matches sme_companies_loan_analysis.csv) ─────────────
+const REQUIRED_COLUMNS = ["NSE/BSE Ticker", "Company Name"];
+const OPTIONAL_COLUMNS = ["Exchange Index", "SME Type", "Sector", "Industry", "Theme", "Loan Taken"];
 
-const TICKER_COLUMNS = [
-  "NSE/BSE Ticker", "Ticker", "ticker", "Symbol", "symbol",
-  "TICKER", "NSE Ticker", "BSE Ticker", "Stock Symbol",
-];
-const NAME_COLUMNS = [
-  "Company Name", "Name", "name", "Company", "company",
-  "COMPANY NAME", "CompanyName",
-];
+const SAMPLE_CSV = `Sr No,Company Name,NSE/BSE Ticker,Exchange Index,SME Type,Sector,Industry,Theme,Loan Taken
+1,TCS,TCS,NSE,Large Cap,Technology,IT Services,Digital,No
+2,Infosys,INFY,NSE,Large Cap,Technology,IT Services,Digital,No
+3,HDFC Bank,HDFCBANK,NSE,Large Cap,Financials,Banking,Finance,No`;
 
+// ── CSV Parser ────────────────────────────────────────────────────────────────
 function parseCSV(text) {
   const lines = text.trim().split("\n").filter(l => l.trim());
   if (!lines.length) return { rows: [], error: "Empty file" };
 
   const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
-  const tickerCol = TICKER_COLUMNS.find(c => headers.includes(c));
-  const nameCol   = NAME_COLUMNS.find(c => headers.includes(c));
 
-  if (!tickerCol) {
+  // Validate required columns
+  const missingCols = REQUIRED_COLUMNS.filter(c => !headers.includes(c));
+  if (missingCols.length > 0) {
     return {
       rows: [],
-      error: `No ticker column found. Expected one of: ${TICKER_COLUMNS.slice(0, 4).join(", ")} …\nFound: ${headers.join(", ")}`,
+      error: `Missing required columns: ${missingCols.join(", ")}\n\nFound columns: ${headers.join(", ")}\n\nRequired: ${REQUIRED_COLUMNS.join(", ")}`,
     };
   }
 
@@ -43,18 +42,21 @@ function parseCSV(text) {
     const obj = {};
     headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
     return obj;
-  }).filter(r => r[tickerCol]?.trim());
+  }).filter(r => r["NSE/BSE Ticker"]?.trim());
+
+  if (!rows.length) return { rows: [], error: "No valid data rows found in CSV" };
 
   return {
     rows: rows.map(r => ({
-      ticker:  normalizeTicker(r[tickerCol]?.trim() || ""),
-      rawTicker: r[tickerCol]?.trim() || "",
-      name:    (nameCol ? r[nameCol] : r[tickerCol])?.trim() || r[tickerCol]?.trim(),
-      ...r,
+      ticker:    normalizeTicker(r["NSE/BSE Ticker"]?.trim() || ""),
+      rawTicker: r["NSE/BSE Ticker"]?.trim() || "",
+      name:      r["Company Name"]?.trim() || r["NSE/BSE Ticker"]?.trim(),
+      sector:    r["Sector"] || "",
+      exchange:  r["Exchange Index"] || "NSE",
+      smeType:   r["SME Type"] || "",
+      loanTaken: r["Loan Taken"] || "",
     })),
     error: null,
-    tickerCol,
-    nameCol,
   };
 }
 
@@ -65,48 +67,50 @@ function normalizeTicker(t) {
   return `${upper}.NS`;
 }
 
-/* ── Small Components ────────────────────────────────────────────────────────── */
-
+// ── Small UI components ───────────────────────────────────────────────────────
 function StatusBadge({ status }) {
-  const map = {
-    exists:    "badge-green",
-    new:       "badge-amber",
-    checking:  "badge-blue",
-    unknown:   "badge-gray",
+  const cfg = {
+    exists:   { cls: "badge-green", label: "In DB" },
+    new:      { cls: "badge-amber", label: "New" },
+    checking: { cls: "badge-blue",  label: "Checking…" },
+    unknown:  { cls: "badge-gray",  label: "Unknown" },
   };
-  const labels = { exists: "In DB", new: "New", checking: "Checking…", unknown: "Unknown" };
-  return <span className={map[status] || "badge-gray"}>{labels[status] || "—"}</span>;
+  const { cls, label } = cfg[status] || cfg.unknown;
+  return <span className={cls}>{label}</span>;
 }
 
-function SurvivalBar({ score }) {
-  if (score == null) return <span className="text-xs text-[#9CA3AF]">—</span>;
-  const color = score >= 70 ? "bar-high" : score >= 40 ? "bar-mid" : "bar-low";
-  const text  = score >= 70 ? "score-high" : score >= 40 ? "score-mid" : "score-low";
+function ScoreBar({ score }) {
+  if (score == null) return <span className="text-xs text-[var(--text-3)]">—</span>;
+  const pct = Math.min(100, Math.max(0, score));
   return (
     <div className="flex items-center gap-2">
-      <div className="progress-track w-16">
-        <div className={`progress-fill ${color}`} style={{ width: `${score}%` }} />
+      <div className="w-16 h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+        <div className="h-full rounded-full bg-[var(--orange)]" style={{ width: `${pct}%` }} />
       </div>
-      <span className={`text-xs font-bold tabular-nums ${text}`}>{score.toFixed(0)}</span>
+      <span className="text-xs font-bold tabular-nums text-[var(--text)]">{score.toFixed(0)}</span>
     </div>
   );
 }
 
-/* ── Main Component ──────────────────────────────────────────────────────────── */
-
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function UploadCSV() {
   const { setCsvTickers, clearCsvFilter, isCsvMode, csvTickers } = useAppData();
+  const { user } = useAuth();
 
-  const [rows, setRows]           = useState([]);
+  const [rows, setRows]             = useState([]);
   const [parseError, setParseError] = useState("");
-  const [fileName, setFileName]   = useState("");
-  const [search, setSearch]       = useState("");
-  const [checking, setChecking]   = useState(false);
-  const [dbStatus, setDbStatus]   = useState({});
-  const [dbDetails, setDbDetails] = useState({});
+  const [fileName, setFileName]     = useState("");
+  const [search, setSearch]         = useState("");
+  const [checking, setChecking]     = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitDone, setSubmitDone] = useState(false);
+  const [dbStatus, setDbStatus]     = useState({});
+  const [dbDetails, setDbDetails]   = useState({});
   const [filterMode, setFilterMode] = useState("all");
+  const [showFormat, setShowFormat] = useState(false);
   const inputRef = useRef(null);
 
+  // ── File handler ─────────────────────────────────────────────────────────
   const handleFile = useCallback(async (file) => {
     if (!file) return;
     if (!file.name.endsWith(".csv")) {
@@ -117,12 +121,11 @@ export default function UploadCSV() {
     setParseError("");
     setDbStatus({});
     setDbDetails({});
+    setSubmitDone(false);
 
     const text = await file.text();
     const { rows: parsed, error } = parseCSV(text);
-
     if (error) { setParseError(error); return; }
-    if (!parsed.length) { setParseError("No valid rows found in CSV"); return; }
 
     setRows(parsed);
     await checkDB(parsed);
@@ -133,44 +136,84 @@ export default function UploadCSV() {
     handleFile(e.dataTransfer.files[0]);
   }, [handleFile]);
 
+  // ── DB check ─────────────────────────────────────────────────────────────
   const checkDB = useCallback(async (rowsToCheck) => {
     setChecking(true);
     const tickers = rowsToCheck.map(r => r.ticker);
-    const checkingState = {};
-    tickers.forEach(t => { checkingState[t] = "checking"; });
-    setDbStatus({ ...checkingState });
+    setDbStatus(Object.fromEntries(tickers.map(t => [t, "checking"])));
 
     try {
       const { existing, missing, error } = await checkTickersInDB(tickers);
       if (error) throw error;
-
       const status = {};
       const details = {};
       existing.forEach(c => { status[c.ticker] = "exists"; details[c.ticker] = c; });
-      missing.forEach(t =>  { status[t] = "new"; });
+      missing.forEach(t => { status[t] = "new"; });
       setDbStatus(status);
       setDbDetails(details);
     } catch (e) {
       console.error("DB check failed:", e);
-      const fallback = {};
-      tickers.forEach(t => { fallback[t] = "unknown"; });
-      setDbStatus(fallback);
+      setDbStatus(Object.fromEntries(rowsToCheck.map(r => [r.ticker, "unknown"])));
     } finally {
       setChecking(false);
     }
   }, []);
 
-  const applyFilter  = useCallback(() => { setCsvTickers(rows.map(r => r.ticker), fileName); }, [rows, fileName, setCsvTickers]);
-  const removeFilter = useCallback(() => { clearCsvFilter(); }, [clearCsvFilter]);
+  // ── Submit to Supabase — saves session + queues new companies ─────────────
+  const handleSubmit = useCallback(async () => {
+    if (!user || !rows.length) return;
+    setSubmitting(true);
+
+    try {
+      const allTickers  = rows.map(r => r.ticker);
+      const newCompanies = rows.filter(r => dbStatus[r.ticker] === "new");
+
+      // 1. Save/update csv_session so Railway knows what to process
+      await supabase.from("csv_sessions").upsert({
+        user_id:   user.id,
+        file_name: fileName,
+        tickers:   allTickers,
+        row_count: allTickers.length,
+        status:    newCompanies.length > 0 ? "pending" : "done",
+        result:    {
+          new_count:      newCompanies.length,
+          existing_count: rows.length - newCompanies.length,
+          new_tickers:    newCompanies.map(r => ({ ticker: r.ticker, name: r.name })),
+        },
+      }, { onConflict: "user_id,file_name" });
+
+      // 2. Register new companies in companies table so pipeline picks them up
+      if (newCompanies.length > 0) {
+        const inserts = newCompanies.map(r => ({
+          ticker:    r.ticker,
+          name:      r.name,
+          exchange:  r.exchange || "NSE",
+          is_active: true,
+        }));
+        await supabase.from("companies")
+          .upsert(inserts, { onConflict: "ticker,exchange", ignoreDuplicates: false });
+      }
+
+      // 3. Apply CSV filter so Companies page shows only these
+      setCsvTickers(allTickers, fileName);
+      setSubmitDone(true);
+    } catch (e) {
+      console.error("Submit failed:", e);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [user, rows, dbStatus, fileName, setCsvTickers]);
 
   const existingCount = Object.values(dbStatus).filter(s => s === "exists").length;
   const newCount      = Object.values(dbStatus).filter(s => s === "new").length;
 
   const filtered = rows.filter(r => {
     const q = search.toLowerCase();
-    const matchSearch = !q || r.name?.toLowerCase().includes(q) || r.ticker?.toLowerCase().includes(q) || r.rawTicker?.toLowerCase().includes(q);
-    const status = dbStatus[r.ticker];
-    const matchFilter = filterMode === "all" || (filterMode === "exists" && status === "exists") || (filterMode === "new" && status === "new");
+    const matchSearch = !q || r.name?.toLowerCase().includes(q) || r.ticker?.toLowerCase().includes(q);
+    const st = dbStatus[r.ticker];
+    const matchFilter = filterMode === "all"
+      || (filterMode === "exists" && st === "exists")
+      || (filterMode === "new"    && st === "new");
     return matchSearch && matchFilter;
   });
 
@@ -184,19 +227,48 @@ export default function UploadCSV() {
             <div className="flex items-center gap-2">
               <Filter size={14} className="text-[#C9A832]" />
               <p className="text-xs font-semibold text-[#8B6914] dark:text-[#E8C547]">
-                CSV filter active — Companies page shows {csvTickers?.length} companies
+                CSV filter active — showing {csvTickers?.length} companies
               </p>
             </div>
             <div className="flex items-center gap-3">
               <Link to="/companies" className="flex items-center gap-1 text-xs font-semibold text-[#C9A832] hover:text-[#E8C547] transition-colors">
-                View filtered <ChevronRight size={12} />
+                View <ChevronRight size={12} />
               </Link>
-              <button onClick={removeFilter} className="flex items-center gap-1 text-xs text-[#9CA3AF] hover:text-red-500 transition-colors">
+              <button onClick={clearCsvFilter} className="flex items-center gap-1 text-xs text-[var(--text-3)] hover:text-red-500 transition-colors">
                 <X size={12} /> Remove
               </button>
             </div>
           </div>
         )}
+
+        {/* Format info toggle */}
+        <div className="card p-4">
+          <button onClick={() => setShowFormat(f => !f)}
+            className="flex items-center gap-2 text-xs font-semibold text-[var(--text-2)] hover:text-[var(--orange)] transition-colors w-full text-left">
+            <Info size={13} className="text-[var(--orange)]" />
+            Required CSV format
+            <ChevronRight size={12} className={`ml-auto transition-transform ${showFormat ? "rotate-90" : ""}`} />
+          </button>
+          {showFormat && (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs text-[var(--text-3)]">
+                Your CSV must have these columns (same format as <code className="font-mono text-[var(--orange)]">sme_companies_loan_analysis.csv</code>):
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {REQUIRED_COLUMNS.map(c => (
+                  <span key={c} className="badge-orange text-[10px]">{c} *required</span>
+                ))}
+                {OPTIONAL_COLUMNS.map(c => (
+                  <span key={c} className="badge-gray text-[10px]">{c}</span>
+                ))}
+              </div>
+              <details className="mt-2">
+                <summary className="text-xs text-[var(--orange)] cursor-pointer">View sample CSV</summary>
+                <pre className="mt-2 text-[10px] font-mono bg-neutral-900 text-[var(--orange)] p-3 rounded-xl overflow-x-auto">{SAMPLE_CSV}</pre>
+              </details>
+            </div>
+          )}
+        </div>
 
         {/* Drop zone */}
         {!rows.length && (
@@ -204,36 +276,17 @@ export default function UploadCSV() {
             onDrop={onDrop}
             onDragOver={e => e.preventDefault()}
             onClick={() => inputRef.current?.click()}
-            className="card p-14 flex flex-col items-center justify-center gap-5 border-2 border-dashed border-[#E8C547]/30 dark:border-[#E8C547]/20 cursor-pointer hover:border-[#E8C547]/60 dark:hover:border-[#E8C547]/40 hover:bg-[#E8C547]/[0.03] transition-all duration-300"
+            className="card p-14 flex flex-col items-center justify-center gap-5 border-2 border-dashed border-[var(--orange)]/20 cursor-pointer hover:border-[var(--orange)]/50 hover:bg-[var(--orange)]/[0.02] transition-all duration-300"
           >
-            <div className="w-16 h-16 rounded-2xl bg-[#E8C547]/10 flex items-center justify-center animate-float">
-              <Upload size={28} className="text-[#E8C547]" />
+            <div className="w-16 h-16 rounded-2xl bg-[var(--orange)]/10 flex items-center justify-center">
+              <Upload size={28} className="text-[var(--orange)]" />
             </div>
             <div className="text-center">
-              <p className="text-sm font-bold text-[#0D0D0D] dark:text-[#E8E6E0]">
-                Drop your company CSV here or click to browse
-              </p>
-              <p className="text-xs text-[#9CA3AF] mt-1.5">
-                Must have a ticker column: <span className="font-mono text-[#E8C547]">Ticker</span>,{" "}
-                <span className="font-mono text-[#E8C547]">Symbol</span>, or{" "}
-                <span className="font-mono text-[#E8C547]">NSE/BSE Ticker</span>
+              <p className="text-sm font-bold text-[var(--text)]">Drop your company CSV here or click to browse</p>
+              <p className="text-xs text-[var(--text-3)] mt-1.5">
+                Must have <span className="font-mono text-[var(--orange)]">NSE/BSE Ticker</span> and <span className="font-mono text-[var(--orange)]">Company Name</span> columns
               </p>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-lg mt-2">
-              {[
-                { icon: Upload,   title: "1. Upload CSV",       desc: "Any CSV with a ticker column" },
-                { icon: Database, title: "2. Auto-check DB",    desc: "See which companies are tracked" },
-                { icon: Eye,      title: "3. Filter & Analyse", desc: "View only your CSV companies" },
-              ].map(({ icon: Icon, title, desc }) => (
-                <div key={title} className="flex flex-col items-center gap-1.5 p-3 bg-[#F7F5F0] dark:bg-[#111318] rounded-xl border border-[#E5E1D8] dark:border-[#1F2128] text-center">
-                  <Icon size={16} className="text-[#E8C547]" />
-                  <p className="text-xs font-bold text-[#0D0D0D] dark:text-[#E8E6E0]">{title}</p>
-                  <p className="text-[10px] text-[#9CA3AF]">{desc}</p>
-                </div>
-              ))}
-            </div>
-
             <input ref={inputRef} type="file" accept=".csv" className="hidden"
               onChange={e => handleFile(e.target.files[0])} />
           </div>
@@ -241,7 +294,7 @@ export default function UploadCSV() {
 
         {/* Parse error */}
         {parseError && (
-          <div className="flex items-start gap-2 p-3 bg-red-500/8 border border-red-500/15 rounded-xl animate-scale-in">
+          <div className="flex items-start gap-2 p-4 bg-red-500/8 border border-red-500/20 rounded-xl">
             <AlertCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
             <pre className="text-xs text-red-500 whitespace-pre-wrap">{parseError}</pre>
           </div>
@@ -250,22 +303,20 @@ export default function UploadCSV() {
         {/* Loaded state */}
         {rows.length > 0 && (
           <>
-            {/* File info + actions */}
+            {/* File header */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <div className="flex items-center gap-2 flex-1">
-                <FileText size={16} className="text-[#E8C547]" />
-                <span className="text-sm font-semibold text-[#0D0D0D] dark:text-[#E8E6E0]">{fileName}</span>
-                <CheckCircle size={14} className="text-[#52B788]" />
-                <span className="text-xs text-[#9CA3AF]">{rows.length} companies</span>
+                <FileText size={16} className="text-[var(--orange)]" />
+                <span className="text-sm font-semibold text-[var(--text)]">{fileName}</span>
+                <CheckCircle size={14} className="text-green-500" />
+                <span className="text-xs text-[var(--text-3)]">{rows.length} companies</span>
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => checkDB(rows)} disabled={checking} className="btn-ghost text-xs py-2 px-3">
                   <RefreshCw size={12} className={checking ? "animate-spin" : ""} /> Re-check
                 </button>
-                <button onClick={applyFilter} className="btn-yellow text-xs py-2 px-3">
-                  <Filter size={12} /> {isCsvMode ? "Update Filter" : "Apply Filter"}
-                </button>
-                <button onClick={() => { setRows([]); setFileName(""); setDbStatus({}); setDbDetails({}); }} className="text-[#9CA3AF] hover:text-red-500 transition-colors p-1.5">
+                <button onClick={() => { setRows([]); setFileName(""); setDbStatus({}); setDbDetails({}); setSubmitDone(false); }}
+                  className="text-[var(--text-3)] hover:text-red-500 transition-colors p-1.5">
                   <X size={14} />
                 </button>
               </div>
@@ -274,49 +325,73 @@ export default function UploadCSV() {
             {/* Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { icon: Building2,     label: "Total",       value: rows.length,   color: "text-[#E8C547]" },
-                { icon: Database,      label: "In Database", value: existingCount, color: "text-[#52B788]" },
-                { icon: AlertTriangle, label: "New",         value: newCount,      color: "text-[#E8C547]" },
-                { icon: Zap,           label: "Need Onboarding", value: newCount,  color: "text-red-400" },
-              ].map(({ icon: Icon, label, value, color }) => (
-                <div key={label} className="card p-4 hover-lift">
+                { icon: Building2,     label: "Total",        value: rows.length,   accent: false },
+                { icon: Database,      label: "Already in DB", value: existingCount, accent: false },
+                { icon: AlertTriangle, label: "New (need fetch)", value: newCount,   accent: newCount > 0 },
+                { icon: Zap,           label: "Will be added", value: newCount,      accent: false },
+              ].map(({ icon: Icon, label, value, accent }) => (
+                <div key={label} className={`card p-4 ${accent ? "border-[var(--orange)]/30" : ""}`}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Icon size={14} className={color} />
-                    <p className="label">{label}</p>
+                    <Icon size={14} className={accent ? "text-[var(--orange)]" : "text-[var(--text-3)]"} />
+                    <p className="label-caps">{label}</p>
                   </div>
-                  <p className={`value-lg ${color}`}>{value}</p>
+                  <p className={`text-2xl font-bold tabular-nums ${accent ? "text-[var(--orange)]" : "text-[var(--text)]"}`}>{value}</p>
                 </div>
               ))}
             </div>
 
-            {/* New company instructions */}
-            {newCount > 0 && (
-              <div className="insight-box">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle size={16} className="text-[#C9A832] shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-bold text-[#8B6914] dark:text-[#E8C547] mb-1">
-                      {newCount} new {newCount === 1 ? "company" : "companies"} need onboarding
-                    </p>
-                    <p className="text-xs text-[#6B7280] mb-3">
-                      Run the onboarding script to fetch historical data and generate survival scores.
-                    </p>
-                    <div className="bg-[#0D0D0D] rounded-xl p-3 font-mono text-xs text-[#E8C547] overflow-x-auto">
-                      <p className="text-[#6B7280] mb-1"># Run from backend/Services/LogicEngine/</p>
-                      <p>python csv_onboard.py path/to/your_file.csv</p>
-                      <p className="text-[#6B7280] mt-2"># Dry run (check only):</p>
-                      <p>python csv_onboard.py path/to/your_file.csv --dry-run</p>
-                    </div>
-                  </div>
+            {/* What will happen info box */}
+            <div className="card p-4 border-[var(--orange)]/20">
+              <div className="flex items-start gap-3">
+                <Info size={15} className="text-[var(--orange)] shrink-0 mt-0.5" />
+                <div className="space-y-1.5">
+                  <p className="text-xs font-bold text-[var(--text)]">What happens when you submit:</p>
+                  <ul className="text-xs text-[var(--text-3)] space-y-1">
+                    {existingCount > 0 && (
+                      <li className="flex items-center gap-2">
+                        <CheckCircle size={11} className="text-green-500 shrink-0" />
+                        <span><strong className="text-[var(--text)]">{existingCount} existing</strong> companies — already have data, daily pipeline updates them automatically</span>
+                      </li>
+                    )}
+                    {newCount > 0 && (
+                      <li className="flex items-center gap-2">
+                        <Zap size={11} className="text-[var(--orange)] shrink-0" />
+                        <span><strong className="text-[var(--text)]">{newCount} new</strong> companies — will be registered in DB, Railway will fetch 1 year of history + run full pipeline at next scheduled run (18:30 IST)</span>
+                      </li>
+                    )}
+                    <li className="flex items-center gap-2">
+                      <Filter size={11} className="text-[var(--text-3)] shrink-0" />
+                      <span>Companies page will be filtered to show only your CSV companies</span>
+                    </li>
+                  </ul>
                 </div>
+              </div>
+            </div>
+
+            {/* Submit success */}
+            {submitDone && (
+              <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
+                <CheckCircle size={16} className="text-green-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-bold text-[var(--text)]">Submitted successfully</p>
+                  <p className="text-xs text-[var(--text-3)] mt-0.5">
+                    {newCount > 0
+                      ? `${newCount} new companies registered. Railway will fetch their data at next pipeline run (18:30 IST daily).`
+                      : "Filter applied. All companies already have data."}
+                  </p>
+                </div>
+                <Link to="/companies" className="ml-auto btn-ghost text-xs py-2 px-3 shrink-0">
+                  View <ArrowUpRight size={12} />
+                </Link>
               </div>
             )}
 
-            {/* Search + Filters */}
+            {/* Search + filter */}
             <div className="flex flex-wrap gap-3">
               <div className="relative flex-1 min-w-48">
-                <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search company or ticker…" className="input-base w-full pl-9" />
+                <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
+                <input value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Search company or ticker…" className="input-base w-full pl-9" />
               </div>
               <div className="flex gap-1.5">
                 {[
@@ -332,7 +407,7 @@ export default function UploadCSV() {
               </div>
             </div>
 
-            <p className="muted">{filtered.length} of {rows.length} companies</p>
+            <p className="text-xs text-[var(--text-3)]">{filtered.length} of {rows.length} companies</p>
 
             {/* Table */}
             <div className="card overflow-hidden">
@@ -340,7 +415,7 @@ export default function UploadCSV() {
                 <table className="w-full">
                   <thead>
                     <tr>
-                      {["#", "Company", "Ticker (yfinance)", "DB Status", "Survival Score", "Action"].map(h => (
+                      {["#", "Company", "Ticker", "Sector", "DB Status", "Score", "Action"].map(h => (
                         <th key={h} className="th-base">{h}</th>
                       ))}
                     </tr>
@@ -351,41 +426,39 @@ export default function UploadCSV() {
                       const details = dbDetails[r.ticker];
                       return (
                         <tr key={i} className="tr-base group">
-                          <td className="td-base text-xs text-[#9CA3AF] tabular-nums">{i + 1}</td>
+                          <td className="td-base text-xs text-[var(--text-3)] tabular-nums">{i + 1}</td>
                           <td className="td-base">
-                            <p className="text-xs font-semibold text-[#0D0D0D] dark:text-[#E8E6E0]">{r.name}</p>
+                            <p className="text-xs font-semibold text-[var(--text)]">{r.name}</p>
+                            {r.smeType && <p className="text-[10px] text-[var(--text-3)]">{r.smeType}</p>}
                           </td>
                           <td className="td-base">
-                            <p className="font-mono text-xs text-[#E8C547]">{r.ticker}</p>
+                            <p className="font-mono text-xs text-[var(--orange)]">{r.ticker}</p>
                             {r.rawTicker !== r.ticker && (
-                              <p className="text-[10px] text-[#9CA3AF]">raw: {r.rawTicker}</p>
+                              <p className="text-[10px] text-[var(--text-3)]">raw: {r.rawTicker}</p>
                             )}
                           </td>
+                          <td className="td-base text-xs text-[var(--text-3)]">{r.sector || "—"}</td>
                           <td className="td-base">
                             {checking && status === "checking"
-                              ? <span className="badge-blue animate-pulse-soft">checking…</span>
-                              : <StatusBadge status={status} />
-                            }
+                              ? <span className="badge-blue animate-pulse">checking…</span>
+                              : <StatusBadge status={status} />}
                           </td>
                           <td className="td-base">
-                            {status === "exists" && details
-                              ? <SurvivalBar score={details.survival_score} />
+                            {status === "exists" && details?.survival_score != null
+                              ? <ScoreBar score={details.survival_score} />
                               : status === "new"
-                                ? <span className="text-[10px] text-[#E8C547]">Run pipeline first</span>
-                                : <span className="text-xs text-[#9CA3AF]">—</span>
-                            }
+                                ? <span className="text-[10px] text-[var(--orange)]">After pipeline</span>
+                                : <span className="text-xs text-[var(--text-3)]">—</span>}
                           </td>
                           <td className="td-base">
-                            {status === "exists" && details?.id ? (
-                              <Link
-                                to={`/companies/${details.id}`}
-                                className="flex items-center gap-1 text-xs font-semibold text-[#9CA3AF] group-hover:text-[#E8C547] transition-colors"
-                              >
-                                View <ArrowUpRight size={12} />
-                              </Link>
-                            ) : status === "new" ? (
-                              <span className="text-[10px] text-[#9CA3AF]">Needs onboarding</span>
-                            ) : "—"}
+                            {status === "exists" && details?.id
+                              ? <Link to={`/companies/${details.id}`}
+                                  className="flex items-center gap-1 text-xs font-semibold text-[var(--text-3)] group-hover:text-[var(--orange)] transition-colors">
+                                  View <ArrowUpRight size={12} />
+                                </Link>
+                              : status === "new"
+                                ? <span className="text-[10px] text-[var(--text-3)]">Pending</span>
+                                : "—"}
                           </td>
                         </tr>
                       );
@@ -395,28 +468,30 @@ export default function UploadCSV() {
               </div>
             </div>
 
-            {/* Apply filter CTA */}
-            <div className="card p-5 flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="flex-1">
-                <p className="title-md">Filter Companies page to your CSV</p>
-                <p className="text-xs text-[#9CA3AF] mt-0.5">
-                  Show only these {rows.length} companies across the entire app.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {isCsvMode && (
-                  <button onClick={removeFilter} className="btn-ghost text-xs py-2 px-3">
-                    Remove Filter
+            {/* Submit CTA */}
+            {!submitDone && (
+              <div className="card p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex-1">
+                  <p className="title-md">Submit & Apply Filter</p>
+                  <p className="text-xs text-[var(--text-3)] mt-0.5">
+                    {newCount > 0
+                      ? `Registers ${newCount} new companies for pipeline processing + filters the app to your ${rows.length} companies.`
+                      : `Filters the app to show your ${rows.length} companies.`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={handleSubmit} disabled={submitting || checking}
+                    className="btn-active text-xs py-2.5 px-5">
+                    {submitting
+                      ? <><span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" /> Submitting…</>
+                      : <><CheckCircle size={13} /> Submit</>}
                   </button>
-                )}
-                <button onClick={applyFilter} className="btn-yellow text-xs py-2 px-3">
-                  <Filter size={13} /> {isCsvMode ? "Update Filter" : "Apply Filter"}
-                </button>
-                <Link to="/companies" className="btn-primary text-xs py-2 px-3">
-                  View Companies <ChevronRight size={13} />
-                </Link>
+                  <Link to="/companies" className="btn-ghost text-xs py-2.5 px-4">
+                    Companies <ChevronRight size={13} />
+                  </Link>
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
       </div>
