@@ -1,8 +1,8 @@
 ﻿import React, { useEffect, useState, useMemo } from "react";
-import { Search, GitBranch, Activity, TrendingUp } from "lucide-react";
+import { Search, GitBranch, Activity } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Legend, ReferenceLine, AreaChart, Area
+  CartesianGrid, Legend, ReferenceLine
 } from "recharts";
 import PageLayout from "../components/Layout/PageLayout";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
@@ -15,35 +15,27 @@ import {
   fetchCompanyOHLCVHistory, fetchSectorOHLCVHistory
 } from "../lib/api";
 
-const COLORS = ["#E8572A","#3B82F6","#10B981","#F59E0B","#8B5CF6","#22D3EE","#84CC16","#FB7185"];
-const METRICS = ["return_1d","return_5d","return_20d","volatility_20d","atr","drawdown_20d","volume_ratio","momentum"];
-const METRIC_LABELS = {
-  return_1d: "Ret 1d", return_5d: "Ret 5d", return_20d: "Ret 20d",
-  volatility_20d: "Vol 20d", atr: "ATR", drawdown_20d: "DD 20d",
-  volume_ratio: "Vol Ratio", momentum: "Mom"
-};
+// Windows stored in company_vs_sectors: { sectorName: { full, 20d, 60d, 100d } }
+const WINDOWS = ["20d", "60d", "100d", "full"];
+const COLORS  = ["#E8572A","#3B82F6","#10B981","#F59E0B","#8B5CF6","#22D3EE","#84CC16","#FB7185"];
 
-// Correlation bubble — size and color driven by actual value
-function CorrDot({ value }) {
+// Correlation cell — color and size driven by actual value
+function CorrCell({ value }) {
   if (value == null) return <span className="text-[10px] text-[var(--text-3)]">—</span>;
-  const abs  = Math.abs(value);
-  const size = Math.max(6, 6 + abs * 30);
-  const pos  = value > 0;
-  const bg   = pos
-    ? `rgba(232,87,42,${0.15 + abs * 0.75})`
-    : `rgba(156,163,175,${0.15 + abs * 0.6})`;
-  const border = pos
-    ? `rgba(232,87,42,${0.4 + abs * 0.5})`
-    : `rgba(156,163,175,${0.3 + abs * 0.4})`;
+  const abs = Math.abs(value);
+  const pos = value > 0;
+  const bg  = pos
+    ? `rgba(232,87,42,${0.08 + abs * 0.82})`
+    : `rgba(100,116,139,${0.08 + abs * 0.65})`;
+  const textColor = abs > 0.4 ? "#fff" : pos ? "var(--orange)" : "var(--text-2)";
   return (
-    <div className="flex items-center justify-center w-full h-full">
-      <div className="relative group cursor-default flex items-center justify-center"
-        style={{ width: size, height: size }}>
-        <div className="rounded-full"
-          style={{ width: size, height: size, background: bg, border: `1.5px solid ${border}` }} />
-        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-neutral-900 text-white text-[9px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
-          {value > 0 ? "+" : ""}{value.toFixed(3)}
-        </div>
+    <div className="relative group flex items-center justify-center w-full h-full">
+      <div className="w-full h-8 rounded-lg flex items-center justify-center text-[10px] font-bold tabular-nums transition-all"
+        style={{ background: bg, color: textColor }}>
+        {value > 0 ? "+" : ""}{value.toFixed(2)}
+      </div>
+      <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-neutral-900 text-white text-[9px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+        {value > 0 ? "+" : ""}{value.toFixed(4)}
       </div>
     </div>
   );
@@ -52,15 +44,14 @@ function CorrDot({ value }) {
 export default function Correlation() {
   const { companies } = useAppData();
   const ct = useChartTheme();
-  const [search, setSearch]           = useState("");
-  const [selectedId, setSelectedId]   = useState(null);
-  const [corrData, setCorrData]       = useState(null);   // latest correlation row
-  const [rollingRows, setRollingRows] = useState([]);     // all rolling rows
-  const [topSectors, setTopSectors]   = useState([]);
-  const [overlayData, setOverlayData] = useState([]);     // company + top sector overlay
-  const [loading, setLoading]         = useState(false);
+  const [search, setSearch]         = useState("");
+  const [selectedId, setSelectedId] = useState(null);
+  const [corrData, setCorrData]     = useState(null);
+  const [rollingRows, setRollingRows] = useState([]);
+  const [topSectors, setTopSectors] = useState([]);
+  const [overlayData, setOverlayData] = useState([]);
+  const [loading, setLoading]       = useState(false);
   const [overlayLoading, setOverlayLoading] = useState(false);
-  const [selectedMetric, setSelectedMetric] = useState("return_1d");
 
   const filtered = useMemo(() =>
     companies.filter(c =>
@@ -68,14 +59,11 @@ export default function Correlation() {
       (c.ticker || "").toLowerCase().includes(search.toLowerCase())
     ), [companies, search]);
 
-  // Load correlation data when company selected
+  // Load correlation data
   useEffect(() => {
     if (!selectedId) return;
     setLoading(true);
-    setCorrData(null);
-    setRollingRows([]);
-    setTopSectors([]);
-    setOverlayData([]);
+    setCorrData(null); setRollingRows([]); setTopSectors([]); setOverlayData([]);
 
     Promise.all([
       fetchStaticCorr(selectedId),
@@ -86,112 +74,91 @@ export default function Correlation() {
       setCorrData(latest);
       setRollingRows(rc.data || []);
 
-      // Parse top_sectors from JSONB
-      const raw = latest?.top_sectors || ts.data?.[0]?.top_sectors || [];
+      // top_sectors JSONB: [{ rank, sector, corr_60d, corr_100d, health, signal }]
+      const raw  = latest?.top_sectors || ts.data?.[0]?.top_sectors || [];
       const list = Array.isArray(raw) ? raw : [];
       setTopSectors(list.map((t, i) => ({
-        rank:        t.rank || i + 1,
-        sector:      t.sector || t.name || "Unknown",
-        corr_20d:    t.corr_20d ?? null,
-        corr_60d:    t.corr_60d ?? null,
-        corr_100d:   t.corr_100d ?? null,
-        health:      t.health ?? null,
-        signal:      t.signal ?? null,
+        rank:      t.rank || i + 1,
+        sector:    t.sector || t.name || "Unknown",
+        corr_20d:  t.corr_20d  ?? null,
+        corr_60d:  t.corr_60d  ?? null,
+        corr_100d: t.corr_100d ?? null,
+        corr_full: t.corr_full ?? t.full ?? null,
+        health:    t.health    ?? null,
+        signal:    t.signal    ?? null,
       })));
     }).finally(() => setLoading(false));
   }, [selectedId]);
 
-  // Load overlay chart: company health + top sector health on same timeline
+  // Load overlay when top sector is known
   useEffect(() => {
-    if (!selectedId || topSectors.length === 0) return;
-    const topSectorName = topSectors[0]?.sector;
-    if (!topSectorName) return;
-
+    if (!selectedId || !topSectors[0]?.sector) return;
     setOverlayLoading(true);
     Promise.all([
       fetchCompanyOHLCVHistory(selectedId, 90),
-      fetchSectorOHLCVHistory(topSectorName, 90),
+      fetchSectorOHLCVHistory(topSectors[0].sector, 90),
     ]).then(([compRes, secRes]) => {
-      const compRows = compRes.data || [];
-      const secRows  = secRes.data || [];
-
-      // Merge by date
       const secMap = {};
-      secRows.forEach(r => { secMap[r.date] = r; });
-
-      const merged = compRows.map(r => ({
-        date:          r.date?.slice(5),
+      (secRes.data || []).forEach(r => { secMap[r.date] = r; });
+      const merged = (compRes.data || []).map(r => ({
+        date:           r.date?.slice(5),
         company_health: r.health_score ?? null,
         company_ret:    r.ret_z ?? null,
         sector_health:  secMap[r.date]?.health_score ?? null,
         sector_ret:     secMap[r.date]?.ret_z ?? null,
       })).filter(r => r.company_health != null || r.sector_health != null);
-
       setOverlayData(merged);
     }).finally(() => setOverlayLoading(false));
   }, [selectedId, topSectors]);
 
-  // Build bubble map data from company_vs_sectors JSONB
-  const bubbleMap = useMemo(() => {
-    if (!corrData?.company_vs_sectors) return {};
-    const cvs = corrData.company_vs_sectors;
-    const map = {};
-    // Structure: { metric: { sectorName: value } }
-    Object.entries(cvs).forEach(([metric, sectors]) => {
-      if (!sectors || typeof sectors !== "object") return;
-      Object.entries(sectors).forEach(([sectorName, val]) => {
-        if (!map[sectorName]) map[sectorName] = { name: sectorName };
-        map[sectorName][metric] = typeof val === "number" ? val : null;
-      });
-    });
-    return map;
-  }, [corrData]);
+  // company_vs_sectors: { sectorName: { full, 20d, 60d, 100d } }
+  const cvs = corrData?.company_vs_sectors || {};
+  const sectorNames = Object.keys(cvs).sort();
 
-  // Build rolling chart data for selected metric
+  // Rolling chart: 60d correlation per sector over time
   const rollingChartData = useMemo(() => {
     const byDate = {};
     rollingRows.forEach(r => {
       const d = r.date;
       if (!byDate[d]) byDate[d] = { date: d?.slice(5) };
-      const metricData = r.company_vs_sectors?.[selectedMetric] || {};
-      Object.entries(metricData).forEach(([sectorName, val]) => {
+      const cvs_ = r.company_vs_sectors || {};
+      Object.entries(cvs_).forEach(([sectorName, windows]) => {
         const key = sectorName.replace(" Sector","").replace(" Nifty","");
-        byDate[d][key] = typeof val === "number" ? parseFloat(val.toFixed(3)) : null;
+        const val = windows?.["60d"] ?? windows?.["full"] ?? null;
+        if (typeof val === "number") byDate[d][key] = parseFloat(val.toFixed(3));
       });
     });
     return Object.values(byDate).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-  }, [rollingRows, selectedMetric]);
+  }, [rollingRows]);
 
   const rollingLines = useMemo(() => {
     const names = new Set();
     rollingRows.forEach(r => {
-      Object.keys(r.company_vs_sectors?.[selectedMetric] || {}).forEach(n =>
+      Object.keys(r.company_vs_sectors || {}).forEach(n =>
         names.add(n.replace(" Sector","").replace(" Nifty",""))
       );
     });
     return [...names];
-  }, [rollingRows, selectedMetric]);
+  }, [rollingRows]);
 
   const selectedComp = companies.find(c => c.id === selectedId);
-  const sectorRows   = Object.values(bubbleMap);
 
   return (
     <PageLayout title="Correlation">
       <div className="space-y-5 pb-10">
 
-        {/* Header */}
         <div className="animate-fade-in">
           <p className="text-xs font-semibold uppercase tracking-widest text-[var(--orange)] mb-2">Analysis</p>
           <h1 className="page-heading">Correlation Explorer</h1>
           <p className="page-subheading">
-            Map company co-movement with NSE sector indices across 8 price metrics.
+            Company co-movement with NSE sector indices across 20d / 60d / 100d windows.
             Top correlated sectors drive the balance sheet and holding overlays.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
-          {/* ── Company picker ─────────────────────────────────────────── */}
+          {/* Company picker */}
           <div className="lg:col-span-3 space-y-3">
             <p className="title-md">Select Company</p>
             <div className="relative">
@@ -201,7 +168,7 @@ export default function Correlation() {
             </div>
             <div className="space-y-1.5 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
               {filtered.length === 0 && (
-                <p className="text-xs text-[var(--text-3)] text-center py-4">No companies found</p>
+                <p className="text-xs text-[var(--text-3)] text-center py-4">No companies</p>
               )}
               {filtered.slice(0, 100).map(c => (
                 <button key={c.id} onClick={() => setSelectedId(c.id)}
@@ -217,67 +184,60 @@ export default function Correlation() {
             </div>
           </div>
 
-          {/* ── Detail panel ───────────────────────────────────────────── */}
+          {/* Detail */}
           <div className="lg:col-span-9 space-y-5">
 
             {!selectedId ? (
-              <div className="card flex flex-col items-center justify-center text-center p-16 min-h-[500px] relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-[var(--orange)]/5 blur-[80px] pointer-events-none" />
+              <div className="card flex flex-col items-center justify-center text-center p-16 min-h-[500px]">
                 <div className="w-20 h-20 rounded-3xl bg-neutral-50 dark:bg-neutral-900 border border-[var(--border)] flex items-center justify-center mb-6">
                   <GitBranch size={36} className="text-[var(--text-3)]" />
                 </div>
                 <h3 className="title-lg mb-2">Correlation Explorer</h3>
                 <p className="text-sm text-[var(--text-3)] max-w-sm leading-relaxed">
-                  Select a company to see its correlation with all 14 NSE sector indices,
-                  top correlated sectors, and overlay charts.
+                  Select a company to see its Pearson correlation with all 14 NSE sector indices
+                  across 20d, 60d, 100d windows, plus overlay charts with the top sector.
                 </p>
               </div>
             ) : loading ? (
-              <div className="h-[500px] flex items-center justify-center card">
-                <LoadingSpinner />
-              </div>
+              <div className="h-[500px] flex items-center justify-center card"><LoadingSpinner /></div>
             ) : !corrData ? (
               <div className="card p-12">
-                <EmptyState
-                  title="No correlation data"
-                  sub={`Run the pipeline for ${selectedComp?.name} to compute sector correlations.`}
-                />
+                <EmptyState title="No correlation data"
+                  sub={`Run the pipeline for ${selectedComp?.name} to compute sector correlations.`} />
               </div>
             ) : (
               <>
-                {/* ── Company header ──────────────────────────────────── */}
-                <div className="card p-5 flex items-center justify-between gap-4">
+                {/* Header */}
+                <div className="card p-5 flex items-center justify-between gap-4 flex-wrap">
                   <div>
                     <p className="title-lg">{selectedComp?.name}</p>
                     <p className="text-xs font-mono text-[var(--text-3)] mt-0.5">
-                      {selectedComp?.ticker} · Last updated {corrData.date}
+                      {selectedComp?.ticker} · Updated {corrData.date}
                     </p>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="label-caps mb-1">Top Sector</p>
-                    <p className="text-sm font-bold text-[var(--orange)]">
-                      {topSectors[0]?.sector || "—"}
-                    </p>
-                    {topSectors[0]?.corr_60d != null && (
-                      <p className="text-[10px] text-[var(--text-3)] mt-0.5">
-                        {(topSectors[0].corr_60d * 100).toFixed(1)}% 60d alignment
-                      </p>
-                    )}
-                  </div>
+                  {topSectors[0] && (
+                    <div className="text-right shrink-0">
+                      <p className="label-caps mb-1">Top Sector</p>
+                      <p className="text-sm font-bold text-[var(--orange)]">{topSectors[0].sector}</p>
+                      {topSectors[0].corr_60d != null && (
+                        <p className="text-[10px] text-[var(--text-3)] mt-0.5">
+                          {(topSectors[0].corr_60d * 100).toFixed(1)}% 60d correlation
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* ── Top correlated sectors ──────────────────────────── */}
+                {/* Top correlated sectors */}
                 {topSectors.length > 0 && (
                   <div className="card p-5">
                     <p className="title-md mb-1">Top Correlated Sectors</p>
                     <p className="text-xs text-[var(--text-3)] mb-4">
-                      Ranked by 60-day Pearson correlation with company daily returns.
-                      These sectors drive the balance sheet and holding overlays.
+                      Ranked by 60d Pearson correlation. These sectors drive the balance sheet and holding overlays.
                     </p>
                     <div className="space-y-2">
                       {topSectors.slice(0, 5).map((s, i) => {
-                        const corr = s.corr_60d ?? s.corr_20d ?? s.corr_100d ?? 0;
-                        const pct  = Math.abs(corr) * 100;
+                        const corr = s.corr_60d ?? s.corr_100d ?? s.corr_20d ?? 0;
                         return (
                           <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border)] bg-neutral-50 dark:bg-neutral-900/60">
                             <span className="w-7 h-7 rounded-lg bg-[var(--orange)] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
@@ -294,8 +254,8 @@ export default function Correlation() {
                                 </div>
                               </div>
                               <div className="h-1 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full bg-[var(--orange)] transition-all duration-700"
-                                  style={{ width: `${Math.min(100, pct)}%` }} />
+                                <div className="h-full rounded-full bg-[var(--orange)]"
+                                  style={{ width: `${Math.min(100, Math.abs(corr) * 100)}%` }} />
                               </div>
                             </div>
                           </div>
@@ -305,130 +265,107 @@ export default function Correlation() {
                   </div>
                 )}
 
-                {/* ── Company vs Top Sector overlay chart ─────────────── */}
-                {overlayData.length > 0 && topSectors[0] && (
-                  <div className="card p-5">
-                    <p className="title-md mb-1">
-                      {selectedComp?.name} vs {topSectors[0].sector}
-                    </p>
-                    <p className="text-xs text-[var(--text-3)] mb-5">
-                      Health score comparison (90d). Shows how closely the company tracks its top correlated sector.
-                    </p>
-                    <ResponsiveContainer width="100%" height={220}>
-                      <LineChart data={overlayData}>
-                        <CartesianGrid strokeDasharray="2 4" stroke={ct.grid} vertical={false} />
-                        <XAxis dataKey="date" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={28} />
-                        <Tooltip {...ct.tooltip} />
-                        <Legend wrapperStyle={{ fontSize: 11 }} />
-                        <Line
-                          type="monotone" dataKey="company_health"
-                          stroke="var(--orange)" strokeWidth={2.5} dot={false}
-                          name={selectedComp?.ticker || "Company"}
-                        />
-                        <Line
-                          type="monotone" dataKey="sector_health"
-                          stroke="#3B82F6" strokeWidth={2} dot={false} strokeDasharray="4 2"
-                          name={topSectors[0].sector}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
+                {/* Overlay charts */}
+                {overlayLoading ? (
+                  <div className="card p-8 flex items-center justify-center"><LoadingSpinner /></div>
+                ) : overlayData.length > 0 && topSectors[0] ? (
+                  <>
+                    <div className="card p-5">
+                      <p className="title-md mb-1">{selectedComp?.name} vs {topSectors[0].sector}</p>
+                      <p className="text-xs text-[var(--text-3)] mb-5">
+                        Health score (90d). Solid = company, dashed = top sector.
+                        Convergence = high correlation, divergence = decoupling.
+                      </p>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={overlayData}>
+                          <CartesianGrid strokeDasharray="2 4" stroke={ct.grid} vertical={false} />
+                          <XAxis dataKey="date" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} />
+                          <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={28} />
+                          <Tooltip {...ct.tooltip} />
+                          <Legend wrapperStyle={{ fontSize: 11 }} />
+                          <Line type="monotone" dataKey="company_health" stroke="var(--orange)" strokeWidth={2.5} dot={false} name={selectedComp?.ticker} />
+                          <Line type="monotone" dataKey="sector_health"  stroke="#3B82F6" strokeWidth={2} dot={false} strokeDasharray="4 2" name={topSectors[0].sector} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
 
-                {/* ── Return Z-score overlay ───────────────────────────── */}
-                {overlayData.length > 0 && topSectors[0] && (
-                  <div className="card p-5">
-                    <p className="title-md mb-1">Return Z-Score Overlay</p>
-                    <p className="text-xs text-[var(--text-3)] mb-5">
-                      Daily return z-scores — when lines move together, correlation is high.
-                    </p>
-                    <ResponsiveContainer width="100%" height={180}>
-                      <LineChart data={overlayData}>
-                        <CartesianGrid strokeDasharray="2 4" stroke={ct.grid} vertical={false} />
-                        <XAxis dataKey="date" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} />
-                        <YAxis tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={28} />
-                        <Tooltip {...ct.tooltip} />
-                        <Legend wrapperStyle={{ fontSize: 11 }} />
-                        <ReferenceLine y={0} stroke={ct.grid} strokeDasharray="3 3" />
-                        <Line type="monotone" dataKey="company_ret" stroke="var(--orange)" strokeWidth={2} dot={false} name={selectedComp?.ticker} />
-                        <Line type="monotone" dataKey="sector_ret"  stroke="#3B82F6" strokeWidth={1.5} dot={false} strokeDasharray="4 2" name={topSectors[0].sector} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
+                    <div className="card p-5">
+                      <p className="title-md mb-1">Return Z-Score Overlay</p>
+                      <p className="text-xs text-[var(--text-3)] mb-5">
+                        When lines move together, correlation is high. Divergence = company decoupling from sector.
+                      </p>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <LineChart data={overlayData}>
+                          <CartesianGrid strokeDasharray="2 4" stroke={ct.grid} vertical={false} />
+                          <XAxis dataKey="date" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} />
+                          <YAxis tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={28} />
+                          <Tooltip {...ct.tooltip} />
+                          <Legend wrapperStyle={{ fontSize: 11 }} />
+                          <ReferenceLine y={0} stroke={ct.grid} strokeDasharray="3 3" />
+                          <Line type="monotone" dataKey="company_ret" stroke="var(--orange)" strokeWidth={2} dot={false} name={selectedComp?.ticker} />
+                          <Line type="monotone" dataKey="sector_ret"  stroke="#3B82F6" strokeWidth={1.5} dot={false} strokeDasharray="4 2" name={topSectors[0].sector} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </>
+                ) : null}
 
-                {/* ── Correlation Bubble Map ───────────────────────────── */}
-                {sectorRows.length > 0 ? (
+                {/* Correlation matrix — rows = sectors, cols = windows */}
+                {sectorNames.length > 0 ? (
                   <div className="card p-5 overflow-x-auto">
                     <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                       <div>
-                        <p className="title-md">Correlation Bubble Map</p>
+                        <p className="title-md">Correlation Matrix</p>
                         <p className="text-xs text-[var(--text-3)] mt-0.5">
-                          Bubble size = |correlation|. Orange = positive, gray = negative. Hover for exact value.
+                          Pearson correlation per sector per window. Orange = positive, gray = negative.
                         </p>
                       </div>
                       <div className="flex items-center gap-3 text-[10px] font-bold text-[var(--text-3)]">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-3 h-3 rounded-full bg-[var(--orange)]" /> Positive
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-3 h-3 rounded-full bg-neutral-300 dark:bg-neutral-600" /> Negative
-                        </span>
+                        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-[var(--orange)]" /> Positive</span>
+                        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-neutral-300 dark:bg-neutral-600" /> Negative</span>
                       </div>
                     </div>
-                    <div className="min-w-[680px]">
-                      <div className="grid" style={{ gridTemplateColumns: `160px repeat(${METRICS.length}, 1fr)` }}>
+                    <div className="min-w-[500px]">
+                      <div className="grid" style={{ gridTemplateColumns: `180px repeat(${WINDOWS.length}, 1fr)` }}>
+                        {/* Header */}
                         <div className="pb-3" />
-                        {METRICS.map(m => (
-                          <div key={m} className="pb-3 text-center">
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-3)]">{METRIC_LABELS[m]}</p>
+                        {WINDOWS.map(w => (
+                          <div key={w} className="pb-3 text-center">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-3)]">{w}</p>
                           </div>
                         ))}
-                        {sectorRows.map(r => (
-                          <React.Fragment key={r.name}>
-                            <div className="py-2.5 pr-3 text-xs font-semibold text-[var(--text)] flex items-center border-b border-[var(--border)] truncate">
-                              {r.name.replace(" Sector","").replace(" Nifty","")}
-                            </div>
-                            {METRICS.map(m => (
-                              <div key={m} className="py-2.5 flex items-center justify-center border-b border-[var(--border)]" style={{ minHeight: 40 }}>
-                                <CorrDot value={r[m]} />
+                        {/* Rows */}
+                        {sectorNames.map(sectorName => {
+                          const windows = cvs[sectorName] || {};
+                          return (
+                            <React.Fragment key={sectorName}>
+                              <div className="py-1.5 pr-3 text-xs font-semibold text-[var(--text)] flex items-center border-b border-[var(--border)] truncate">
+                                {sectorName.replace(" Sector","").replace(" Nifty","")}
                               </div>
-                            ))}
-                          </React.Fragment>
-                        ))}
+                              {WINDOWS.map(w => (
+                                <div key={w} className="py-1.5 px-1 flex items-center justify-center border-b border-[var(--border)]">
+                                  <CorrCell value={windows[w] ?? null} />
+                                </div>
+                              ))}
+                            </React.Fragment>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
                 ) : (
                   <div className="card p-8">
-                    <EmptyState title="No bubble map data" sub="company_vs_sectors JSONB is empty for this company." />
+                    <EmptyState title="No correlation matrix data"
+                      sub="company_vs_sectors is empty. Run the pipeline to compute correlations." />
                   </div>
                 )}
 
-                {/* ── Rolling correlation chart ────────────────────────── */}
+                {/* Rolling 60d correlation chart */}
                 <div className="card p-5">
-                  <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-                    <div>
-                      <p className="title-md">Rolling Correlation (90d)</p>
-                      <p className="text-xs text-[var(--text-3)] mt-0.5">
-                        Daily correlation trend per sector. Each line = one sector index.
-                      </p>
-                    </div>
-                    {/* Metric selector */}
-                    <div className="flex flex-wrap gap-1">
-                      {METRICS.map(m => (
-                        <button key={m} onClick={() => setSelectedMetric(m)}
-                          className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all ${
-                            selectedMetric === m
-                              ? "bg-[var(--orange)] text-white"
-                              : "bg-neutral-100 dark:bg-neutral-800 text-[var(--text-3)] hover:text-[var(--text)]"
-                          }`}>
-                          {METRIC_LABELS[m]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <p className="title-md mb-1">Rolling 60d Correlation (90 days)</p>
+                  <p className="text-xs text-[var(--text-3)] mb-5">
+                    Daily 60d rolling Pearson correlation per sector. Each line = one sector.
+                  </p>
                   {rollingChartData.length > 0 && rollingLines.length > 0 ? (
                     <ResponsiveContainer width="100%" height={260}>
                       <LineChart data={rollingChartData}>
@@ -440,20 +377,18 @@ export default function Correlation() {
                         <Legend wrapperStyle={{ fontSize: 10 }} />
                         {rollingLines.map((name, i) => (
                           <Line key={name} type="monotone" dataKey={name}
-                            stroke={COLORS[i % COLORS.length]} dot={false} strokeWidth={1.75}
-                            connectNulls />
+                            stroke={COLORS[i % COLORS.length]} dot={false} strokeWidth={1.75} connectNulls />
                         ))}
                       </LineChart>
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-[260px] flex flex-col items-center justify-center text-center bg-neutral-50 dark:bg-neutral-900/40 rounded-xl">
                       <Activity size={24} className="text-[var(--text-3)] mb-3" />
-                      <p className="text-sm font-semibold text-[var(--text-2)]">No rolling data for {METRIC_LABELS[selectedMetric]}</p>
-                      <p className="text-xs text-[var(--text-3)] mt-1">Try a different metric or run the pipeline.</p>
+                      <p className="text-sm font-semibold text-[var(--text-2)]">No rolling correlation data</p>
+                      <p className="text-xs text-[var(--text-3)] mt-1">Run the pipeline to compute rolling correlations.</p>
                     </div>
                   )}
                 </div>
-
               </>
             )}
           </div>

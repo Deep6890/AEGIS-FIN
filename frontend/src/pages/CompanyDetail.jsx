@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Activity, BarChart2, Brain, TrendingUp, Users, ShieldAlert, Info, Building2, ArrowUpRight, Zap, Shield, Target } from "lucide-react";
 import {
@@ -16,13 +16,13 @@ import {
   fetchCompanyOHLCVHistory, fetchSectorOHLCVHistory
 } from "../lib/api";
 
-const TAB_ICONS = { metrics: Activity, balance: BarChart2, holdings: Users, ml: Brain, sectors: TrendingUp, features: ShieldAlert };
+const TAB_ICONS = { metrics: Activity, balance: BarChart2, holdings: Users, sectors: TrendingUp, features: ShieldAlert };
 
 function InsightBox({ title, children }) {
   return (
     <div className="insight-box mt-4">
-      {title && <p className="text-xs font-bold text-[#8B6914] dark:text-[#E8C547] mb-1">{title}</p>}
-      <p className="text-xs text-[#6B7280] leading-relaxed">{children}</p>
+      {title && <p className="text-xs font-bold text-[var(--orange)] mb-1">{title}</p>}
+      <p className="text-xs text-[var(--text-3)] leading-relaxed">{children}</p>
     </div>
   );
 }
@@ -113,7 +113,7 @@ export default function CompanyDetail() {
   const tier     = latestMl?.composite_tier || null;
   const grade    = latestMl?.composite_grade || null;
   const scoreColor = score != null ? (score >= 70 ? "text-[#00B341]" : score >= 40 ? "text-[#FFC224]" : "text-[#FF3B30]") : "text-[var(--text-3)]";
-  const tabs = ["metrics","balance","holdings","ml","sectors","features"];
+  const tabs = ["metrics","balance","holdings","sectors","features"];
   const bsCategories = [...new Set(balance.map(r => r.ratio_definitions?.category || "Other"))].filter(Boolean);
   const latestBs = {};
   balance.forEach(r => { const name = r.ratio_definitions?.name || "Ratio"; if (!latestBs[name]) latestBs[name] = r; });
@@ -124,7 +124,7 @@ export default function CompanyDetail() {
 
         {/* Header */}
         <div>
-          <Link to="/companies" className="flex items-center gap-1 text-xs text-[#9CA3AF] hover:text-[#E8C547] w-fit mb-3 transition-colors">
+          <Link to="/companies" className="flex items-center gap-1 text-xs text-[var(--text-3)] hover:text-[var(--orange)] w-fit mb-3 transition-colors">
             <ArrowLeft size={13} /> Back to Companies
           </Link>
           <div className="card p-6 flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
@@ -219,7 +219,7 @@ export default function CompanyDetail() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-[#E5E1D8] dark:border-[#1F2128] overflow-x-auto pb-2">
+        <div className="flex gap-2 border-b border-[var(--border)] overflow-x-auto pb-2">
           {tabs.map(t => {
             const Icon = TAB_ICONS[t];
             return (
@@ -242,7 +242,7 @@ export default function CompanyDetail() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="card p-5">
                     <p className="title-md mb-1">Price History</p>
-                    <p className="text-xs text-[#9CA3AF] mb-4">Closing price (90d)</p>
+                    <p className="text-xs text-[var(--text-3)] mb-4">Closing price (90d)</p>
                     <ResponsiveContainer width="100%" height={200}>
                       <AreaChart data={metrics}>
                         <defs>
@@ -262,7 +262,7 @@ export default function CompanyDetail() {
                   
                   <div className="card p-5">
                     <p className="title-md mb-1">Returns & Momentum</p>
-                    <p className="text-xs text-[#9CA3AF] mb-4">Returns, volatility, momentum (90d)</p>
+                    <p className="text-xs text-[var(--text-3)] mb-4">Returns, volatility, momentum (90d)</p>
                     <ResponsiveContainer width="100%" height={200}>
                       <LineChart data={metrics}>
                         <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
@@ -296,9 +296,9 @@ export default function CompanyDetail() {
                       <p className="title-md mb-4">Latest Snapshot � {l.date}</p>
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                         {fields.map(([label, val, unit, desc]) => (
-                          <div key={label} className="p-3 bg-[#F7F5F0] dark:bg-[#111318] rounded-xl border border-[#E5E1D8] dark:border-[#1F2128]">
+                          <div key={label} className="p-3 bg-neutral-50 dark:bg-neutral-900/60 rounded-xl border border-[var(--border)]">
                             <p className="label">{label}</p>
-                            <p className="text-base font-bold text-[#0D0D0D] dark:text-[#E8E6E0] mt-1 tabular-nums">
+                            <p className="text-base font-bold text-[var(--text)] mt-1 tabular-nums">
                               {val != null ? `${typeof val === "number" ? val.toFixed(3) : val}${unit}` : "—"}
                             </p>
                             <p className="text-[10px] text-[#9CA3AF] mt-1">{desc}</p>
@@ -501,7 +501,7 @@ export default function CompanyDetail() {
               <>
                 <div className="card p-5">
                   <p className="title-md mb-1">Survival Score Evolution</p>
-                  <p className="text-xs text-[#9CA3AF] mb-4">Historical ML predictions</p>
+                  <p className="text-xs text-[var(--text-3)] mb-4">Historical ML predictions</p>
                   <ResponsiveContainer width="100%" height={220}>
                     <AreaChart data={ml}>
                       <defs>
