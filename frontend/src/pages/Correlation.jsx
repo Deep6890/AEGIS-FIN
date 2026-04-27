@@ -52,19 +52,31 @@ export default function Correlation() {
       .then(([sc, rc, ts]) => {
         const latest = sc.data?.[0];
         if (!latest) { setStaticCorr([]); setRollingCorr([]); setTopSectors([]); return; }
-        const sectorDataMap = {};
+        
+        // Parse company_vs_sectors JSONB: { metric: { sectorName: corrValue } }
         const cvs = latest.company_vs_sectors || {};
+        const sectorDataMap = {};
         Object.entries(cvs).forEach(([metric, sectors]) => {
+          if (typeof sectors !== "object") return;
           Object.entries(sectors).forEach(([sectorName, val]) => {
-            if (!sectorDataMap[sectorName]) sectorDataMap[sectorName] = { sectors: { name: sectorName }, sector_id: sectorName };
-            sectorDataMap[sectorName][metric] = val;
+            if (!sectorDataMap[sectorName]) {
+              sectorDataMap[sectorName] = { sector_id: sectorName, sectors: { name: sectorName } };
+            }
+            sectorDataMap[sectorName][metric] = typeof val === "number" ? val : null;
           });
         });
         setStaticCorr(Object.values(sectorDataMap));
         setRollingCorr(rc.data || []);
+        
+        // Parse top_sectors from JSONB
         const rawTop = latest.top_sectors || [];
-        const topList = Array.isArray(rawTop) ? rawTop : (rawTop["1d"] || rawTop["60d"] || []);
-        setTopSectors(topList.map(t => ({ ...t, correlation: t.corr ?? t.correlation ?? 0, sectors: { name: t.sector || t.name || "Unknown" } })));
+        const topList = Array.isArray(rawTop) ? rawTop : [];
+        setTopSectors(topList.map((t, i) => ({ 
+          ...t, 
+          rank: t.rank || i + 1,
+          correlation: t.corr_60d ?? t.corr ?? t.correlation ?? 0, 
+          sectors: { name: t.sector || t.name || "Unknown" } 
+        })));
       })
       .finally(() => setLoading(false));
   }, [selectedCompany, window_]);

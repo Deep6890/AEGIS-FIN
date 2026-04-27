@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState, useMemo } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LineChart, Line, ReferenceLine } from "recharts";
 import { Activity } from "lucide-react";
 import PageLayout from "../components/Layout/PageLayout";
@@ -13,7 +13,13 @@ export default function MacroOverlay() {
   const ct = useChartTheme();
   const [history, setHistory] = useState([]);
 
-  useEffect(() => { fetchMacroOverlay(90).then(r => setHistory(r.data || [])); }, []);
+  useEffect(() => { 
+    fetchMacroOverlay(90).then(r => {
+      // Filter to only macro assets client-side
+      const macroRows = (r.data || []).filter(row => row.sectors?.sector_type === "macro");
+      setHistory(macroRows);
+    }); 
+  }, []);
 
   if (loading) return <PageLayout title="Macro Overlay"><PageSkeleton /></PageLayout>;
 
@@ -21,12 +27,35 @@ export default function MacroOverlay() {
   const isRiskOn  = regime === "RISK_ON";
   const isRiskOff = regime === "RISK_OFF";
 
-  const chartData = history.slice().reverse().map(r => ({
-    date:  r.date?.slice(5),
-    score: parseFloat(r.health_score?.toFixed(2) || 0),
-    vix:   parseFloat(r.vol_z?.toFixed(2) || 0),
-    usd:   parseFloat(r.ret_z?.toFixed(2) || 0),
-  }));
+  // Build chart data — aggregate macro assets by date
+  const chartData = React.useMemo(() => {
+    const byDate = {};
+    history.forEach(r => {
+      const d = r.date;
+      if (!byDate[d]) byDate[d] = { date: d?.slice(5), scores: [], vix: null, usd: null };
+      byDate[d].scores.push(r.health_score || 0);
+      const name = r.sectors?.name;
+      if (name === "India VIX") byDate[d].vix = r.ret_z;
+      if (name === "USD-INR")   byDate[d].usd = r.ret_z;
+    });
+    return Object.values(byDate)
+      .map(d => ({
+        date:  d.date,
+        score: parseFloat((d.scores.reduce((a, b) => a + b, 0) / d.scores.length).toFixed(2)),
+        vix:   d.vix != null ? parseFloat(d.vix.toFixed(2)) : null,
+        usd:   d.usd != null ? parseFloat(d.usd.toFixed(2)) : null,
+      }))
+      .sort((a, b) => a.date?.localeCompare(b.date));
+  }, [history]);
+
+  // Deduplicated history log — one row per date
+  const historyLog = React.useMemo(() => {
+    const seen = new Map();
+    [...history].sort((a, b) => b.date?.localeCompare(a.date)).forEach(r => {
+      if (!seen.has(r.date)) seen.set(r.date, r);
+    });
+    return Array.from(seen.values());
+  }, [history]);
 
   const zMetrics = [
     { label: "VIX Z-Score",     val: currentMacro?.vix_z,   desc: "Fear gauge. High = elevated market fear." },
@@ -138,7 +167,7 @@ export default function MacroOverlay() {
         </div>
 
         {/* History log */}
-        {history.length > 0 && (
+        {historyLog.length > 0 && (
           <div className="card overflow-hidden stagger-4">
             <div className="px-5 py-4 border-b border-[var(--border)]">
               <p className="title-md">Regime History Log</p>
@@ -150,17 +179,17 @@ export default function MacroOverlay() {
                   <tr>{["Date","Score","Regime","Signal","Phase","VIX Z","USD Z","Gold Z","Crude Z"].map(h => <th key={h} className="th-base">{h}</th>)}</tr>
                 </thead>
                 <tbody>
-                  {history.map(r => (
+                  {historyLog.map(r => (
                     <tr key={r.id} className="tr-base">
                       <td className="td-base"><span className="text-xs font-mono text-[var(--text-3)]">{r.date?.slice(5)}</span></td>
                       <td className="td-base"><span className="text-sm font-bold tabular-nums text-[var(--text)]">{r.health_score?.toFixed(2)}</span></td>
                       <td className="td-base"><SignalBadge value={r.regime} /></td>
                       <td className="td-base"><SignalBadge value={r.signal} /></td>
                       <td className="td-base"><span className="text-[10px] font-bold uppercase text-[var(--text-3)]">{r.market_phase || "—"}</span></td>
-                      <td className="td-base text-sm tabular-nums text-[var(--text-2)]">{r.vol_z?.toFixed(2)}</td>
-                      <td className="td-base text-sm tabular-nums text-[var(--text-2)]">{r.ret_z?.toFixed(2)}</td>
-                      <td className="td-base text-sm tabular-nums text-[var(--text-2)]">{r.momentum_z?.toFixed(2)}</td>
-                      <td className="td-base text-sm tabular-nums text-[var(--text-2)]">{r.slope_z?.toFixed(2)}</td>
+                      <td className="td-base text-sm tabular-nums text-[var(--text-2)]">{r.vol_z?.toFixed(2) ?? "—"}</td>
+                      <td className="td-base text-sm tabular-nums text-[var(--text-2)]">{r.ret_z?.toFixed(2) ?? "—"}</td>
+                      <td className="td-base text-sm tabular-nums text-[var(--text-2)]">{r.momentum_z?.toFixed(2) ?? "—"}</td>
+                      <td className="td-base text-sm tabular-nums text-[var(--text-2)]">{r.slope_z?.toFixed(2) ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>
