@@ -15,6 +15,12 @@ import Correlation     from "./pages/Correlation";
 import RiskEngine      from "./pages/RiskEngine";
 import MacroOverlay    from "./pages/MacroOverlay";
 import BalanceSheet    from "./pages/BalanceSheet";
+import EnhancedBalanceSheet from "./pages/EnhancedBalanceSheet";
+import EnhancedStockHolding from "./pages/EnhancedStockHolding";
+import FilteringClassification from "./pages/FilteringClassification";
+import MarketIntelligence from "./pages/MarketIntelligence";
+import SectorIntelligence from "./pages/SectorIntelligence";
+import CorrelationExplorer from "./pages/CorrelationExplorer";
 import Profile         from "./pages/Profile";
 import UploadCSV       from "./pages/UploadCSV";
 import PipelineMonitor from "./pages/PipelineMonitor";
@@ -77,6 +83,12 @@ function AppRoutes() {
       <Route path="/risk-engine"   element={<ProtectedRoute><RiskEngine /></ProtectedRoute>} />
       <Route path="/macro"         element={<ProtectedRoute><MacroOverlay /></ProtectedRoute>} />
       <Route path="/balance"       element={<ProtectedRoute><BalanceSheet /></ProtectedRoute>} />
+      <Route path="/enhanced-balance" element={<ProtectedRoute><EnhancedBalanceSheet /></ProtectedRoute>} />
+      <Route path="/enhanced-holdings" element={<ProtectedRoute><EnhancedStockHolding /></ProtectedRoute>} />
+      <Route path="/filtering"     element={<ProtectedRoute><FilteringClassification /></ProtectedRoute>} />
+      <Route path="/market-intelligence" element={<ProtectedRoute><MarketIntelligence /></ProtectedRoute>} />
+      <Route path="/sector-intelligence" element={<ProtectedRoute><SectorIntelligence /></ProtectedRoute>} />
+      <Route path="/correlation-explorer" element={<ProtectedRoute><CorrelationExplorer /></ProtectedRoute>} />
       <Route path="/profile"       element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="/upload"        element={<ProtectedRoute><UploadCSV /></ProtectedRoute>} />
       <Route path="/pipeline"      element={<ProtectedRoute><PipelineMonitor /></ProtectedRoute>} />

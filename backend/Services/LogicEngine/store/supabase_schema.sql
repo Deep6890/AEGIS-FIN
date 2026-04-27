@@ -99,7 +99,7 @@ ON CONFLICT (name) DO NOTHING;
 
 
 -- ---------------------------------------------------------------------------
--- 1d.  holding_metric_definitions  (5 shareholding metrics)
+-- 1d.  holding_metric_definitions  (Enhanced shareholding metrics)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS holding_metric_definitions (
     id          SMALLSERIAL PRIMARY KEY,
@@ -113,9 +113,18 @@ CREATE TABLE IF NOT EXISTS holding_metric_definitions (
 INSERT INTO holding_metric_definitions (name, category, description) VALUES
   ('Institutional Ownership %',  'Ownership',     '% held by institutions'),
   ('Insider Ownership %',        'Ownership',     '% held by insiders/promoters'),
+  ('Promoter Holding %',         'Ownership',     '% held by promoters'),
+  ('FII Holding %',              'Ownership',     '% held by Foreign Institutional Investors'),
+  ('DII Holding %',              'Ownership',     '% held by Domestic Institutional Investors'),
+  ('Public Float %',             'Ownership',     '% shares available for public trading'),
   ('Holder Concentration (HHI)', 'Concentration', 'HHI of top holders (0=diversified, 1=single)'),
+  ('Top 10 Holders %',           'Concentration', '% held by top 10 institutional holders'),
   ('Insider Net Buy %',          'Activity',      'Net insider buy % over lookback window'),
-  ('Annualised Volatility 30d',  'Risk',          '30-day annualised price volatility')
+  ('Annualised Volatility %',    'Risk',          '30-day annualised price volatility'),
+  ('52W High Distance %',        'Price',         '% distance from 52-week high'),
+  ('52W Low Distance %',         'Price',         '% above 52-week low'),
+  ('Market Cap (Cr)',            'Size',          'Market cap INR crores'),
+  ('Shares Outstanding (Cr)',    'Size',          'Total shares outstanding in crores')
 ON CONFLICT (name) DO NOTHING;
 
 
@@ -296,6 +305,64 @@ CREATE TABLE IF NOT EXISTS stock_holding (
 CREATE INDEX IF NOT EXISTS idx_holding_company_period ON stock_holding (company_id, period DESC);
 CREATE INDEX IF NOT EXISTS idx_holding_metric         ON stock_holding (metric_id);
 CREATE INDEX IF NOT EXISTS idx_holding_signal         ON stock_holding (holding_signal);
+
+
+-- =============================================================================
+-- 5a. BALANCE SHEET INSIGHTS (quarterly insights and analytics)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS balance_sheet_insights (
+    id               BIGSERIAL,
+    company_id       UUID          NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    period           TEXT          NOT NULL,
+    profitability_score    NUMERIC(6,2),
+    liquidity_score        NUMERIC(6,2),
+    leverage_score         NUMERIC(6,2),
+    efficiency_score       NUMERIC(6,2),
+    growth_score           NUMERIC(6,2),
+    overall_score          NUMERIC(6,2),
+    key_strengths          JSONB,
+    key_concerns           JSONB,
+    sector_comparison      JSONB,
+    trend_analysis         JSONB,
+    recommendations        JSONB,
+    created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT bs_insights_pk PRIMARY KEY (company_id, period)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bs_insights_company_period ON balance_sheet_insights (company_id, period DESC);
+CREATE INDEX IF NOT EXISTS idx_bs_insights_overall_score  ON balance_sheet_insights (overall_score DESC);
+
+
+-- =============================================================================
+-- 5b. STOCK HOLDING INSIGHTS (quarterly shareholding insights)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS stock_holding_insights (
+    id               BIGSERIAL,
+    company_id       UUID          NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    period           TEXT          NOT NULL,
+    ownership_score        NUMERIC(6,2),
+    concentration_score    NUMERIC(6,2),
+    activity_score         NUMERIC(6,2),
+    risk_score             NUMERIC(6,2),
+    overall_score          NUMERIC(6,2),
+    ownership_breakdown    JSONB,  -- pie chart data
+    top_holders_breakdown  JSONB,  -- top holders pie chart
+    key_insights           JSONB,
+    risk_factors           JSONB,
+    sector_comparison      JSONB,
+    it_sector_correlation  JSONB,  -- IT sector specific correlation data
+    created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT sh_insights_pk PRIMARY KEY (company_id, period)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sh_insights_company_period ON stock_holding_insights (company_id, period DESC);
+CREATE INDEX IF NOT EXISTS idx_sh_insights_overall_score  ON stock_holding_insights (overall_score DESC);
 
 
 -- =============================================================================

@@ -3,22 +3,28 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Building2, TrendingUp, GitBranch,
   Brain, Globe, ShieldAlert, Sun, Moon, LogOut,
-  User, Upload, Activity, Stethoscope
+  User, Upload, Activity, Stethoscope, BarChart3, Zap, Compass
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 
 const NAV = [
-  { to: "/",            icon: LayoutDashboard, label: "Dashboard"    },
-  { to: "/companies",   icon: Building2,       label: "Companies"    },
-  { to: "/sectors",     icon: TrendingUp,      label: "Sectors"      },
-  { to: "/correlation", icon: GitBranch,       label: "Correlation"  },
-  { to: "/risk-engine", icon: Brain,           label: "Risk Engine"  },
-  { to: "/macro",       icon: Globe,           label: "Macro Overlay"},
-  { to: "/balance",     icon: ShieldAlert,     label: "Balance Sheet"},
-  { to: "/upload",      icon: Upload,          label: "Upload CSV"   },
-  { to: "/pipeline",    icon: Activity,        label: "Pipeline"     },
-  { to: "/diagnostics", icon: Stethoscope,     label: "Diagnostics"  },
+  { to: "/",                 icon: LayoutDashboard, label: "Dashboard"         },
+  { to: "/companies",        icon: Building2,       label: "Companies"         },
+  { to: "/sectors",          icon: TrendingUp,      label: "Sectors"           },
+  { to: "/correlation",      icon: GitBranch,       label: "Correlation"       },
+  { to: "/risk-engine",      icon: Brain,           label: "Risk Engine"       },
+  { to: "/macro",            icon: Globe,           label: "Macro Overlay"     },
+  { to: "/balance",          icon: ShieldAlert,     label: "Balance Sheet"     },
+  { to: "/enhanced-balance", icon: ShieldAlert,     label: "Enhanced Balance"  },
+  { to: "/enhanced-holdings",icon: Building2,       label: "Enhanced Holdings" },
+  { to: "/filtering",        icon: Brain,           label: "Filtering & Class" },
+  { to: "/market-intelligence", icon: BarChart3,    label: "Market Intel"      },
+  { to: "/sector-intelligence",  icon: Zap,         label: "Sector Intel"      },
+  { to: "/correlation-explorer", icon: Compass,     label: "Correlation Exp"   },
+  { to: "/upload",           icon: Upload,          label: "Upload CSV"        },
+  { to: "/pipeline",         icon: Activity,        label: "Pipeline"          },
+  { to: "/diagnostics",      icon: Stethoscope,     label: "Diagnostics"       },
 ];
 
 function Tip({ label, children }) {
@@ -40,9 +46,103 @@ export default function Sidebar() {
   const { dark, toggle } = useTheme();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
   const initials = user?.email?.slice(0, 2).toUpperCase() || "U";
 
+  // Mobile bottom dock layout
+  if (isMobile) {
+    return (
+      <>
+        {/* Mobile Bottom Dock */}
+        <nav
+          className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-2 py-2 bg-white/72 dark:bg-neutral-900/82 backdrop-blur-xl border-t border-white/85 dark:border-white/10"
+          style={{
+            background: "rgba(255,255,255,0.72)",
+            backdropFilter: "blur(24px) saturate(180%)",
+            WebkitBackdropFilter: "blur(24px) saturate(180%)",
+          }}
+        >
+          <style>{`.dark nav[class*="fixed bottom-0"] { background: rgba(18,18,16,0.82) !important; border-color: rgba(255,255,255,0.08) !important; }`}</style>
+
+          {/* Main nav items - show only key ones on mobile */}
+          {NAV.slice(0, 8).map(({ to, icon: Icon, label }) => (
+            <NavLink key={to} to={to} end={to === "/"}
+              className={({ isActive }) =>
+                `flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? "text-white"
+                    : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                }`
+              }
+              style={({ isActive }) => isActive ? { background: "var(--orange)" } : {}}
+              title={label}
+            >
+              {({ isActive }) => (
+                <Icon size={20} strokeWidth={isActive ? 2.5 : 1.75} />
+              )}
+            </NavLink>
+          ))}
+
+          {/* Profile */}
+          <NavLink to="/profile"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-all duration-150 ${
+                isActive
+                  ? "text-white"
+                  : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+              }`
+            }
+            style={({ isActive }) => isActive ? { background: "var(--orange)" } : {}}
+            title="Profile"
+          >
+            {({ isActive }) =>
+              user ? (
+                <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-bold ${
+                  isActive ? "bg-white/20 text-white" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"
+                }`}>{initials}</div>
+              ) : (
+                <User size={20} strokeWidth={1.75} />
+              )
+            }
+          </NavLink>
+
+          {/* Theme toggle */}
+          <button onClick={toggle}
+            className="flex flex-col items-center justify-center py-2 px-3 rounded-lg text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-all duration-150"
+            title={dark ? "Light Mode" : "Dark Mode"}
+          >
+            {dark
+              ? <Sun size={20} strokeWidth={1.75} />
+              : <Moon size={20} strokeWidth={1.75} />
+            }
+          </button>
+
+          {/* Sign out */}
+          {user && (
+            <button onClick={handleSignOut}
+              className="flex flex-col items-center justify-center py-2 px-3 rounded-lg text-neutral-500 dark:text-neutral-400 hover:text-red-500 transition-all duration-150"
+              title="Sign Out"
+            >
+              <LogOut size={20} strokeWidth={1.75} />
+            </button>
+          )}
+        </nav>
+
+        {/* Spacer for bottom dock */}
+        <div className="h-16" />
+      </>
+    );
+  }
+
+  // Desktop sidebar layout
   return (
     <aside
       className="fixed left-3 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center py-4 px-2 gap-1"

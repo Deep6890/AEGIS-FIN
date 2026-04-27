@@ -91,9 +91,18 @@ _RATIO_NAME_TO_ID: Dict[str, int] = {
 _METRIC_NAME_TO_ID: Dict[str, int] = {
     "Institutional Ownership %":  1,
     "Insider Ownership %":        2,
-    "Holder Concentration (HHI)": 3,
-    "Insider Net Buy %":          4,
-    "Annualised Volatility 30d":  5,
+    "Promoter Holding %":         3,
+    "FII Holding %":              4,
+    "DII Holding %":              5,
+    "Public Float %":             6,
+    "Holder Concentration (HHI)": 7,
+    "Top 10 Holders %":           8,
+    "Insider Net Buy %":          9,
+    "Annualised Volatility %":    10,
+    "52W High Distance %":        11,
+    "52W Low Distance %":         12,
+    "Market Cap (Cr)":            13,
+    "Shares Outstanding (Cr)":    14,
 }
 
 _RETENTION = RETENTION
@@ -633,6 +642,76 @@ class SupabaseStore(DataStore):
             r.setdefault("ticker", ticker)
             rows.append(r)
         return rows
+
+    # =========================================================================
+    # BALANCE SHEET INSIGHTS
+    # =========================================================================
+
+    def write_balance_sheet_insights(self, ticker: str, insights_dict: dict) -> None:
+        """Write balance sheet insights to the database."""
+        company_id = self._resolve_company_id(ticker)
+        if not company_id:
+            return
+        
+        period = self._get_period()
+        row = {
+            "company_id": company_id,
+            "period": period,
+            "profitability_score": insights_dict.get("profitability_score"),
+            "liquidity_score": insights_dict.get("liquidity_score"),
+            "leverage_score": insights_dict.get("leverage_score"),
+            "efficiency_score": insights_dict.get("efficiency_score"),
+            "growth_score": insights_dict.get("growth_score"),
+            "overall_score": insights_dict.get("overall_score"),
+            "key_strengths": insights_dict.get("key_strengths", []),
+            "key_concerns": insights_dict.get("key_concerns", []),
+            "sector_comparison": insights_dict.get("sector_comparison", {}),
+            "trend_analysis": insights_dict.get("trend_analysis", {}),
+            "recommendations": insights_dict.get("recommendations", []),
+        }
+        
+        self._client.table("balance_sheet_insights").upsert(
+            [row],
+            on_conflict="company_id,period",
+        ).execute()
+
+    # =========================================================================
+    # STOCK HOLDING INSIGHTS
+    # =========================================================================
+
+    def write_stock_holding_insights(self, ticker: str, insights_dict: dict) -> None:
+        """Write stock holding insights to the database."""
+        company_id = self._resolve_company_id(ticker)
+        if not company_id:
+            return
+        
+        period = self._get_period()
+        row = {
+            "company_id": company_id,
+            "period": period,
+            "ownership_score": insights_dict.get("ownership_score"),
+            "concentration_score": insights_dict.get("concentration_score"),
+            "activity_score": insights_dict.get("activity_score"),
+            "risk_score": insights_dict.get("risk_score"),
+            "overall_score": insights_dict.get("overall_score"),
+            "ownership_breakdown": insights_dict.get("ownership_breakdown", {}),
+            "top_holders_breakdown": insights_dict.get("top_holders_breakdown", {}),
+            "key_insights": insights_dict.get("key_insights", []),
+            "risk_factors": insights_dict.get("risk_factors", []),
+            "sector_comparison": insights_dict.get("sector_comparison", {}),
+            "it_sector_correlation": insights_dict.get("it_sector_correlation", {}),
+        }
+        
+        self._client.table("stock_holding_insights").upsert(
+            [row],
+            on_conflict="company_id,period",
+        ).execute()
+
+    def _get_period(self) -> str:
+        """Get the current quarter in YYYY-QN format."""
+        today = date.today()
+        quarter = (today.month - 1) // 3 + 1
+        return f"{today.year}-Q{quarter}"
 
     # =========================================================================
     # Helper queries  (override DataStore defaults for efficiency)

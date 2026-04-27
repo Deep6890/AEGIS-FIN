@@ -48,14 +48,14 @@ export default function TopBar() {
   const go = path => { navigate(path); setQuery(""); setOpen(false); };
 
   return (
-    <header className="h-[60px] sticky top-0 z-30 bg-[var(--bg)] border-b border-[var(--border)] flex items-center justify-between px-6 gap-4 min-w-0 transition-colors duration-300">
+    <header className="h-[60px] sticky top-0 z-30 bg-[var(--bg)] border-b border-[var(--border)] flex items-center justify-between px-4 md:px-6 gap-2 md:gap-4 min-w-0 transition-colors duration-300">
       {/* Search */}
-      <div ref={ref} className="relative flex-1 max-w-sm">
+      <div ref={ref} className="relative flex-1 max-w-xs md:max-w-sm">
         <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Search pages, companies, sectors…"
+          placeholder="Search…"
           className="w-full pl-9 pr-8 py-2 text-sm bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--text)] placeholder-[var(--text-3)] focus:outline-none focus:border-[var(--orange)] focus:ring-2 focus:ring-[rgba(232,87,42,.1)] transition-all duration-150"
         />
         {query && (
@@ -80,7 +80,7 @@ export default function TopBar() {
       {/* Right */}
       <div className="flex items-center gap-2.5 shrink-0">
         {macro?.macro_regime && (
-          <span className={`badge text-[10px] font-semibold px-3 py-1.5 rounded-xl ${REGIME_STYLE[macro.macro_regime] || REGIME_STYLE.NEUTRAL}`}>
+          <span className={`badge text-[10px] font-semibold px-3 py-1.5 rounded-xl hidden sm:inline-block ${REGIME_STYLE[macro.macro_regime] || REGIME_STYLE.NEUTRAL}`}>
             {macro.macro_regime.replace("_", " ")}
           </span>
         )}

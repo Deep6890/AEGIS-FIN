@@ -190,14 +190,17 @@ def save_balance_sheet(ticker: str, result: dict) -> None:
     """
     Save run_balance_sheet() output.
 
-    Stores two tables:
+    Stores three tables:
       balance_sheet_ratios — one row per ratio per quarter (period = "YYYY-QN")
       balance_sheet_hist   — historical ratio time-series (Date, Ratio, Value)
+      balance_sheet_insights — comprehensive insights and analysis
     """
     full_ratios = result.get("full_ratios")
     hist_df     = result.get("historical_ratios")
     overlay     = result.get("sector_overlay", {})
     info        = result.get("info", {})
+    insights    = result.get("insights", {})
+    breakdown   = result.get("breakdown", {})
 
     # ── Snapshot ratios (current quarter) ─────────────────────────────────────
     if full_ratios is not None and not (hasattr(full_ratios, "empty") and full_ratios.empty):
@@ -236,17 +239,36 @@ def save_balance_sheet(ticker: str, result: dict) -> None:
         if hist_rows:
             get_store().write_balance_sheet_hist(ticker, hist_rows)
 
+    # ── Balance sheet insights ────────────────────────────────────────────────
+    if insights:
+        insights_data = {
+            "profitability_score": breakdown.get("profitability_score", 0),
+            "liquidity_score": breakdown.get("liquidity_score", 0),
+            "leverage_score": breakdown.get("leverage_score", 0),
+            "efficiency_score": breakdown.get("efficiency_score", 0),
+            "growth_score": breakdown.get("growth_score", 0),
+            "overall_score": breakdown.get("overall_score", 0),
+            "key_strengths": insights.get("key_strengths", []),
+            "key_concerns": insights.get("key_concerns", []),
+            "sector_comparison": insights.get("sector_comparison", {}),
+            "trend_analysis": insights.get("trend_analysis", {}),
+            "recommendations": insights.get("recommendations", []),
+        }
+        get_store().write_balance_sheet_insights(ticker, insights_data)
+
 
 # ── stock_holding outputs → store ─────────────────────────────────────────────
 
 def save_stock_holding(ticker: str, result: dict) -> None:
     """
     Save run_stock_holding() output.
-    One row per metric per quarter.
+    One row per metric per quarter, plus insights.
     """
     full_metrics   = result.get("full_metrics")
     overlay        = result.get("sector_overlay", {})
     holding_signal = result.get("holding_signal", "STABLE")
+    insights       = result.get("enhanced_insights", {})
+    breakdown      = result.get("breakdown", {})
 
     if full_metrics is None or (hasattr(full_metrics, "empty") and full_metrics.empty):
         return
@@ -264,6 +286,23 @@ def save_stock_holding(ticker: str, result: dict) -> None:
 
     if rows:
         get_store().write_stock_holding(ticker, rows)
+
+    # ── Stock holding insights ────────────────────────────────────────────────
+    if insights:
+        insights_data = {
+            "ownership_score": breakdown.get("ownership_score", 0),
+            "concentration_score": breakdown.get("concentration_score", 0),
+            "activity_score": breakdown.get("activity_score", 0),
+            "risk_score": breakdown.get("risk_score", 0),
+            "overall_score": breakdown.get("overall_score", 0),
+            "ownership_breakdown": breakdown.get("ownership_pie", {}),
+            "top_holders_breakdown": breakdown.get("top_holders_pie", {}),
+            "key_insights": insights.get("key_insights", []),
+            "risk_factors": insights.get("risk_factors", []),
+            "sector_comparison": insights.get("sector_comparison", {}),
+            "it_sector_correlation": result.get("it_sector_correlation", {}),
+        }
+        get_store().write_stock_holding_insights(ticker, insights_data)
 
 
 # ── correlation outputs → store ───────────────────────────────────────────────

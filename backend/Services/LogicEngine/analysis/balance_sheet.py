@@ -1,7 +1,7 @@
 """
 balance_sheet.py
 ----------------
-Computes 20 financial health ratios from quarterly financials.
+Computes 20 financial health ratios from quarterly financials with comprehensive insights.
 
 Input  : dict from yfinance (income, balance, cashflow, info) OR
          pass raw DataFrames directly via bs_data dict.
@@ -12,6 +12,8 @@ Output : dict with keys:
     "historical_ratios" pd.DataFrame  — long-format (Date, Ratio, Value)
     "sector_overlay"    dict   — pressure, pct_rank, direction, narrative
     "full_ratios"       pd.DataFrame  — ratios + AdjustedStatus column
+    "insights"          dict   — comprehensive balance sheet insights
+    "breakdown"         dict   — pie chart data for visualization
 
 Each ratio row: Ratio | Value | YoY_pct | HistPctRank | Status | Trend | Description | Category
 
@@ -65,7 +67,116 @@ def _ratio_hist(nc, dc, sn, sd, scale=1.0):
     return pd.Series(vals, index=dates, dtype=float) if vals else pd.Series(dtype=float)
 
 
-# ── Ratio engine ──────────────────────────────────────────────────────────────
+# ── Comprehensive Insights Generation ────────────────────────────────────────
+
+def generate_balance_sheet_insights(ratios_df):
+    """
+    Generate comprehensive insights and breakdown data for balance sheet analysis.
+    Returns (insights_dict, breakdown_dict)
+    """
+    insights = {
+        "key_strengths": [],
+        "key_concerns": [],
+        "sector_comparison": {},
+        "trend_analysis": {},
+        "recommendations": []
+    }
+    
+    breakdown = {
+        "profitability_pie": [],
+        "liquidity_pie": [],
+        "leverage_pie": [],
+        "category_scores": {}
+    }
+    
+    if ratios_df.empty:
+        return insights, breakdown
+    
+    # Calculate category scores
+    categories = ratios_df['Category'].unique()
+    for category in categories:
+        cat_ratios = ratios_df[ratios_df['Category'] == category]
+        green_count = len(cat_ratios[cat_ratios['Status'] == 'green'])
+        total_count = len(cat_ratios)
+        score = (green_count / total_count * 100) if total_count > 0 else 0
+        breakdown["category_scores"][category] = {
+            "score": round(score, 1),
+            "green": green_count,
+            "total": total_count,
+            "status": "strong" if score >= 75 else "moderate" if score >= 50 else "weak"
+        }
+    
+    # Generate insights based on ratio performance
+    for _, ratio in ratios_df.iterrows():
+        ratio_name = ratio['Ratio']
+        value = ratio['Value']
+        status = ratio['Status']
+        yoy_pct = ratio['YoY_pct']
+        
+        if pd.isna(value):
+            continue
+            
+        # Key strengths identification
+        if status == 'green':
+            if 'Margin' in ratio_name and value > 20:
+                insights["key_strengths"].append(f"Strong {ratio_name.lower()} at {value:.1f}%")
+            elif 'ROE' in ratio_name and value > 15:
+                insights["key_strengths"].append(f"Excellent return on equity at {value:.1f}%")
+            elif 'Current Ratio' in ratio_name and value > 2:
+                insights["key_strengths"].append(f"Strong liquidity with current ratio of {value:.2f}")
+            elif 'Debt/Equity' in ratio_name and value < 0.5:
+                insights["key_strengths"].append(f"Conservative debt levels (D/E: {value:.2f})")
+        
+        # Key concerns identification
+        elif status == 'red':
+            if 'Margin' in ratio_name and value < 5:
+                insights["key_concerns"].append(f"Low {ratio_name.lower()} at {value:.1f}%")
+            elif 'Current Ratio' in ratio_name and value < 1:
+                insights["key_concerns"].append(f"Liquidity concern with current ratio of {value:.2f}")
+            elif 'Debt/Equity' in ratio_name and value > 2:
+                insights["key_concerns"].append(f"High leverage (D/E: {value:.2f})")
+            elif 'Interest Coverage' in ratio_name and value < 2:
+                insights["key_concerns"].append(f"Weak interest coverage at {value:.2f}x")
+        
+        # Trend analysis
+        if not pd.isna(yoy_pct):
+            if abs(yoy_pct) > 20:  # Significant change
+                trend_key = f"{ratio_name}_trend"
+                insights["trend_analysis"][trend_key] = {
+                    "change": yoy_pct,
+                    "direction": "improving" if yoy_pct > 0 else "declining",
+                    "significance": "high" if abs(yoy_pct) > 50 else "moderate"
+                }
+    
+    # Generate pie chart data for key categories
+    profitability_ratios = ratios_df[ratios_df['Category'] == 'Profitability']
+    if not profitability_ratios.empty:
+        for _, ratio in profitability_ratios.iterrows():
+            if not pd.isna(ratio['Value']) and 'Margin' in ratio['Ratio']:
+                breakdown["profitability_pie"].append({
+                    "name": ratio['Ratio'].replace(' %', ''),
+                    "value": max(0, ratio['Value'])  # Ensure non-negative for pie chart
+                })
+    
+    # Generate recommendations
+    category_scores = breakdown["category_scores"]
+    
+    if category_scores.get("Profitability", {}).get("score", 0) < 50:
+        insights["recommendations"].append("Focus on improving profit margins through cost optimization")
+    
+    if category_scores.get("Liquidity", {}).get("score", 0) < 50:
+        insights["recommendations"].append("Strengthen liquidity position through better working capital management")
+    
+    if category_scores.get("Leverage", {}).get("score", 0) < 50:
+        insights["recommendations"].append("Consider debt reduction strategies to improve financial stability")
+    
+    if category_scores.get("Growth", {}).get("score", 0) > 75:
+        insights["recommendations"].append("Strong growth trajectory - consider expansion opportunities")
+    
+    return insights, breakdown
+
+
+# ── Enhanced Ratio Engine ─────────────────────────────────────────────────────────
 
 def compute_ratios(bs_data):
     inc = bs_data.get("income",   pd.DataFrame())
@@ -205,6 +316,8 @@ def run_balance_sheet(financials_data, sector_health_results=None, top_sectors=N
             "full_ratios": pd.DataFrame(),
             "sector_overlay": {"direction": "NEUTRAL", "pressure": float("nan"),
                                "pct_rank": float("nan"), "narrative": "Invalid input data."},
+            "insights": {"key_strengths": [], "key_concerns": [], "recommendations": []},
+            "breakdown": {"profitability_pie": [], "category_scores": {}},
         }
     for w in vr.warnings:
         log.warning("balance_sheet.input_warning", ticker=financials_data.get("ticker"), warning=w)
@@ -212,6 +325,9 @@ def run_balance_sheet(financials_data, sector_health_results=None, top_sectors=N
     ratios, hist = compute_ratios(financials_data)
     log.info("balance_sheet.ratios_computed", ticker=financials_data.get("ticker"),
              ratio_count=len(ratios))
+
+    # Generate comprehensive insights and breakdown data
+    insights, breakdown = generate_balance_sheet_insights(ratios)
 
     overlay_info = {"direction": "NEUTRAL", "pressure": float("nan"),
                     "pct_rank": float("nan"), "narrative": "No sector data provided."}
@@ -221,6 +337,24 @@ def run_balance_sheet(financials_data, sector_health_results=None, top_sectors=N
     if sector_health_results and top_sectors:
         full_ratios, overlay_info = apply_sector_overlay(
             ratios, sector_health_results, top_sectors, sector_window)
+        
+        # Add sector comparison to insights
+        insights["sector_comparison"] = {
+            "direction": overlay_info.get("direction", "NEUTRAL"),
+            "pressure": overlay_info.get("pressure", 0),
+            "narrative": overlay_info.get("narrative", "No sector data")
+        }
+
+    # Add IT sector correlation analysis if available
+    it_correlation = {}
+    if sector_health_results and "IT Sector" in sector_health_results:
+        it_sector_data = sector_health_results["IT Sector"]
+        it_correlation = {
+            "correlation_strength": "Strong" if it_sector_data.get("health_score", 0) > 70 else "Moderate",
+            "sector_health": it_sector_data.get("health_score", 0),
+            "alignment": overlay_info.get("direction", "NEUTRAL")
+        }
+        insights["it_sector_correlation"] = it_correlation
 
     return {
         "ticker":            financials_data.get("ticker", ""),
@@ -229,4 +363,7 @@ def run_balance_sheet(financials_data, sector_health_results=None, top_sectors=N
         "historical_ratios": hist,
         "full_ratios":       full_ratios,
         "sector_overlay":    overlay_info,
+        "insights":          insights,
+        "breakdown":         breakdown,
+        "it_sector_correlation": it_correlation,
     }
