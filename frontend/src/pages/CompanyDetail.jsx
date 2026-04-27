@@ -1,6 +1,6 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Activity, BarChart2, Brain, TrendingUp, Users, ShieldAlert, Info, Building2, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, Activity, BarChart2, Brain, TrendingUp, Users, ShieldAlert, Info, Building2, ArrowUpRight, Zap, Shield, Target } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend, CartesianGrid, RadialBarChart, RadialBar, ReferenceLine
@@ -75,8 +75,12 @@ export default function CompanyDetail() {
   if (!company) return <PageLayout title="Company Detail"><EmptyState title="Company not found" /></PageLayout>;
 
   const latestMl = ml[ml.length - 1];
-  const score    = latestMl?.survival_score;
-  const scoreColor = score >= 70 ? "text-[#00B341]" : score >= 40 ? "text-[#FFC224]" : "text-[#FF3B30]";
+  // Use composite_score as canonical � survival_score is an alias
+  const score    = latestMl?.composite_score ?? latestMl?.survival_score ?? null;
+  const distress = latestMl ? Math.max(0, 100 - (score ?? 0)) : null;
+  const tier     = latestMl?.composite_tier || null;
+  const grade    = latestMl?.composite_grade || null;
+  const scoreColor = score != null ? (score >= 70 ? "text-[#00B341]" : score >= 40 ? "text-[#FFC224]" : "text-[#FF3B30]") : "text-[var(--text-3)]";
   const tabs = ["metrics","balance","holdings","ml","sectors","features"];
   const bsCategories = [...new Set(balance.map(r => r.ratio_definitions?.category || "Other"))].filter(Boolean);
   const latestBs = {};
@@ -127,28 +131,56 @@ export default function CompanyDetail() {
         {latestMl && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="card p-5 hover-lift">
-              <p className="label mb-1">Survival Score</p>
-              <p className={`text-4xl font-black ${scoreColor}`}>{latestMl.survival_score?.toFixed(0)}</p>
-              <p className="text-xs text-[#9CA3AF] mt-2 leading-relaxed">
-                {score >= 70 ? "No immediate distress signals detected. Robust footing." : 
-                 score >= 40 ? "Moderate divergence from historical norms. Elevated monitoring." : 
-                 "High distress signals detected. Multiple risk thresholds breached."}
-              </p>
+              <p className="label-caps mb-2">Survival Score</p>
+              {score != null ? (
+                <>
+                  <p className={`text-5xl font-black tabular-nums ${scoreColor}`}>{score.toFixed(0)}</p>
+                  <div className="mt-3 h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${score}%`, background: score >= 70 ? "#00B341" : score >= 40 ? "#FFC224" : "#FF3B30" }} />
+                  </div>
+                  <p className="text-xs text-[var(--text-3)] mt-2 leading-relaxed">
+                    {score >= 70 ? "No immediate distress signals. Robust footing across all dimensions."
+                     : score >= 40 ? "Moderate divergence from historical norms. Elevated monitoring advised."
+                     : "High distress signals detected. Multiple risk thresholds breached."}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-[var(--text-3)] mt-2">Run the pipeline to generate scores.</p>
+              )}
             </div>
-            <div className="card-ink p-5 hover-lift">
-              <p className="label text-white/50 mb-1">Distress Probability</p>
-              <p className={`text-4xl font-black ${latestMl.distress_probability > 60 ? "text-[#FF3B30]" : "text-white"}`}>
-                {latestMl.distress_probability?.toFixed(1)}%
-              </p>
-              <p className="text-xs text-white/50 mt-2 leading-relaxed">
-                Probability of severe financial stress. &gt;60% warrants immediate review.
-              </p>
+            <div className="card p-5 hover-lift" style={{ background: "var(--surface-dark, #0D0D0D)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">Distress Probability</p>
+              {distress != null ? (
+                <>
+                  <p className={`text-5xl font-black tabular-nums ${distress > 60 ? "text-[#FF3B30]" : distress > 40 ? "text-[#FFC224]" : "text-[#00B341]"}`}>
+                    {distress.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-white/40 mt-3 leading-relaxed">
+                    Probability of severe financial stress. &gt;60% warrants immediate review.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-white/40 mt-2">No data yet.</p>
+              )}
             </div>
             <div className="card p-5 hover-lift">
-              <p className="label mb-1">Model Assessment</p>
-              <p className="text-lg font-bold text-[#0D0D0D] dark:text-[#E8E6E0] mt-1 truncate">v{latestMl.model_version || "1.0.0"}</p>
-              <p className="text-xs text-[#9CA3AF] mt-2">
-                Evaluated on 8 features including sector correlation and balance sheet ratios.
+              <p className="label-caps mb-2">Model Assessment</p>
+              <div className="flex items-center gap-2 mt-1">
+                {tier && (
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                    tier === "TIER_1" ? "bg-[#00B341]/10 text-[#00B341]"
+                    : tier === "TIER_2" ? "bg-[var(--orange)]/10 text-[var(--orange)]"
+                    : tier === "TIER_3" ? "bg-[#FFC224]/10 text-[#FFC224]"
+                    : "bg-neutral-100 dark:bg-neutral-800 text-[var(--text-3)]"
+                  }`}>{tier}</span>
+                )}
+                {grade && (
+                  <span className="text-2xl font-black text-[var(--text)]">{grade}</span>
+                )}
+              </div>
+              <p className="text-xs text-[var(--text-3)] mt-3 leading-relaxed">
+                Composite score across price health, fundamentals, ownership, and sector fit.
               </p>
             </div>
           </div>
@@ -191,7 +223,7 @@ export default function CompanyDetail() {
                         <XAxis dataKey="date" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} />
                         <YAxis tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={40} />
                         <Tooltip {...ct.tooltip} />
-                        <Area type="monotone" dataKey="close" stroke={ct.yellow} strokeWidth={2} fill="url(#closeGrad)" dot={false} name="Close â‚¹" />
+                        <Area type="monotone" dataKey="close" stroke={ct.yellow} strokeWidth={2} fill="url(#closeGrad)" dot={false} name="Close (INR)" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -229,13 +261,13 @@ export default function CompanyDetail() {
                   ];
                   return (
                     <div className="card p-5">
-                      <p className="title-md mb-4">Latest Snapshot Â· {l.date}</p>
+                      <p className="title-md mb-4">Latest Snapshot � {l.date}</p>
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                         {fields.map(([label, val, unit, desc]) => (
                           <div key={label} className="p-3 bg-[#F7F5F0] dark:bg-[#111318] rounded-xl border border-[#E5E1D8] dark:border-[#1F2128]">
                             <p className="label">{label}</p>
                             <p className="text-base font-bold text-[#0D0D0D] dark:text-[#E8E6E0] mt-1 tabular-nums">
-                              {val != null ? `${typeof val === "number" ? val.toFixed(3) : val}${unit}` : "â€”"}
+                              {val != null ? `${typeof val === "number" ? val.toFixed(3) : val}${unit}` : "—"}
                             </p>
                             <p className="text-[10px] text-[#9CA3AF] mt-1">{desc}</p>
                           </div>
@@ -285,16 +317,16 @@ export default function CompanyDetail() {
                                 <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100 group-hover:text-[var(--orange)] transition-colors">{r.ratio_definitions?.name}</p>
                                 <p className="text-[10px] text-neutral-400 mt-0.5 truncate max-w-[140px]">{r.ratio_definitions?.description}</p>
                               </td>
-                              <td className="px-4 py-4 text-sm font-mono font-bold text-neutral-900 dark:text-neutral-100">{r.value != null ? r.value.toFixed(2) : "â€”"}</td>
+                              <td className="px-4 py-4 text-sm font-mono font-bold text-neutral-900 dark:text-neutral-100">{r.value != null ? r.value.toFixed(2) : "—"}</td>
                               <td className="px-4 py-4">
                                 <span className={`text-xs font-bold tabular-nums ${r.yoy_pct > 0 ? "text-[#00B341]" : r.yoy_pct < 0 ? "text-[#FF3B30]" : "text-neutral-400"}`}>
-                                  {r.yoy_pct != null ? `${r.yoy_pct > 0 ? "â–²" : "â–¼"} ${Math.abs(r.yoy_pct).toFixed(1)}%` : "â€”"}
+                                  {r.yoy_pct != null ? `${r.yoy_pct > 0 ? "▲" : "▼"} ${Math.abs(r.yoy_pct).toFixed(1)}%` : "—"}
                                 </span>
                               </td>
-                              <td className="px-4 py-4 text-[10px] font-bold text-neutral-500 uppercase">{r.hist_pct_rank != null ? `${(r.hist_pct_rank * 100).toFixed(0)}p` : "â€”"}</td>
+                              <td className="px-4 py-4 text-[10px] font-bold text-neutral-500 uppercase">{r.hist_pct_rank != null ? `${(r.hist_pct_rank * 100).toFixed(0)}p` : "—"}</td>
                               <td className="px-4 py-4"><SignalBadge value={r.status} /></td>
-                              <td className="px-4 py-4 text-[10px] font-bold uppercase tracking-widest text-neutral-500">{r.trend || "â€”"}</td>
-                              <td className="px-4 py-4 text-[10px] font-mono font-bold text-neutral-400">{r.sector_pressure != null ? r.sector_pressure.toFixed(2) : "â€”"}</td>
+                              <td className="px-4 py-4 text-[10px] font-bold uppercase tracking-widest text-neutral-500">{r.trend || "—"}</td>
+                              <td className="px-4 py-4 text-[10px] font-mono font-bold text-neutral-400">{r.sector_pressure != null ? r.sector_pressure.toFixed(2) : "—"}</td>
                               <td className="px-6 py-4"><SignalBadge value={r.adjusted_status} /></td>
                             </tr>
                           ))}
@@ -332,11 +364,11 @@ export default function CompanyDetail() {
                             <p className="text-xs font-semibold text-[#0D0D0D] dark:text-[#E8E6E0]">{r.holding_metric_definitions?.name}</p>
                             {r.holding_metric_definitions?.description && <p className="text-[10px] text-[#9CA3AF] mt-0.5">{r.holding_metric_definitions?.description}</p>}
                           </td>
-                          <td className="td-base text-xs font-mono font-semibold tabular-nums">{r.value?.toFixed(3) ?? "â€”"}</td>
+                          <td className="td-base text-xs font-mono font-semibold tabular-nums">{r.value?.toFixed(3) ?? "—"}</td>
                           <td className="td-base"><SignalBadge value={r.status} /></td>
-                          <td className="td-base text-xs text-[#9CA3AF]">{r.trend || "â€”"}</td>
-                          <td className="td-base text-xs text-[#9CA3AF]">{r.holding_metric_definitions?.category || "â€”"}</td>
-                          <td className="td-base text-xs text-[#9CA3AF]">{r.sector_signal || "â€”"}</td>
+                          <td className="td-base text-xs text-[#9CA3AF]">{r.trend || "—"}</td>
+                          <td className="td-base text-xs text-[#9CA3AF]">{r.holding_metric_definitions?.category || "—"}</td>
+                          <td className="td-base text-xs text-[#9CA3AF]">{r.sector_signal || "—"}</td>
                           <td className="td-base"><SignalBadge value={r.adjusted_status} /></td>
                         </tr>
                       ))}
@@ -372,7 +404,7 @@ export default function CompanyDetail() {
                       <YAxis domain={[0,100]} tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={28} />
                       <Tooltip {...ct.tooltip} />
                       <Legend wrapperStyle={{ fontSize: 10 }} />
-                      <Area type="monotone" dataKey="survival_score"       stroke={ct.green} strokeWidth={2} fill="url(#survGrad)" dot={false} name="Survival Score" />
+                      <Area type="monotone" dataKey="composite_score" stroke={ct.green} strokeWidth={2} fill="url(#survGrad)" dot={false} name="Survival Score" />
                       <Line type="monotone" dataKey="distress_probability" stroke={ct.red}     strokeWidth={1.5} dot={false} name="Distress %" />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -388,21 +420,25 @@ export default function CompanyDetail() {
                       </tr>
                     </thead>
                     <tbody>
-                      {[...ml].reverse().map(r => (
-                        <tr key={r.id} className="tr-base">
-                          <td className="td-base text-xs text-[#9CA3AF]">{r.date}</td>
-                          <td className="td-base text-[10px] font-mono text-[#9CA3AF]">v{r.model_version}</td>
-                          <td className="td-base">
-                            <span className={`text-sm font-bold tabular-nums ${r.survival_score >= 70 ? "text-[#00B341]" : r.survival_score >= 40 ? "text-[#FFC224]" : "text-[#FF3B30]"}`}>
-                              {r.survival_score?.toFixed(1)}
-                            </span>
-                          </td>
-                          <td className="td-base text-xs text-red-500 font-semibold tabular-nums">{r.distress_probability?.toFixed(1)}%</td>
-                          <td className="td-base">
-                            <SignalBadge value={r.survival_score >= 70 ? "green" : r.survival_score >= 40 ? "amber" : "red"} />
-                          </td>
-                        </tr>
-                      ))}
+                      {[...ml].reverse().map((r, i) => {
+                        const s = r.composite_score ?? r.survival_score ?? null;
+                        const d = s != null ? Math.max(0, 100 - s) : null;
+                        return (
+                          <tr key={i} className="tr-base">
+                            <td className="td-base text-xs text-[var(--text-3)]">{r.date}</td>
+                            <td className="td-base text-[10px] font-mono text-[var(--text-3)]">{r.composite_tier || r.model_version || "v2"}</td>
+                            <td className="td-base">
+                              <span className={`text-sm font-bold tabular-nums ${s >= 70 ? "text-[#00B341]" : s >= 40 ? "text-[#FFC224]" : "text-[#FF3B30]"}`}>
+                                {s?.toFixed(1) ?? "—"}
+                              </span>
+                            </td>
+                            <td className="td-base text-xs text-red-500 font-semibold tabular-nums">{d?.toFixed(1) ?? "—"}%</td>
+                            <td className="td-base">
+                              <SignalBadge value={s >= 70 ? "green" : s >= 40 ? "amber" : "red"} />
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -416,21 +452,29 @@ export default function CompanyDetail() {
           <div className="space-y-4 animate-fade-in">
             <div className="card p-5">
               <p className="title-md mb-4">Top Correlated Sectors (60d)</p>
-              {topSec.length ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {topSec.slice(0,10).map(r => (
-                    <div key={r.id} className="flex items-center gap-3 p-3 bg-[#F7F5F0] dark:bg-[#111318] rounded-xl border border-[#E5E1D8] dark:border-[#1F2128]">
-                      <span className="w-8 h-8 rounded-xl bg-[#0D0D0D] dark:bg-[#E8C547] text-[#E8C547] dark:text-[#0D0D0D] text-xs font-bold flex items-center justify-center shrink-0 shadow-sm">
-                        #{r.rank}
-                      </span>
-                      <div className="flex-1">
-                        <span className="text-sm font-semibold text-[#0D0D0D] dark:text-[#E8E6E0]">{r.sectors?.name || `Sector ${r.sector_id}`}</span>
+              {topSec.length ? (() => {
+                // topSec is from correlation table — extract top_sectors JSONB
+                const latest = topSec[0];
+                const topSectors = latest?.top_sectors || [];
+                return topSectors.length ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {topSectors.slice(0, 10).map((s, i) => (
+                      <div key={i} className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-900/60 rounded-xl border border-[var(--border)]">
+                        <span className="w-8 h-8 rounded-xl bg-[var(--orange)] text-white text-xs font-bold flex items-center justify-center shrink-0">
+                          #{i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-[var(--text)] truncate">{s.sector || s.name || "Unknown"}</p>
+                          {s.corr_60d != null && (
+                            <p className="text-[10px] text-[var(--text-3)]">Correlation: {s.corr_60d.toFixed(3)}</p>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-[var(--text-3)]">{latest.date}</span>
                       </div>
-                      <span className="text-[10px] text-[#9CA3AF]">{r.date}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : <EmptyState title="No top sectors data" />}
+                    ))}
+                  </div>
+                ) : <EmptyState title="No top sectors in correlation data" />;
+              })() : <EmptyState title="No sector correlation data" sub="Run the pipeline to compute sector correlations." />}
             </div>
             <InsightBox title="Sector Risk Transmission">
               High correlation drives sector overlays into the balance sheet and holding engines.
@@ -441,36 +485,54 @@ export default function CompanyDetail() {
         {/* FEATURES TAB */}
         {tab === "features" && (
           <div className="space-y-4 animate-fade-in">
-            <div className="card overflow-x-auto">
-              <div className="p-4 bg-[#F7F5F0] dark:bg-[#111318] border-b border-[#E5E1D8] dark:border-[#1F2128]">
+            <div className="card overflow-hidden">
+              <div className="p-4 border-b border-[var(--border)]">
                 <p className="title-md">Feature Store (Audit Trail)</p>
+                <p className="text-xs text-[var(--text-3)] mt-0.5">Exact ML input features used per run — for auditability and model interpretability.</p>
               </div>
-              <table className="w-full">
-                <thead>
-                  <tr>
-                    {["Date","D/E Ratio","Current Ratio","Rev Growth","Corr 60d","Health Score","HHI","Inst. Holding"].map(h => (
-                      <th key={h} className="th-base whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {features.map(r => (
-                    <tr key={r.id} className="tr-base">
-                      <td className="td-base text-xs text-[#9CA3AF]">{r.date}</td>
-                      <td className="td-base text-xs font-mono">{r.debt_to_equity?.toFixed(2) ?? "â€”"}</td>
-                      <td className="td-base text-xs font-mono">{r.current_ratio?.toFixed(2) ?? "â€”"}</td>
-                      <td className="td-base text-xs font-mono">{r.revenue_growth != null ? `${(r.revenue_growth*100).toFixed(1)}%` : "â€”"}</td>
-                      <td className="td-base text-xs font-mono">{r.sector_correlation_60d?.toFixed(3) ?? "â€”"}</td>
-                      <td className="td-base text-xs font-mono">{r.sector_health_score?.toFixed(1) ?? "â€”"}</td>
-                      <td className="td-base text-xs font-mono">{r.hhi_concentration?.toFixed(3) ?? "â€”"}</td>
-                      <td className="td-base text-xs font-mono">{r.institutional_holding != null ? `${(r.institutional_holding*100).toFixed(1)}%` : "â€”"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {!features.length && <EmptyState title="No feature store data" />}
+              {features.length ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr>
+                        {["Date", "Price Score", "Fundamental", "Ownership", "Sector Fit", "Composite", "Tier", "Grade"].map(h => (
+                          <th key={h} className="th-base whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {features.map((r, i) => {
+                        const dims = r.dimensions || {};
+                        const comp = r.composite || {};
+                        return (
+                          <tr key={i} className="tr-base">
+                            <td className="td-base text-xs text-[var(--text-3)]">{r.date}</td>
+                            <td className="td-base text-xs font-mono font-bold">{dims.price_health?.score?.toFixed(1) ?? "—"}</td>
+                            <td className="td-base text-xs font-mono font-bold">{dims.fundamental?.score?.toFixed(1) ?? "—"}</td>
+                            <td className="td-base text-xs font-mono font-bold">{dims.ownership?.score?.toFixed(1) ?? "—"}</td>
+                            <td className="td-base text-xs font-mono font-bold">{dims.sector_fit?.score?.toFixed(1) ?? "—"}</td>
+                            <td className="td-base">
+                              <span className="text-sm font-bold tabular-nums text-[var(--orange)]">
+                                {comp.score?.toFixed(1) ?? r.composite_score?.toFixed(1) ?? "—"}
+                              </span>
+                            </td>
+                            <td className="td-base">
+                              <span className={`text-xs font-bold ${
+                                comp.tier === "TIER_1" ? "text-[#00B341]"
+                                : comp.tier === "TIER_2" ? "text-[var(--orange)]"
+                                : "text-[var(--text-3)]"
+                              }`}>{comp.tier ?? "—"}</span>
+                            </td>
+                            <td className="td-base text-sm font-black text-[var(--text)]">{comp.grade ?? "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : <EmptyState title="No feature store data" sub="Run the pipeline to generate ML features." />}
             </div>
-             <InsightBox title="Model Interpretability">
+            <InsightBox title="Model Interpretability">
               Snapshot of exact features fed into the ML model on any given day for auditability.
             </InsightBox>
           </div>
