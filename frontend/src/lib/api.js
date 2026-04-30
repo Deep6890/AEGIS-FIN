@@ -197,6 +197,21 @@ export const fetchPortfolioSummary = () =>
     .order("date", { ascending: false })
     .limit(600);
 
+// ── Macro Overlay (from sector_health where sector_type = macro) ──────────────
+export const fetchMacroOverlay = (days = 90) =>
+  supabase
+    .from("sector_health")
+    .select("*, sectors!inner(name, yf_ticker, sector_type)")
+    .order("date", { ascending: true })
+    .limit(days * 14);
+
+export const fetchLatestMacro = () =>
+  supabase
+    .from("sector_health")
+    .select("*, sectors!inner(name, yf_ticker, sector_type)")
+    .order("date", { ascending: false })
+    .limit(28);
+
 // ── Pipeline Log ──────────────────────────────────────────────────────────────
 export const fetchPipelineLog = (limit = 100) =>
   supabase
