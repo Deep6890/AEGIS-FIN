@@ -1,12 +1,8 @@
 """
-data_store.py — Central data store for AEGIS-FIN
--------------------------------------------------
-Every module writes and reads through this layer only.
-
-Backends
---------
-  MemoryStore   — in-process dict, data lost on restart (dev/test)
-  SupabaseStore — Supabase/PostgreSQL (production)
+data_store.py — Supabase-only data store for AEGIS-FIN
+-------------------------------------------------------
+Single backend: Supabase/PostgreSQL (cloud).
+MemoryStore removed — all data persists to Supabase.
 
 Tables and retention
 --------------------
@@ -25,9 +21,8 @@ Tables and retention
 
 import os
 from abc import ABC, abstractmethod
-from collections import defaultdict
 from datetime import date, datetime
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 
 RETENTION = {
@@ -127,75 +122,21 @@ class DataStore(ABC):
 
 
 # =============================================================================
-# MemoryStore — development / testing
-# =============================================================================
-
-class MemoryStore(DataStore):
-
-    def __init__(self):
-        self._data: Dict[str, Dict[str, List[dict]]] = defaultdict(lambda: defaultdict(list))
-
-    def write(self, table: str, entity_key: str, rows: List[dict]) -> None:
-        if not rows:
-            return
-        max_rows = RETENTION.get(table, 252)
-        date_key = _DATE_KEY.get(table, "date")
-        existing = self._data[table][entity_key]
-
-        by_key = {r.get(date_key): r for r in existing}
-        for row in rows:
-            k = row.get(date_key)
-            if k:
-                by_key[k] = row
-
-        sorted_rows = sorted(by_key.values(), key=lambda r: r.get(date_key, ""), reverse=True)
-        self._data[table][entity_key] = sorted_rows[:max_rows]
-
-    def read(self, table: str, entity_key: str, limit: Optional[int] = None) -> List[dict]:
-        rows = self._data[table].get(entity_key, [])
-        return rows[:limit] if limit else list(rows)
-
-    def delete(self, table: str, entity_key: str, before_date: Optional[str] = None) -> int:
-        date_key = _DATE_KEY.get(table, "date")
-        rows = self._data[table].get(entity_key, [])
-        if before_date is None:
-            count = len(rows)
-            self._data[table][entity_key] = []
-            return count
-        kept = [r for r in rows if str(r.get(date_key, "")) >= before_date]
-        removed = len(rows) - len(kept)
-        self._data[table][entity_key] = kept
-        return removed
-
-
-# =============================================================================
-# Singleton management
+# Singleton — Supabase only
 # =============================================================================
 
 _store: Optional[DataStore] = None
 
 
-def configure_store(backend: str = "", **kwargs) -> DataStore:
-    """
-    Configure the global store backend. Call once at startup.
-
-    backend: "memory" | "supabase" | "" (reads STORE_BACKEND env var)
-    """
-    global _store
-    if not backend:
-        backend = os.environ.get("STORE_BACKEND", "memory")
-    if backend in ("supabase", "db"):
-        from .supabase_store import SupabaseStore
-        _store = SupabaseStore(**kwargs)
-    else:
-        _store = MemoryStore()
-    return _store
-
-
 def get_store() -> DataStore:
+    """
+    Return the global SupabaseStore instance.
+    Initialised once on first call using SUPABASE_URL and SUPABASE_KEY env vars.
+    """
     global _store
     if _store is None:
-        _store = MemoryStore()
+        from .supabase_store import SupabaseStore
+        _store = SupabaseStore()
     return _store
 
 

@@ -1,8 +1,11 @@
 """
 scoring.py — Shared scoring utilities
 --------------------------------------
-Stateless helpers used by ohlcv_health, balance_sheet, and stock_holding.
-No imports from other analysis modules — zero circular dependency risk.
+Stateless helpers. No imports from other analysis modules.
+Used by balance_sheet, stock_holding, and any module that needs
+percentile ranking or sector pressure aggregation.
+
+ohlcv_health.py no longer imports from here — it is fully self-contained.
 """
 
 import numpy as np
@@ -10,7 +13,7 @@ import pandas as pd
 
 
 def safe_div(a, b) -> float:
-    """Return a/b or np.nan on zero/NaN/exception."""
+    """Return a / b, or np.nan on zero / NaN / exception."""
     try:
         return np.nan if (b == 0 or pd.isna(b) or pd.isna(a)) else float(a) / float(b)
     except Exception:
@@ -30,8 +33,11 @@ def parse_pct(val) -> float:
 
 def pct_status(value, history) -> str:
     """
-    Data-driven status: where does value sit in its own historical distribution?
-    green >= 75th pct | red <= 25th pct | amber middle | gray insufficient
+    Data-driven label: where does value sit in its own historical distribution?
+    green  ≥ 75th pct
+    red    ≤ 25th pct
+    amber  middle
+    gray   insufficient data
     """
     h = pd.Series(history).dropna()
     if pd.isna(value) or len(h) < 4:
@@ -42,27 +48,35 @@ def pct_status(value, history) -> str:
 
 def sector_pressure(health_results: dict, top_names: list, window: int = 20) -> tuple:
     """
-    Aggregate recent health scores from top correlated sectors into a pressure scalar.
-    Uses mean (not median) for a smoother, less noisy signal.
+    Aggregate recent health scores from correlated assets into a pressure scalar.
+    Uses mean (not median) for a smoother signal.
 
-    Returns (pressure, pct_rank, q75, q25, named_str)
-    Returns (nan, nan, nan, nan, '') when data is insufficient.
+    Returns
+    -------
+    (pressure, pct_rank, q75, q25, named_str)
+    All np.nan / '' when data is insufficient.
     """
     all_s, recent_s = [], []
     for name in top_names:
-        r = health_results.get(name, {})
-        h = r.get("history", pd.DataFrame())
-        if h.empty or "health_score" not in h.columns:
+        r    = health_results.get(name, {})
+        hist = r.get("history", pd.DataFrame())
+        if hist.empty or "health_score" not in hist.columns:
             continue
-        hist = h["health_score"].dropna()
-        all_s.extend(hist.tolist())
-        rec = hist.tail(window)
+        scores = hist["health_score"].dropna()
+        all_s.extend(scores.tolist())
+        rec = scores.tail(window)
         if not rec.empty:
-            recent_s.append(float(rec.mean()))   # mean, not median
+            recent_s.append(float(rec.mean()))
+
     if not recent_s or not all_s:
         return np.nan, np.nan, np.nan, np.nan, ""
+
     arr = np.array(all_s)
     p   = float(np.mean(recent_s))
-    return (p, float(np.mean(arr < p) * 100),
-            float(np.percentile(arr, 75)), float(np.percentile(arr, 25)),
-            ", ".join(top_names[:3]))
+    return (
+        p,
+        float(np.mean(arr < p) * 100),
+        float(np.percentile(arr, 75)),
+        float(np.percentile(arr, 25)),
+        ", ".join(top_names[:3]),
+    )

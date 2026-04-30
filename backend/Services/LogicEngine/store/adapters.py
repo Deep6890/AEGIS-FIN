@@ -1,56 +1,23 @@
 """
 adapters.py
 -----------
-Store adapters for every module.
+Translation layer between module outputs and Supabase.
+Flattens DataFrames → rows for writes, reconstructs rows → DataFrames for reads.
+All data goes to Supabase cloud — no local storage.
 
-Each adapter knows:
-  - how to flatten a module's output dict into store rows
-  - how to read rows back from the store and reconstruct what the module needs
-  - when an update is actually needed (daily vs quarterly cadence)
+Writes  : save_ohlcv_today, save_ohlcv_history, save_sector_ohlcv_today,
+          save_sector_history, save_macro_today,
+          save_ohlcv_health, save_sector_health, save_macro_health,
+          save_balance_sheet, save_stock_holding, save_correlation
 
-No fetching, no analysis — pure data translation between module outputs and store.
+Reads   : load_ohlcv_history_df, load_sector_history_df,
+          load_ohlcv_health_history, load_sector_health_history,
+          load_balance_sheet_data, load_holding_data, load_correlation_latest
 
-Public API
-----------
-  # Fetcher → store
-  save_ohlcv_today(ticker, ohlcv_today_dict)
-  save_ohlcv_history(ticker, ohlcv_history_df)
-  save_sector_ohlcv_today(sector, ohlcv_today_dict)
-  save_sector_history(sector, ohlcv_history_df)
-  save_macro_today(name, ohlcv_today_dict)
-
-  # Analysis → store
-  save_ohlcv_health(ticker_or_sector, ohlcv_health_result, label_col)
-  save_sector_health(sector, ohlcv_health_result)
-  save_macro_health(name, ohlcv_health_result)
-  save_balance_sheet(ticker, balance_result)
-  save_stock_holding(ticker, holding_result)
-
-  # Correlation → store
-  save_correlation(ticker, correlation_result)
-
-  # Classifier → store
-  save_classifier(ticker, classifier_result)
-
-  # Reads (return data ready to pass back into modules)
-  load_ohlcv_history_df(ticker, limit)         → pd.DataFrame  (for run_ohlcv_health)
-  load_sector_history_df(sector, limit)        → pd.DataFrame
-  load_ohlcv_health_history(ticker, limit)     → pd.DataFrame  (history df for correlation)
-  load_sector_health_history(sector, limit)    → pd.DataFrame
-  load_balance_sheet_data(ticker)              → dict  (for run_balance_sheet)
-  load_holding_data(ticker)                    → dict  (for run_stock_holding)
-  load_correlation_latest(ticker)              → dict | None
-  load_classifier_latest(ticker)               → dict | None
-  load_classifier_history(ticker, limit)       → list[dict]
-
-  # Cadence checks
-  needs_ohlcv_update(ticker)                   → bool
-  needs_sector_update(sector)                  → bool
-  needs_balance_sheet_update(ticker)           → bool
-  needs_holding_update(ticker)                 → bool
+Cadence : needs_ohlcv_update, needs_sector_update,
+          needs_balance_sheet_update, needs_holding_update
 """
 
-import json
 import numpy as np
 import pandas as pd
 from datetime import date
@@ -210,7 +177,6 @@ def save_balance_sheet(ticker: str, result: dict) -> None:
     full_ratios = result.get("full_ratios")
     hist_df     = result.get("historical_ratios")
     overlay     = result.get("sector_overlay", {})
-    info        = result.get("info", {})
     insights    = result.get("insights", {})
     breakdown   = result.get("breakdown", {})
 
@@ -344,34 +310,6 @@ def save_correlation(ticker: str, result: dict) -> None:
     get_store().write_correlation(ticker, [row])
 
 
-# ── classifier outputs → store ────────────────────────────────────────────────
-
-def save_classifier(ticker: str, result: dict) -> None:
-    """Save run_classifier() output — flat score columns + full JSONB blobs."""
-    today     = date.today().isoformat()
-    composite = result.get("composite", {}) or {}
-    dims      = result.get("dimensions", {}) or {}
-
-    row = {
-        "ticker":             ticker,
-        "date":               result.get("date") or today,
-        # Flat columns (indexed for fast dashboard queries)
-        "composite_score":    _safe(composite.get("score")),
-        "composite_tier":     composite.get("tier"),
-        "composite_grade":    composite.get("grade"),
-        "price_score":        _safe((dims.get("price_health") or {}).get("score")),
-        "fundamental_score":  _safe((dims.get("fundamental")  or {}).get("score")),
-        "ownership_score":    _safe((dims.get("ownership")    or {}).get("score")),
-        "sector_fit_score":   _safe((dims.get("sector_fit")   or {}).get("score")),
-        # Full JSONB blobs
-        "composite":          composite,
-        "dimensions":         dims,
-        "filter":             result.get("filter"),
-        "summary":            result.get("summary"),
-    }
-    get_store().write_classifier(ticker, [row])
-
-
 # ── Reads — reconstruct module inputs ─────────────────────────────────────────
 
 def load_ohlcv_history_df(ticker: str, limit: int = 756) -> pd.DataFrame:
@@ -463,15 +401,6 @@ def load_holding_data(ticker: str) -> dict:
 def load_correlation_latest(ticker: str) -> Optional[dict]:
     rows = get_store().read_correlation(ticker, limit=1)
     return rows[0] if rows else None
-
-
-def load_classifier_latest(ticker: str) -> Optional[dict]:
-    rows = get_store().read_classifier(ticker, limit=1)
-    return rows[0] if rows else None
-
-
-def load_classifier_history(ticker: str, limit: int = 252) -> list:
-    return get_store().read_classifier(ticker, limit)
 
 
 # ── Cadence checks ────────────────────────────────────────────────────────────

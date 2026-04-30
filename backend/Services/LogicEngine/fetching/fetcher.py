@@ -87,8 +87,11 @@ def _clean_df(df: pd.DataFrame) -> pd.DataFrame:
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = [c[0] for c in df.columns]
     df = df.reset_index()
-    if "Date" not in df.columns and "index" in df.columns:
-        df = df.rename(columns={"index": "Date"})
+    # yfinance index name varies: 'Date', 'Datetime', 'Price', or 'index'
+    for candidate in ("Datetime", "Price", "index"):
+        if "Date" not in df.columns and candidate in df.columns:
+            df = df.rename(columns={candidate: "Date"})
+            break
     if "Date" in df.columns:
         df["Date"] = pd.to_datetime(df["Date"])
     return df
@@ -154,8 +157,9 @@ def fetch_ohlcv_today(ticker: str, name: str) -> dict:
         "high":       _f(latest.get("High")),
         "low":        _f(latest.get("Low")),
         "close":      close,
-        "volume":     int(latest["Volume"]) if (latest.get("Volume") is not None
-                          and not pd.isna(latest.get("Volume"))) else None,
+        "volume":     int(latest["Volume"]) if ("Volume" in latest.index
+                          and latest["Volume"] is not None
+                          and not pd.isna(latest["Volume"])) else None,
         "prev_close": prev_close,
         "change_pct": change_pct,
     })
@@ -201,18 +205,27 @@ def fetch_financials(ticker: str, audit_window: int = 20) -> dict:
     }
 
     def _tidy(raw):
-        if raw is None or raw.empty:
+        if raw is None:
+            return pd.DataFrame()
+        if isinstance(raw, pd.DataFrame) and raw.empty:
             return pd.DataFrame()
         df = raw.T.copy()
         df.index = pd.to_datetime(df.index)
         return df.sort_index(ascending=False).head(audit_window)
 
+    def _fetch_prop(fn, label):
+        """Fetch a yfinance property; treat empty DataFrame as failure for retry."""
+        result = _retry(fn, label=label)
+        if result is None or (isinstance(result, pd.DataFrame) and result.empty):
+            return None
+        return result
+
     log.debug("fetch.financials.start", ticker=ticker)
     try:
         t = yf.Ticker(ticker)
-        result["income"]   = _tidy(_retry(lambda: t.quarterly_financials,    label=f"income:{ticker}"))
-        result["balance"]  = _tidy(_retry(lambda: t.quarterly_balance_sheet, label=f"balance:{ticker}"))
-        result["cashflow"] = _tidy(_retry(lambda: t.quarterly_cashflow,      label=f"cashflow:{ticker}"))
+        result["income"]   = _tidy(_fetch_prop(lambda: t.quarterly_financials,    label=f"income:{ticker}"))
+        result["balance"]  = _tidy(_fetch_prop(lambda: t.quarterly_balance_sheet, label=f"balance:{ticker}"))
+        result["cashflow"] = _tidy(_fetch_prop(lambda: t.quarterly_cashflow,      label=f"cashflow:{ticker}"))
         result["info"]     = _retry(lambda: t.info, label=f"info:{ticker}") or {}
         log.info("fetch.financials.ok", ticker=ticker,
                  income_rows=len(result["income"]),
@@ -244,21 +257,24 @@ def fetch_holders(ticker: str) -> dict:
         "info": {}, "error": None,
     }
 
-    def _safe(fn, label):
+    def _safe_fetch(fn, label):
         r = _retry(fn, label=label)
-        return r if (r is not None and not (isinstance(r, pd.DataFrame) and r.empty)) \
-               else pd.DataFrame()
+        if r is None:
+            return pd.DataFrame()
+        if isinstance(r, pd.DataFrame):
+            return r if not r.empty else pd.DataFrame()
+        return pd.DataFrame()
 
     log.debug("fetch.holders.start", ticker=ticker)
     try:
         t = yf.Ticker(ticker)
-        result["institutional"] = _safe(lambda: t.institutional_holders, f"institutional:{ticker}")
-        result["major"]         = _safe(lambda: t.major_holders,         f"major:{ticker}")
-        result["insider_trans"] = _safe(lambda: t.insider_transactions,  f"insider:{ticker}")
+        result["institutional"] = _safe_fetch(lambda: t.institutional_holders, f"institutional:{ticker}")
+        result["major"]         = _safe_fetch(lambda: t.major_holders,         f"major:{ticker}")
+        result["insider_trans"] = _safe_fetch(lambda: t.insider_transactions,  f"insider:{ticker}")
         result["info"]          = _retry(lambda: t.info, label=f"info:{ticker}") or {}
 
-        ph = _safe(lambda: yf.download(ticker, period="5y", auto_adjust=True, progress=False),
-                   f"price_history:{ticker}")
+        ph = _safe_fetch(lambda: yf.download(ticker, period="5y", auto_adjust=True, progress=False),
+                         f"price_history:{ticker}")
         if not ph.empty:
             ph = _clean_df(ph)
         result["price_history"] = ph
@@ -275,7 +291,7 @@ def fetch_holders(ticker: str) -> dict:
 # ── Batch helpers ─────────────────────────────────────────────────────────────
 
 def fetch_all_sectors_today() -> dict:
-    """Fetch today's OHLCV for all 8 sector indices."""
+    """Fetch today's OHLCV for all sector indices."""
     fetched_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     log.info("fetch.all_sectors_today.start", count=len(SECTOR_TICKERS))
     sectors = {name: fetch_ohlcv_today(ticker, name) for name, ticker in SECTOR_TICKERS.items()}

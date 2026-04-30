@@ -5,10 +5,10 @@ Company-vs-sector correlation engine.
 
 Input contract (no fetching, no raw data)
 ------------------------------------------
-  company_health  : dict  — output of run_ohlcv_health(label_col="Company")
+  company_health  : dict  — output of run_ohlcv_health()
                     must contain key "history" (pd.DataFrame with DatetimeIndex)
-                    columns needed: daily_return, ret_z, vol_z, momentum_z,
-                                    slope_z, composite, health_score, spike_up, spike_down
+                    columns needed: daily_return, ret_z, z_change, cum_z_change,
+                                    volatility, composite, health_score, spike_up, spike_down
 
   sector_results  : dict { sector_name: run_ohlcv_health() result }
                     same structure as company_health, label_col="Sector"
@@ -40,7 +40,7 @@ from typing import Dict, List, Optional
 
 # ── Metric stems derived from ohlcv_health history columns ───────────────────
 # These exist in every run_ohlcv_health() "history" DataFrame
-METRIC_STEMS = ["daily_return", "ret_z", "vol_z", "momentum_z", "slope_z", "composite"]
+METRIC_STEMS = ["daily_return", "ret_z", "z_change", "cum_z_change", "volatility", "composite"]
 
 # Long window drives top-sector ranking (persistent relationship > short noise)
 LONG_WINDOW  = 100
@@ -184,8 +184,6 @@ def _health_by_top(top_sectors: List[dict], sector_results: dict, company_health
             "rank":         t["rank"],
             "health_score": _safe(hs),
             "signal":       lat.get("signal"),
-            "regime":       lat.get("regime"),
-            "market_phase": lat.get("market_phase"),
             f"corr_{LONG_WINDOW}d": t.get(f"corr_{LONG_WINDOW}d"),
         })
 
@@ -206,9 +204,6 @@ def _health_by_top(top_sectors: List[dict], sector_results: dict, company_health
         "company": {
             "health_score": _safe(co_hs),
             "signal":       co_latest.get("signal"),
-            "regime":       co_latest.get("regime"),
-            "market_phase": co_latest.get("market_phase"),
-            "trend":        co_latest.get("trend"),
         },
         "sectors":          sectors_out,
         "avg_top_health":   avg_top,
@@ -415,7 +410,6 @@ def _insights(
     co_name = company_health.get("name", "Company")
     hs      = co.get("health_score")
     sig     = co.get("signal", "")
-    co_regime = co.get("regime", "")
 
     if hs is not None:
         ins.append(f"{co_name} health score is {hs:.1f}/100 — signal: {sig}.")
@@ -451,17 +445,6 @@ def _insights(
         if sa and au is not None:
             ins.append(f"Spike alignment with {name}: {sa} (up={au:.0f}%, down={ad:.0f}%).")
 
-    # Regime divergence — correctly reads sector regime from sector_results
-    if co_regime:
-        for t in top_sectors[:3]:
-            se_lat    = sector_results.get(t["sector"], {}).get("latest", {})
-            se_regime = se_lat.get("regime", "")
-            if se_regime and co_regime != se_regime:
-                ins.append(
-                    f"Regime divergence: {co_name} is {co_regime} but "
-                    f"{t['sector']} is {se_regime} — watch for decoupling."
-                )
-
     return ins
 
 
@@ -470,7 +453,7 @@ def _insights(
 def run_correlation(
     company_health:  dict,
     sector_results:  dict,
-    windows:         List[int] = [SHORT_WINDOW, MID_WINDOW, LONG_WINDOW],
+    windows:         List[int] = None,
     top_n:           int = 5,
 ) -> dict:
     """
@@ -478,9 +461,9 @@ def run_correlation(
 
     Parameters
     ----------
-    company_health  : dict  — run_ohlcv_health(label_col="Company") result
-    sector_results  : dict  — { sector_name: run_ohlcv_health(label_col="Sector") result }
-    windows         : list  — rolling windows in trading days  [20, 60, 100]
+    company_health  : dict  — run_ohlcv_health() result
+    sector_results  : dict  — { sector_name: run_ohlcv_health() result }
+    windows         : list  — rolling windows in trading days (default [20, 60, 100])
     top_n           : int   — number of top correlated sectors to highlight
 
     Returns
@@ -500,6 +483,9 @@ def run_correlation(
         "insights":           [ str, ... ],
     }
     """
+    if windows is None:
+        windows = [SHORT_WINDOW, MID_WINDOW, LONG_WINDOW]
+
     co_h = _history(company_health)
 
     corr_by_sector = _company_vs_sectors(co_h, sector_results, windows)

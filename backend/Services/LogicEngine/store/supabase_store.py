@@ -66,26 +66,33 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 _RATIO_NAME_TO_ID: Dict[str, int] = {
-    "Gross Margin %":           1,
-    "Net Profit Margin %":      2,
-    "EBITDA Margin %":          3,
-    "ROE %":                    4,
-    "ROA %":                    5,
-    "Current Ratio":            6,
-    "Quick Ratio":              7,
-    "Cash Ratio":               8,
-    "Debt/Equity":              9,
-    "Debt/Assets":             10,
-    "Interest Coverage":       11,
-    "Asset Turnover":          12,
-    "Inventory Turnover":      13,
-    "Receivables Turnover":    14,
-    "CFO/Net Income":          15,
-    "FCF Margin %":            16,
-    "Revenue Growth %":        17,
-    "Net Income Growth %":     18,
-    "Equity Ratio":            19,
-    "Equity Growth %":         20,
+    "Gross Margin %":                    1,
+    "Net Profit Margin %":               2,
+    "EBITDA Margin %":                   3,
+    "ROE %":                             4,
+    "ROA %":                             5,
+    "Current Ratio":                     6,
+    "Quick Ratio":                       7,
+    "Cash Ratio":                        8,
+    "Debt/Equity":                       9,
+    "Debt/Assets":                      10,
+    "Interest Coverage":                11,
+    "Asset Turnover":                   12,
+    "Inventory Turnover":               13,
+    "Receivables Turnover":             14,
+    "CFO/Net Income":                   15,
+    "FCF Margin %":                     16,
+    "Revenue Growth %":                 17,
+    "Net Income Growth %":              18,
+    "Equity Ratio %":                   19,
+    "Equity Growth %":                  20,
+    # Domain-specific ratios (IT, pharma, banking, energy, manufacturing)
+    "Debt/EBITDA":                      21,
+    "Capex/Revenue %":                  22,
+    "Cash/Assets %":                    23,
+    "R&D/Revenue %":                    24,
+    "Intangibles/Assets %":             25,
+    "Equity/Assets % (Cap Adequacy)":   26,
 }
 
 _METRIC_NAME_TO_ID: Dict[str, int] = {
@@ -120,16 +127,20 @@ _TABLE_COLUMNS: Dict[str, set] = {
         "date", "open", "high", "low", "close", "volume", "adj_close",
     },
     "ohlcv_health": {
-        "date", "close", "daily_return", "ema_short", "ema_long",
-        "trend", "spike_up", "spike_down",
-        "ret_z", "vol_z", "momentum_z", "slope_z", "composite",
-        "health_score", "signal", "regime", "market_phase",
+        "date", "close", "daily_return",
+        "cum_change_1m", "cum_change_1y", "cum_change_2y",
+        "close_z", "ret_z", "z_change", "cum_z_change",
+        "spike_up", "spike_down",
+        "oc_spark", "oc_spark_abs",
+        "volatility", "composite", "health_score", "signal",
     },
     "sector_health": {
-        "date", "close", "daily_return", "ema_short", "ema_long",
-        "trend", "spike_up", "spike_down",
-        "ret_z", "vol_z", "momentum_z", "slope_z", "composite",
-        "health_score", "signal", "regime", "market_phase",
+        "date", "close", "daily_return",
+        "cum_change_1m", "cum_change_1y", "cum_change_2y",
+        "close_z", "ret_z", "z_change", "cum_z_change",
+        "spike_up", "spike_down",
+        "oc_spark", "oc_spark_abs",
+        "volatility", "composite", "health_score", "signal",
     },
     "correlation": {
         "date", "windows", "company_vs_sectors", "top_sectors",
@@ -543,6 +554,9 @@ class SupabaseStore(DataStore):
                 r["date"] = str(r["date"])[:10]
             for col in ("ticker", "sector", "name"):
                 r.pop(col, None)
+            r = self._filter_columns(r, "balance_sheet_hist")
+            r["company_id"] = company_id
+            r["ratio_id"]   = ratio_id
             upsert_rows.append(r)
 
         if upsert_rows:
