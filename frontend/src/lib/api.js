@@ -95,30 +95,31 @@ export const fetchAllCompanyHealth = () =>
     .order("date", { ascending: false })
     .limit(500);
 
-// ── Correlation (new JSONB table) ─────────────────────────────────────────────
+// ── Correlation (correlation_scores) ─────────────────────────────────────────
 export const fetchStaticCorr = (companyId) =>
   supabase
-    .from("correlation")
-    .select("*")
+    .from("correlation_scores")
+    .select("sector_id,date,corr_20d,corr_60d,corr_100d,corr_full,outperf_60d,avg_top_health,sectors(name)")
     .eq("company_id", companyId)
     .order("date", { ascending: false })
     .limit(1);
 
 export const fetchRollingCorr = (companyId, windowDays = 60) =>
   supabase
-    .from("correlation")
-    .select("date, company_vs_sectors, windows")
+    .from("correlation_scores")
+    .select("sector_id,date,corr_20d,corr_60d,corr_100d,sectors(name)")
     .eq("company_id", companyId)
     .order("date", { ascending: true })
     .limit(120);
 
 export const fetchTopSectors = (companyId) =>
   supabase
-    .from("correlation")
-    .select("date, top_sectors, health_by_top")
+    .from("correlation_scores")
+    .select("sector_id,date,corr_20d,corr_60d,corr_100d,corr_full,outperf_60d,avg_top_health,sectors(name)")
     .eq("company_id", companyId)
     .order("date", { ascending: false })
-    .limit(1);
+    .order("corr_60d", { ascending: false })
+    .limit(50);
 
 // ── Company Insights (new — classifier + insights output) ───────────────────
 export const fetchCompanyInsights = (companyId) =>
@@ -178,16 +179,6 @@ export const fetchAllMlPredictions = () =>
     .select("company_id,date,final_score,insight_score,class,momentum,risk,strength,summary,companies(name,ticker)")
     .order("date", { ascending: false })
     .limit(600);
-
-// ── Top Sectors (from correlation_scores) ─────────────────────────────────────
-export const fetchTopSectors = (companyId) =>
-  supabase
-    .from("correlation_scores")
-    .select("sector_id,date,corr_20d,corr_60d,corr_100d,corr_full,outperf_60d,avg_top_health,sectors(name)")
-    .eq("company_id", companyId)
-    .order("date", { ascending: false })
-    .order("corr_60d", { ascending: false })
-    .limit(50);
 
 // ── Feature Store (from company_insights dimensions) ─────────────────────────
 export const fetchFeatureStore = (companyId) =>
