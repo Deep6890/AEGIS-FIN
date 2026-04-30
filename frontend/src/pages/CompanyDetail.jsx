@@ -75,21 +75,21 @@ export default function CompanyDetail() {
       setMl((ml_.data || []).map(adaptInsightRow).reverse());
       // Adapt correlation_scores rows into top_sectors shape UI expects
       setTopSec(adaptCorrelationForTopSecState(ts.data || []));
-      // Adapt feature store: classifier rows already have dimension scores
+      // Feature store: ohlcv_health rows mapped to dimension shape
       setFeatures((fs.data || []).map(r => ({
         ...r,
-        composite_score: r.composite_score ?? null,
-        composite_tier:  r.composite_tier  ?? null,
-        dimensions: r.dimensions || {
-          price_health: { score: r.price_score       ?? null },
-          fundamental:  { score: r.fundamental_score ?? null },
-          ownership:    { score: r.ownership_score   ?? null },
-          sector_fit:   { score: r.sector_fit_score  ?? null },
+        composite_score: r.health_score ?? null,
+        composite_tier:  r.health_score >= 75 ? "TIER_1" : r.health_score >= 55 ? "TIER_2" : r.health_score >= 35 ? "TIER_3" : "TIER_4",
+        dimensions: {
+          price_health: { score: r.health_score ?? null },
+          fundamental:  { score: null },
+          ownership:    { score: null },
+          sector_fit:   { score: null },
         },
-        composite: r.composite || {
-          score: r.composite_score ?? null,
-          tier:  r.composite_tier  ?? null,
-          grade: r.composite_grade ?? null,
+        composite: {
+          score: r.health_score ?? null,
+          tier:  r.health_score >= 75 ? "TIER_1" : r.health_score >= 55 ? "TIER_2" : r.health_score >= 35 ? "TIER_3" : "TIER_4",
+          grade: r.health_score >= 75 ? "A" : r.health_score >= 55 ? "B" : r.health_score >= 35 ? "C" : r.health_score >= 20 ? "D" : "F",
         },
       })).reverse());
     }).finally(() => setLoading(false));
@@ -262,8 +262,8 @@ export default function CompanyDetail() {
               <>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="card p-5">
-                    <p className="title-md mb-1">Price History</p>
-                    <p className="text-xs text-[var(--text-3)] mb-4">Closing price (90d)</p>
+                    <p className="title-md mb-1">Health Score History</p>
+                    <p className="text-xs text-[var(--text-3)] mb-4">Rolling health score (90d) — percentile rank vs own history</p>
                     <ResponsiveContainer width="100%" height={200}>
                       <AreaChart data={metrics}>
                         <defs>
@@ -274,9 +274,9 @@ export default function CompanyDetail() {
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
                         <XAxis dataKey="date" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} />
-                        <YAxis tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={40} />
+                        <YAxis domain={[0,100]} tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} width={40} />
                         <Tooltip {...ct.tooltip} />
-                        <Area type="monotone" dataKey="close" stroke={ct.yellow} strokeWidth={2} fill="url(#closeGrad)" dot={false} name="Close (INR)" />
+                        <Area type="monotone" dataKey="health_score" stroke={ct.yellow} strokeWidth={2} fill="url(#closeGrad)" dot={false} name="Health Score" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -303,14 +303,14 @@ export default function CompanyDetail() {
                 {(() => {
                   const l = metrics[metrics.length - 1];
                   const fields = [
-                    ["Return 1d", l.daily_return != null ? l.daily_return * 100 : null, "%", "Daily price change"],
-                    ["Vol Z", l.vol_z, "", "Rolling Volatility Z-Score"],
-                    ["Momentum Z", l.momentum_z, "", "Momentum Z-Score"],
-                    ["Trend", l.trend, "", "Direction indicator"],
-                    ["Signal", l.signal, "", "Current Signal"],
-                    ["Regime", l.regime, "", "Current Regime"],
-                    ["Health Score", l.health_score, "", "Overall Health"],
-                    ["Composite", l.composite, "", "Composite Indicator"],
+                    ["Return 1d",    l.daily_return != null ? l.daily_return * 100 : null, "%", "Daily price change"],
+                    ["Ret Z",        l.ret_z,        "", "Return Z-Score"],
+                    ["Z Change",     l.z_change,     "", "Z-Score velocity"],
+                    ["Cum Z Change", l.cum_z_change, "", "Momentum accumulation"],
+                    ["Volatility",   l.volatility,   "", "Annualised volatility %"],
+                    ["Signal",       l.signal,       "", "Current Signal"],
+                    ["Health Score", l.health_score, "", "Overall Health (0-100)"],
+                    ["Composite",    l.composite,    "", "Composite indicator"],
                   ];
                   return (
                     <div className="card p-5">

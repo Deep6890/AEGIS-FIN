@@ -12,19 +12,21 @@ export const fetchSectors = () =>
   supabase.from("sectors").select("*").order("name");
 
 // ── Sector OHLCV history for overlay charts ───────────────────────────────────
+// Real columns: date, health_score, ret_z, composite, z_change, volatility
 export const fetchSectorOHLCVHistory = (sectorName, days = 90) =>
   supabase
     .from("sector_health")
-    .select("date, close, health_score, signal, ret_z, composite, sectors!inner(name)")
+    .select("date, health_score, ret_z, composite, z_change, volatility, sectors!inner(name)")
     .eq("sectors.name", sectorName)
     .order("date", { ascending: true })
     .limit(days);
 
 // ── Company OHLCV for overlay with sector ─────────────────────────────────────
+// Real columns: date, health_score, ret_z, composite, z_change, volatility
 export const fetchCompanyOHLCVHistory = (companyId, days = 90) =>
   supabase
     .from("ohlcv_health")
-    .select("date, close, health_score, signal, ret_z, composite")
+    .select("date, health_score, ret_z, composite, z_change, volatility, spike_up, spike_down")
     .eq("company_id", companyId)
     .order("date", { ascending: true })
     .limit(days);
@@ -53,7 +55,7 @@ export const fetchSectorHealthHistory = (sectorId, days = 90) =>
     .order("date", { ascending: true })
     .limit(days);
 
-// ── Sector Metrics (sector_health has all metrics now) ────────────────────────
+// ── Sector Metrics ────────────────────────────────────────────────────────────
 export const fetchLatestSectorMetrics = () =>
   supabase
     .from("sector_health")
@@ -73,12 +75,15 @@ export const fetchSectorMetricsHistory = (sectorId, days = 90) =>
 export const fetchCompanyOHLCV = (companyId, days = 180) =>
   supabase
     .from("ohlcv_raw")
-    .select("date, open, high, low, close, volume, adj_close")
+    .select("date, open, high, low, close, volume")
     .eq("company_id", companyId)
     .order("date", { ascending: true })
     .limit(days);
 
 // ── Company Health (ohlcv_health) ─────────────────────────────────────────────
+// Real columns: company_id, date, daily_return, cum_change_1m/1y/2y,
+//   close_z, ret_z, z_change, cum_z_change, spike_up, spike_down,
+//   oc_spark, volatility, composite, health_score
 export const fetchLatestCompanyMetrics = (companyId) =>
   supabase
     .from("ohlcv_health")
@@ -91,89 +96,44 @@ export const fetchLatestCompanyMetrics = (companyId) =>
 export const fetchAllCompanyHealth = () =>
   supabase
     .from("ohlcv_health")
-    .select("company_id, date, health_score, signal, composite, ret_z, z_change, volatility, spike_up, spike_down")
+    .select("company_id, date, health_score, composite, ret_z, z_change, volatility, spike_up, spike_down")
     .order("date", { ascending: false })
     .limit(500);
 
-// ── Correlation (actual schema: correlation JSONB table) ─────────────────────
+// ── Correlation (real table: correlation_scores — flat rows per sector) ───────
+// Real columns: company_id, sector_id, date, corr_20d, corr_60d, corr_100d,
+//   corr_full, outperf_20d, outperf_60d, outperf_100d,
+//   aligned_up_pct, aligned_dn_pct, avg_top_health
 export const fetchStaticCorr = (companyId) =>
   supabase
-    .from("correlation")
-    .select("date,company_vs_sectors,top_sectors,health_by_top,relative_growth,relative_spikes,sift_latest,insights")
+    .from("correlation_scores")
+    .select("sector_id, date, corr_20d, corr_60d, corr_100d, corr_full, outperf_60d, avg_top_health, sectors(name)")
     .eq("company_id", companyId)
     .order("date", { ascending: false })
-    .limit(1);
+    .limit(50);
 
 export const fetchRollingCorr = (companyId, windowDays = 60) =>
   supabase
-    .from("correlation")
-    .select("date,company_vs_sectors,top_sectors")
+    .from("correlation_scores")
+    .select("sector_id, date, corr_20d, corr_60d, corr_100d, sectors(name)")
     .eq("company_id", companyId)
     .order("date", { ascending: true })
     .limit(120);
 
 export const fetchTopSectors = (companyId) =>
   supabase
-    .from("correlation")
-    .select("date,top_sectors,health_by_top,relative_growth,relative_spikes,insights")
+    .from("correlation_scores")
+    .select("sector_id, date, corr_20d, corr_60d, corr_100d, corr_full, outperf_60d, avg_top_health, aligned_up_pct, aligned_dn_pct, sectors(name)")
     .eq("company_id", companyId)
     .order("date", { ascending: false })
-    .limit(1);
+    .order("corr_60d", { ascending: false })
+    .limit(50);
 
-// ── Classifier (actual schema: classifier table) ──────────────────────────────
-export const fetchCompanyInsights = (companyId) =>
-  supabase
-    .from("classifier")
-    .select("*")
-    .eq("company_id", companyId)
-    .order("date", { ascending: false })
-    .limit(30);
-
-export const fetchAllCompanyInsights = () =>
-  supabase
-    .from("classifier")
-    .select("company_id,date,composite_score,composite_tier,composite_grade,price_score,fundamental_score,ownership_score,sector_fit_score,summary")
-    .order("date", { ascending: false })
-    .limit(600);
-
-// ── Classifier as ML predictions ──────────────────────────────────────────────
-export const fetchMlPredictions = (companyId) =>
-  supabase
-    .from("classifier")
-    .select("*")
-    .eq("company_id", companyId)
-    .order("date", { ascending: false })
-    .limit(30);
-
-export const fetchAllMlPredictions = () =>
-  supabase
-    .from("classifier")
-    .select("company_id,date,composite_score,composite_tier,composite_grade,price_score,fundamental_score,ownership_score,sector_fit_score,filter,summary,companies(name,ticker)")
-    .order("date", { ascending: false })
-    .limit(600);
-
-// ── Feature Store (from classifier dimensions) ────────────────────────────────
-export const fetchFeatureStore = (companyId) =>
-  supabase
-    .from("classifier")
-    .select("date,composite_score,composite_tier,composite_grade,price_score,fundamental_score,ownership_score,sector_fit_score,dimensions,composite,filter")
-    .eq("company_id", companyId)
-    .order("date", { ascending: false })
-    .limit(30);
-
-// ── Portfolio Summary ─────────────────────────────────────────────────────────
-export const fetchPortfolioSummary = () =>
-  supabase
-    .from("classifier")
-    .select("company_id,composite_score,composite_tier,composite_grade,companies(name,ticker)")
-    .order("date", { ascending: false })
-    .limit(600);
-
-// ── Balance Sheet (actual schema: balance_sheet_ratios) ──────────────────────
+// ── Balance Sheet (real table: balance_sheet_scores) ─────────────────────────
 export const fetchBalanceSheet = (companyId) =>
   supabase
-    .from("balance_sheet_ratios")
-    .select("*, ratio_definitions(name, category, description, higher_is_better)")
+    .from("balance_sheet_scores")
+    .select("*, ratio_definitions(name, category, higher_is_better)")
     .eq("company_id", companyId)
     .order("period", { ascending: false })
     .limit(100);
@@ -187,7 +147,6 @@ export const fetchBalanceSheetHistory = (companyId, ratioId) =>
     .order("date", { ascending: true })
     .limit(40);
 
-// ── Balance Sheet Insights (actual schema: balance_sheet_insights) ────────────
 export const fetchBalanceSheetInsights = (companyId) =>
   supabase
     .from("balance_sheet_insights")
@@ -196,16 +155,15 @@ export const fetchBalanceSheetInsights = (companyId) =>
     .order("period", { ascending: false })
     .limit(1);
 
-// ── Stock Holding (actual schema: stock_holding) ──────────────────────────────
+// ── Stock Holding (real table: holding_scores) ────────────────────────────────
 export const fetchHoldingMetrics = (companyId) =>
   supabase
-    .from("stock_holding")
-    .select("*, holding_metric_definitions(name, category, description)")
+    .from("holding_scores")
+    .select("*, holding_metric_definitions(name, category)")
     .eq("company_id", companyId)
     .order("period", { ascending: false })
     .limit(50);
 
-// ── Stock Holding Insights (actual schema: stock_holding_insights) ────────────
 export const fetchHoldingInsights = (companyId) =>
   supabase
     .from("stock_holding_insights")
@@ -213,6 +171,53 @@ export const fetchHoldingInsights = (companyId) =>
     .eq("company_id", companyId)
     .order("period", { ascending: false })
     .limit(1);
+
+// ── ML / Classifier — no classifier table exists yet, use ohlcv_health scores ─
+// Derive survival score from health_score until classifier table is populated
+export const fetchMlPredictions = (companyId) =>
+  supabase
+    .from("ohlcv_health")
+    .select("company_id, date, health_score, composite, ret_z, z_change, volatility")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false })
+    .limit(30);
+
+export const fetchAllMlPredictions = () =>
+  supabase
+    .from("ohlcv_health")
+    .select("company_id, date, health_score, composite, ret_z, z_change, volatility")
+    .order("date", { ascending: false })
+    .limit(1500);
+
+export const fetchCompanyInsights = (companyId) =>
+  supabase
+    .from("ohlcv_health")
+    .select("company_id, date, health_score, composite, ret_z, z_change, volatility")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false })
+    .limit(30);
+
+export const fetchAllCompanyInsights = () =>
+  supabase
+    .from("ohlcv_health")
+    .select("company_id, date, health_score, composite")
+    .order("date", { ascending: false })
+    .limit(1500);
+
+export const fetchFeatureStore = (companyId) =>
+  supabase
+    .from("ohlcv_health")
+    .select("company_id, date, health_score, composite, ret_z, z_change, cum_z_change, volatility, spike_up, spike_down")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false })
+    .limit(30);
+
+export const fetchPortfolioSummary = () =>
+  supabase
+    .from("ohlcv_health")
+    .select("company_id, date, health_score, composite")
+    .order("date", { ascending: false })
+    .limit(1500);
 
 // ── Macro Overlay (from sector_health where sector_type = macro) ──────────────
 export const fetchMacroOverlay = (days = 90) =>
@@ -247,7 +252,6 @@ export const fetchPipelineStats = () =>
 // ── Check tickers in DB (for UploadCSV) ───────────────────────────────────────
 export const checkTickersInDB = async (tickers) => {
   try {
-    // Step 1: find which tickers exist in companies table
     const { data: compData, error: compErr } = await supabase
       .from("companies")
       .select("id, ticker, name")
@@ -258,19 +262,19 @@ export const checkTickersInDB = async (tickers) => {
     const existingTickers = new Set(existingMap.keys());
     const missing = tickers.filter(t => !existingTickers.has(t));
 
-    // Step 2: fetch latest classifier score for each found company
+    // Fetch latest health_score as proxy for survival score
     const companyIds = (compData || []).map(c => c.id);
     let scoreMap = new Map();
     if (companyIds.length > 0) {
-      const { data: clsData } = await supabase
-        .from("company_insights")
-        .select("company_id,final_score,date")
+      const { data: hsData } = await supabase
+        .from("ohlcv_health")
+        .select("company_id, health_score, date")
         .in("company_id", companyIds)
         .order("date", { ascending: false })
         .limit(companyIds.length * 2);
-      for (const row of (clsData || [])) {
+      for (const row of (hsData || [])) {
         if (!scoreMap.has(row.company_id)) {
-          scoreMap.set(row.company_id, row.final_score);
+          scoreMap.set(row.company_id, row.health_score);
         }
       }
     }
@@ -288,17 +292,10 @@ export const checkTickersInDB = async (tickers) => {
 
 // ── User Profile ──────────────────────────────────────────────────────────────
 export const fetchUserProfile = (userId) =>
-  supabase
-    .from("user_profiles")
-    .select("*")
-    .eq("id", userId)
-    .single();
+  supabase.from("user_profiles").select("*").eq("id", userId).single();
 
 export const updateUserProfile = (userId, updates) =>
-  supabase
-    .from("user_profiles")
-    .update(updates)
-    .eq("id", userId);
+  supabase.from("user_profiles").update(updates).eq("id", userId);
 
 // ── CSV Sessions ──────────────────────────────────────────────────────────────
 export const fetchCsvSessions = (userId) =>

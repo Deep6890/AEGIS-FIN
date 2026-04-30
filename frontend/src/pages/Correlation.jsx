@@ -71,18 +71,16 @@ export default function Correlation() {
       fetchRollingCorr(selectedId),
       fetchTopSectors(selectedId),
     ]).then(([sc, rc, ts]) => {
-      // ts returns the latest correlation row with JSONB fields
+      // All three return flat correlation_scores rows
       const corrRows = ts.data || sc.data || [];
-      const latestRow = corrRows[0] || null;
 
-      // Extract top_sectors from JSONB
+      // Build top_sectors ranked list from flat rows
       const adapted = adaptCorrelationToTopSectors(corrRows);
 
-      // company_vs_sectors is already a JSONB object in the real schema
-      const cvs = adaptCorrelationMatrix(latestRow);
+      // Build company_vs_sectors matrix from flat rows
+      const cvs = adaptCorrelationMatrix(corrRows);
 
-      // Fake a corrData object the matrix renderer expects
-      setCorrData(latestRow ? { company_vs_sectors: cvs, date: latestRow.date, top_sectors: adapted } : null);
+      setCorrData(corrRows.length ? { company_vs_sectors: cvs, date: corrRows[0]?.date, top_sectors: adapted } : null);
       setRollingRows(rc.data || []);
       setTopSectors(adapted);
     }).finally(() => setLoading(false));
@@ -113,18 +111,17 @@ export default function Correlation() {
   const cvs = corrData?.company_vs_sectors || {};
   const sectorNames = Object.keys(cvs).sort();
 
-  // Rolling chart: 60d correlation per sector over time (from JSONB company_vs_sectors)
+  // Rolling chart: 60d correlation per sector over time (from flat correlation_scores rows)
   const rollingChartData = useMemo(() => {
     const byDate = {};
     rollingRows.forEach(r => {
       const d = r.date;
       if (!byDate[d]) byDate[d] = { date: d?.slice(5) };
-      const cvs_ = r.company_vs_sectors || {};
-      Object.entries(cvs_).forEach(([sectorName, windows]) => {
-        const key = sectorName.replace(" Sector","").replace(" Nifty","");
-        const val = windows?.["60d"] ?? windows?.["full"] ?? null;
-        if (typeof val === "number") byDate[d][key] = parseFloat(val.toFixed(3));
-      });
+      const sectorName = r.sectors?.name || r.sector_id;
+      if (!sectorName) return;
+      const key = sectorName.replace(" Sector","").replace(" Nifty","");
+      const val = r.corr_60d ?? r.corr_full ?? null;
+      if (typeof val === "number") byDate[d][key] = parseFloat(val.toFixed(3));
     });
     return Object.values(byDate).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
   }, [rollingRows]);
@@ -132,9 +129,8 @@ export default function Correlation() {
   const rollingLines = useMemo(() => {
     const names = new Set();
     rollingRows.forEach(r => {
-      Object.keys(r.company_vs_sectors || {}).forEach(n =>
-        names.add(n.replace(" Sector","").replace(" Nifty",""))
-      );
+      const name = r.sectors?.name || r.sector_id;
+      if (name) names.add(name.replace(" Sector","").replace(" Nifty",""));
     });
     return [...names];
   }, [rollingRows]);
