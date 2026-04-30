@@ -21,17 +21,21 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  /** Upsert user_profiles row — idempotent, safe to call on every login */
+  /** Upsert user_profiles row — only if table exists, silently skip if not */
   async function _ensureProfile(u) {
     try {
-      await supabase.from("user_profiles").upsert({
+      const { error } = await supabase.from("user_profiles").upsert({
         id:        u.id,
         email:     u.email,
         role:      u.user_metadata?.role      || "analyst",
         interests: u.user_metadata?.interests || [],
       }, { onConflict: "id", ignoreDuplicates: true });
+      // Silently ignore 404 (table doesn't exist) and RLS errors
+      if (error && error.code !== "PGRST205" && error.code !== "42501") {
+        // Only log unexpected errors
+      }
     } catch (_) {
-      // Non-critical — profile may already exist or RLS may block anon writes
+      // Non-critical
     }
   }
 

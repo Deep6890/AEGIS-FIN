@@ -78,12 +78,6 @@ export default function Sectors() {
     momentum_z:  r.momentum_z,
     ret_z:       r.ret_z,
     vol_z:       r.vol_z,
-    close:       r.close,
-  }));
-
-  const closeChartData = metricsHistory.filter(r => r.close != null).map(r => ({
-    date:  r.date?.slice(5),
-    close: r.close,
   }));
 
   return (
@@ -280,29 +274,6 @@ export default function Sectors() {
                     )}
                   </div>
                 </div>
-
-                {/* ── Close price chart ────────────────────────────────────── */}
-                {closeChartData.length > 0 && (
-                  <div className="card p-6">
-                    <p className="title-md mb-1">Close Price (90d)</p>
-                    <p className="text-xs text-[var(--text-3)] mb-5">Daily closing price of the sector index.</p>
-                    <ResponsiveContainer width="100%" height={180}>
-                      <AreaChart data={closeChartData}>
-                        <defs>
-                          <linearGradient id="closeGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%"   stopColor="#E8572A" stopOpacity={0.18} />
-                            <stop offset="100%" stopColor="#E8572A" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="2 4" stroke={ct.grid} vertical={false} />
-                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} />
-                        <YAxis tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} width={50} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
-                        <Tooltip {...ct.tooltip} formatter={v => [v?.toFixed(2), "Close"]} />
-                        <Area type="monotone" dataKey="close" stroke="#E8572A" strokeWidth={2.5} fill="url(#closeGrad)" dot={false} name="Close" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
 
                 {/* ── Health score chart ───────────────────────────────────── */}
                 {healthChartData.length > 0 && (

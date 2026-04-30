@@ -12,12 +12,12 @@ const TICKERS = [
   { symbol: "^INDIAVIX", label: "India VIX",  dbName: "India VIX"    },
 ];
 
-// Fetch from Supabase sector_health (always available, no CORS issues)
+// Fetch from Supabase sector_health — no close column, use health_score + daily_return
 async function fetchFromDB() {
   try {
     const { data } = await supabase
       .from("sector_health")
-      .select("close, daily_return, date, sectors!inner(name)")
+      .select("health_score, daily_return, date, sectors!inner(name)")
       .order("date", { ascending: false })
       .limit(200);
 
@@ -34,8 +34,9 @@ async function fetchFromDB() {
       const row = latest[t.dbName];
       return {
         ...t,
-        price:  row?.close ?? null,
-        change: row?.daily_return != null ? row.daily_return * 100 : null,
+        // No close price in sector_health — show health score as proxy
+        price:  row?.health_score != null ? parseFloat(row.health_score.toFixed(1)) : null,
+        change: row?.daily_return != null ? parseFloat((row.daily_return * 100).toFixed(2)) : null,
         source: "db",
       };
     });
