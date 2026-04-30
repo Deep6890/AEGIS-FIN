@@ -75,21 +75,21 @@ export default function CompanyDetail() {
       setMl((ml_.data || []).map(adaptInsightRow).reverse());
       // Adapt correlation_scores rows into top_sectors shape UI expects
       setTopSec(adaptCorrelationForTopSecState(ts.data || []));
-      // Adapt feature store: map new fields to old dimensions shape
+      // Adapt feature store: classifier rows already have dimension scores
       setFeatures((fs.data || []).map(r => ({
         ...r,
-        composite_score: r.final_score ?? r.insight_score ?? null,
-        composite_tier:  r.class ? ({ STRONG:"TIER_1", POSITIVE:"TIER_2", NEUTRAL:"TIER_3", WEAK:"TIER_4", DISTRESSED:"TIER_4" })[r.class] : null,
-        dimensions: {
-          price_health:  { score: r.trend_score ?? null },
-          fundamental:   { score: r.fundamental_score ?? null },
-          ownership:     { score: null },
-          sector_fit:    { score: r.sector_alignment_score ?? null },
+        composite_score: r.composite_score ?? null,
+        composite_tier:  r.composite_tier  ?? null,
+        dimensions: r.dimensions || {
+          price_health: { score: r.price_score       ?? null },
+          fundamental:  { score: r.fundamental_score ?? null },
+          ownership:    { score: r.ownership_score   ?? null },
+          sector_fit:   { score: r.sector_fit_score  ?? null },
         },
-        composite: {
-          score: r.final_score ?? null,
-          tier:  r.class ? ({ STRONG:"TIER_1", POSITIVE:"TIER_2", NEUTRAL:"TIER_3", WEAK:"TIER_4", DISTRESSED:"TIER_4" })[r.class] : null,
-          grade: r.class ? ({ STRONG:"A", POSITIVE:"B", NEUTRAL:"C", WEAK:"D", DISTRESSED:"F" })[r.class] : null,
+        composite: r.composite || {
+          score: r.composite_score ?? null,
+          tier:  r.composite_tier  ?? null,
+          grade: r.composite_grade ?? null,
         },
       })).reverse());
     }).finally(() => setLoading(false));

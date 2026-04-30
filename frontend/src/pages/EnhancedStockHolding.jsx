@@ -6,7 +6,7 @@ import SignalBadge from "../components/ui/SignalBadge";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import EmptyState from "../components/ui/EmptyState";
 import { useAppData } from "../context/AppDataContext";
-import { fetchHoldingMetrics } from "../lib/api";
+import { fetchHoldingMetrics, fetchHoldingInsights } from "../lib/api";
 
 const COLORS = ['#FF6B35', '#F7931E', '#FFD23F', '#06FFA5', '#118AB2', '#073B4C', '#8B5CF6', '#EF4444'];
 
@@ -171,22 +171,37 @@ export default function EnhancedStockHolding() {
   useEffect(() => {
     if (!selectedCompany) return;
     setLoading(true);
-    fetchHoldingMetrics(selectedCompany).then(res => {
-      const rows = res.data || [];
-      // rows is a flat array from stock_holding table
-      // Build the data structure the page expects
+    Promise.all([
+      fetchHoldingMetrics(selectedCompany),
+      fetchHoldingInsights(selectedCompany),
+    ]).then(([holdRes, insightRes]) => {
+      const rows = holdRes.data || [];
+      const insightRow = insightRes.data?.[0] || null;
+
+      // Use real insights from stock_holding_insights if available
+      const enhanced_insights = insightRow ? {
+        key_insights:      insightRow.key_insights      || [],
+        risk_factors:      insightRow.risk_factors      || [],
+        sector_comparison: insightRow.sector_comparison || {},
+      } : {
+        key_insights: [],
+        risk_factors: [],
+        sector_comparison: {},
+      };
+
       setData({
         holdings: rows,
         breakdown: {
-          ownership_pie: buildOwnershipPie(rows),
-          top_holders: [],
+          ownership_pie:       buildOwnershipPie(rows),
+          top_holders:         insightRow?.top_holders_breakdown ? Object.entries(insightRow.top_holders_breakdown).map(([name, value]) => ({ name, value: parseFloat(value) || 0 })) : [],
+          ownership_score:     insightRow?.ownership_score     ?? null,
+          concentration_score: insightRow?.concentration_score ?? null,
+          activity_score:      insightRow?.activity_score      ?? null,
+          risk_score:          insightRow?.risk_score          ?? null,
+          overall_score:       insightRow?.overall_score       ?? null,
         },
-        enhanced_insights: {
-          key_insights: [],
-          risk_factors: [],
-          sector_comparison: {},
-        },
-        it_sector_correlation: {},
+        enhanced_insights,
+        it_sector_correlation: insightRow?.it_sector_correlation || {},
       });
     }).finally(() => setLoading(false));
   }, [selectedCompany]);

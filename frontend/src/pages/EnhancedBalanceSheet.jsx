@@ -6,7 +6,7 @@ import SignalBadge from "../components/ui/SignalBadge";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import EmptyState from "../components/ui/EmptyState";
 import { useAppData } from "../context/AppDataContext";
-import { fetchBalanceSheet } from "../lib/api";
+import { fetchBalanceSheet, fetchBalanceSheetInsights } from "../lib/api";
 
 const RATIO_ICONS = {
   "Gross Margin %": Percent, "Net Profit Margin %": Percent, "EBITDA Margin %": Percent,
@@ -106,17 +106,21 @@ export default function EnhancedBalanceSheet() {
   useEffect(() => {
     if (!selectedCompany) return;
     setLoading(true);
-    fetchBalanceSheet(selectedCompany).then(res => {
-      const rows = res.data || [];
-      // rows is a flat array from balance_sheet_ratios table
-      // Build the structure the page expects
-      const categoryScores = {};
+    Promise.all([
+      fetchBalanceSheet(selectedCompany),
+      fetchBalanceSheetInsights(selectedCompany),
+    ]).then(([ratioRes, insightRes]) => {
+      const rows = ratioRes.data || [];
+      const insightRow = insightRes.data?.[0] || null;
+
+      // Build category scores from ratio statuses
       const byCategory = {};
       rows.forEach(r => {
         const cat = r.ratio_definitions?.category || "Other";
         if (!byCategory[cat]) byCategory[cat] = [];
         byCategory[cat].push(r);
       });
+      const categoryScores = {};
       Object.entries(byCategory).forEach(([cat, items]) => {
         const green = items.filter(r => r.status === "green").length;
         categoryScores[cat] = {
@@ -126,19 +130,35 @@ export default function EnhancedBalanceSheet() {
           status: green / items.length >= 0.75 ? "strong" : green / items.length >= 0.5 ? "moderate" : "weak",
         };
       });
+
+      // Use real insights from balance_sheet_insights if available
+      const insights = insightRow ? {
+        key_strengths:    insightRow.key_strengths    || [],
+        key_concerns:     insightRow.key_concerns     || [],
+        recommendations:  insightRow.recommendations  || [],
+        sector_comparison: insightRow.sector_comparison || {},
+        trend_analysis:   insightRow.trend_analysis   || {},
+      } : {
+        key_strengths: rows.filter(r => r.status === "green" && r.value != null)
+          .slice(0, 3).map(r => `${r.ratio_definitions?.name || "Ratio"}: ${parseFloat(r.value).toFixed(2)}`),
+        key_concerns: rows.filter(r => r.status === "red" && r.value != null)
+          .slice(0, 3).map(r => `${r.ratio_definitions?.name || "Ratio"}: ${parseFloat(r.value).toFixed(2)}`),
+        recommendations: [],
+        sector_comparison: {},
+        trend_analysis: {},
+      };
+
       setData({
         ratios: rows,
-        insights: {
-          key_strengths: rows.filter(r => r.status === "green" && r.value != null)
-            .slice(0, 3).map(r => `${r.ratio_definitions?.name || "Ratio"}: ${parseFloat(r.value).toFixed(2)}`),
-          key_concerns: rows.filter(r => r.status === "red" && r.value != null)
-            .slice(0, 3).map(r => `${r.ratio_definitions?.name || "Ratio"}: ${parseFloat(r.value).toFixed(2)}`),
-          recommendations: [],
-          sector_comparison: {},
-          trend_analysis: {},
-        },
+        insights,
         breakdown: {
           category_scores: categoryScores,
+          profitability_score: insightRow?.profitability_score ?? null,
+          liquidity_score:     insightRow?.liquidity_score     ?? null,
+          leverage_score:      insightRow?.leverage_score      ?? null,
+          efficiency_score:    insightRow?.efficiency_score    ?? null,
+          growth_score:        insightRow?.growth_score        ?? null,
+          overall_score:       insightRow?.overall_score       ?? null,
           profitability_pie: rows
             .filter(r => r.ratio_definitions?.category === "Profitability" && r.value != null)
             .map(r => ({ name: r.ratio_definitions?.name?.replace(" %", "") || "", value: Math.max(0, parseFloat(r.value)) })),

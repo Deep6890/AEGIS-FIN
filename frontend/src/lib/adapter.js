@@ -35,16 +35,19 @@ const CLASS_TO_GRADE = {
 // ── Main adapter ──────────────────────────────────────────────────────────────
 
 /**
- * Adapts a company_insights row (from Supabase) into the shape
- * the UI expects for latestMl entries.
+ * adaptInsightRow
+ * Adapts a classifier row (actual schema) into the shape the UI expects.
  *
- * UI reads: composite_score, survival_score, distress_probability,
- *           composite_tier, composite_grade, company_id, date
+ * Classifier table has: composite_score, composite_tier, composite_grade,
+ *   price_score, fundamental_score, ownership_score, sector_fit_score,
+ *   dimensions (JSONB), composite (JSONB), filter (JSONB), summary
  */
 export function adaptInsightRow(row) {
   if (!row) return null;
 
-  const score = safeNumber(row.final_score ?? row.insight_score, null);
+  const score = safeNumber(row.composite_score, null);
+  const comp  = row.composite || {};
+  const filt  = row.filter    || {};
 
   return {
     // Raw passthrough
@@ -55,32 +58,37 @@ export function adaptInsightRow(row) {
     survival_score:       score,                                          // alias
     distress_probability: score != null ? Math.max(0, 100 - score) : null,
 
-    // Tier / grade derived from class
-    composite_tier:  CLASS_TO_TIER[row.class]  ?? "TIER_3",
-    composite_grade: CLASS_TO_GRADE[row.class] ?? "C",
+    // Tier / grade — already correct in classifier table
+    composite_tier:  row.composite_tier  ?? comp.tier  ?? "TIER_3",
+    composite_grade: row.composite_grade ?? comp.grade ?? "C",
 
-    // Insight signals (flat — for any page that reads them directly)
-    momentum: safeNumber(row.momentum),
-    risk:     safeNumber(row.risk),
-    strength: safeNumber(row.strength),
-    summary:  safeString(row.summary),
+    // Dimension scores (flat — for any page that reads them directly)
+    price_score:       safeNumber(row.price_score),
+    fundamental_score: safeNumber(row.fundamental_score),
+    ownership_score:   safeNumber(row.ownership_score),
+    sector_fit_score:  safeNumber(row.sector_fit_score),
+
+    // Filter result
+    passes_filter: filt.passes ?? null,
+    filter_reasons: filt.reasons ?? [],
+
+    // Summary
+    summary: safeString(row.summary),
   };
 }
 
 /**
- * Adapts a balance_sheet_scores row (new schema) into the shape
- * the UI expects from balance_sheet_ratios (old schema).
- *
- * UI reads: ratio_definitions.name, ratio_definitions.category,
- *           value, yoy_pct, hist_pct_rank, status, adjusted_status,
- *           trend, sector_pressure
+ * adaptBalanceSheetRow
+ * Maps balance_sheet_ratios row → UI-expected shape.
+ * Real schema: ratio_definitions(name, category, description, higher_is_better),
+ *   value, yoy_pct, hist_pct_rank (0-100), status, adjusted_status, trend,
+ *   sector_direction, sector_pressure, sector_narrative
  */
 export function adaptBalanceSheetRow(row) {
   if (!row) return null;
   const rd = row.ratio_definitions || {};
   return {
     ...row,
-    // Ensure ratio_definitions shape UI expects
     ratio_definitions: {
       name:             safeString(rd.name ?? row.name),
       category:         safeString(rd.category ?? row.category),
@@ -89,20 +97,22 @@ export function adaptBalanceSheetRow(row) {
     },
     value:           row.value   ?? null,
     yoy_pct:         row.yoy_pct ?? null,
-    hist_pct_rank:   row.hist_pct_rank != null ? row.hist_pct_rank / 100 : null, // normalize 0-100 → 0-1 for UI display
+    // hist_pct_rank is stored as 0-100 in the DB — pass through as-is
+    hist_pct_rank:   row.hist_pct_rank ?? null,
     status:          safeString(row.status, "gray"),
     adjusted_status: safeString(row.adjusted_status ?? row.status, "gray"),
     trend:           safeString(row.trend),
     sector_pressure: row.sector_pressure ?? null,
+    sector_direction: safeString(row.sector_direction),
+    sector_narrative: safeString(row.sector_narrative),
   };
 }
 
 /**
- * Adapts a holding_scores row (new schema) into the shape
- * the UI expects from stock_holding (old schema).
- *
- * UI reads: holding_metric_definitions.name, holding_metric_definitions.description,
- *           value, status, adjusted_status, trend, sector_signal
+ * adaptHoldingRow
+ * Maps stock_holding row → UI-expected shape.
+ * Real schema: holding_metric_definitions(name, category, description),
+ *   value, status, adjusted_status, trend, holding_signal, sector_signal, sector_pressure
  */
 export function adaptHoldingRow(row) {
   if (!row) return null;
@@ -118,30 +128,79 @@ export function adaptHoldingRow(row) {
     status:          safeString(row.status, "gray"),
     adjusted_status: safeString(row.adjusted_status ?? row.status, "gray"),
     trend:           safeString(row.trend),
+    holding_signal:  safeString(row.holding_signal),
     sector_signal:   safeString(row.sector_signal),
+    sector_pressure: row.sector_pressure ?? null,
   };
 }
 
 /**
- * Adapts correlation_scores rows into the shape the UI expects
- * for top_sectors (old schema had top_sectors as JSONB array).
- *
- * UI reads: top_sectors[].sector, top_sectors[].name,
- *           top_sectors[].corr_60d, top_sectors[].rank
+ * adaptCorrelationToTopSectors
+ * Extracts top_sectors array from a correlation JSONB row.
+ * Real schema: correlation.top_sectors is already a JSONB array of
+ *   { rank, sector, corr_100d, corr_full }
  */
 export function adaptCorrelationToTopSectors(corrRows) {
   if (!corrRows?.length) return [];
-  return corrRows
-    .sort((a, b) => safeNumber(b.corr_60d) - safeNumber(a.corr_60d))
-    .map((r, i) => ({
-      ...r,
-      rank:     i + 1,
-      sector:   r.sectors?.name ?? r.sector_name ?? "",
-      name:     r.sectors?.name ?? r.sector_name ?? "",
-      corr_60d: safeNumber(r.corr_60d),
-      corr_20d: safeNumber(r.corr_20d),
-      corr_100d:safeNumber(r.corr_100d),
-    }));
+  // corrRows is an array of correlation table rows; take the latest
+  const latest = corrRows[0];
+  const topSectors = latest?.top_sectors;
+  if (!Array.isArray(topSectors) || !topSectors.length) return [];
+  return topSectors.map((s, i) => ({
+    ...s,
+    rank:      s.rank     ?? i + 1,
+    sector:    s.sector   ?? s.name ?? "",
+    name:      s.sector   ?? s.name ?? "",
+    corr_60d:  safeNumber(s.corr_60d  ?? s["corr_60d"]),
+    corr_20d:  safeNumber(s.corr_20d  ?? s["corr_20d"]),
+    corr_100d: safeNumber(s.corr_100d ?? s["corr_100d"]),
+    corr_full: safeNumber(s.corr_full ?? s["corr_full"]),
+  }));
+}
+
+/**
+ * adaptCorrelationForTopSecState
+ * Used by CompanyDetail sectors tab — wraps the correlation row so
+ * the existing topSec[0].top_sectors pattern still works.
+ */
+export function adaptCorrelationForTopSecState(corrRows) {
+  if (!corrRows?.length) return [];
+  const latest = corrRows[0];
+  if (!latest) return [];
+  return [{
+    ...latest,
+    top_sectors: adaptCorrelationToTopSectors(corrRows),
+    date: latest.date,
+  }];
+}
+
+/**
+ * adaptCorrelationMatrix
+ * Builds the company_vs_sectors matrix from a correlation JSONB row.
+ * Real schema: correlation.company_vs_sectors is already a JSONB object
+ *   { sectorName: { full, 20d, 60d, 100d } }
+ */
+export function adaptCorrelationMatrix(corrRow) {
+  if (!corrRow) return {};
+  return corrRow.company_vs_sectors || {};
+}
+
+/**
+ * adaptRelativeGrowth
+ * Extracts relative_growth from a correlation JSONB row.
+ */
+export function adaptRelativeGrowth(corrRow) {
+  if (!corrRow) return {};
+  return corrRow.relative_growth || {};
+}
+
+/**
+ * adaptCorrelationInsights
+ * Extracts insights array from a correlation JSONB row.
+ */
+export function adaptCorrelationInsights(corrRow) {
+  if (!corrRow) return [];
+  return corrRow.insights || [];
 }
 
 /**
@@ -214,8 +273,4 @@ export function adaptOhlcvHealthRow(row) {
     health_score: hs,
     composite:    comp,
   };
-}
-  const topSectors = adaptCorrelationToTopSectors(corrRows);
-  if (!topSectors.length) return [];
-  return [{ top_sectors: topSectors, date: corrRows[0]?.date }];
 }

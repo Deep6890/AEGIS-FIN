@@ -14,6 +14,7 @@ import {
   fetchStaticCorr, fetchRollingCorr, fetchTopSectors,
   fetchCompanyOHLCVHistory, fetchSectorOHLCVHistory
 } from "../lib/api";
+import { adaptCorrelationToTopSectors, adaptCorrelationMatrix } from "../lib/adapter";
 
 // Windows stored in company_vs_sectors: { sectorName: { full, 20d, 60d, 100d } }
 const WINDOWS = ["20d", "60d", "100d", "full"];
@@ -70,23 +71,20 @@ export default function Correlation() {
       fetchRollingCorr(selectedId),
       fetchTopSectors(selectedId),
     ]).then(([sc, rc, ts]) => {
-      const latest = sc.data?.[0] || null;
-      setCorrData(latest);
-      setRollingRows(rc.data || []);
+      // ts returns the latest correlation row with JSONB fields
+      const corrRows = ts.data || sc.data || [];
+      const latestRow = corrRows[0] || null;
 
-      // top_sectors JSONB: [{ rank, sector, corr_60d, corr_100d, health, signal }]
-      const raw  = latest?.top_sectors || ts.data?.[0]?.top_sectors || [];
-      const list = Array.isArray(raw) ? raw : [];
-      setTopSectors(list.map((t, i) => ({
-        rank:      t.rank || i + 1,
-        sector:    t.sector || t.name || "Unknown",
-        corr_20d:  t.corr_20d  ?? null,
-        corr_60d:  t.corr_60d  ?? null,
-        corr_100d: t.corr_100d ?? null,
-        corr_full: t.corr_full ?? t.full ?? null,
-        health:    t.health    ?? null,
-        signal:    t.signal    ?? null,
-      })));
+      // Extract top_sectors from JSONB
+      const adapted = adaptCorrelationToTopSectors(corrRows);
+
+      // company_vs_sectors is already a JSONB object in the real schema
+      const cvs = adaptCorrelationMatrix(latestRow);
+
+      // Fake a corrData object the matrix renderer expects
+      setCorrData(latestRow ? { company_vs_sectors: cvs, date: latestRow.date, top_sectors: adapted } : null);
+      setRollingRows(rc.data || []);
+      setTopSectors(adapted);
     }).finally(() => setLoading(false));
   }, [selectedId]);
 
@@ -115,7 +113,7 @@ export default function Correlation() {
   const cvs = corrData?.company_vs_sectors || {};
   const sectorNames = Object.keys(cvs).sort();
 
-  // Rolling chart: 60d correlation per sector over time
+  // Rolling chart: 60d correlation per sector over time (from JSONB company_vs_sectors)
   const rollingChartData = useMemo(() => {
     const byDate = {};
     rollingRows.forEach(r => {

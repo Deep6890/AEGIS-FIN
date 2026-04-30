@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Search, Filter, SlidersHorizontal, TrendingUp, Building2, BarChart3, Target, Zap } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter } from "recharts";
+import { Search, Filter, SlidersHorizontal, TrendingUp, Building2, BarChart3, Target, Zap, ArrowUpRight } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, Cell } from "recharts";
+import { Link } from "react-router-dom";
 import PageLayout from "../components/Layout/PageLayout";
 import SignalBadge from "../components/ui/SignalBadge";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
@@ -8,42 +9,39 @@ import EmptyState from "../components/ui/EmptyState";
 import { useAppData } from "../context/AppDataContext";
 
 const FILTER_CATEGORIES = {
+  composite: {
+    label: "Composite Score",
+    icon: Zap,
+    filters: [
+      { key: "score", label: "Composite Score", min: 0, max: 100 },
+    ]
+  },
   profitability: {
-    label: "Profitability",
+    label: "Fundamental",
     icon: TrendingUp,
     filters: [
-      { key: "gross_margin", label: "Gross Margin %", min: 0, max: 100 },
-      { key: "net_margin", label: "Net Margin %", min: -50, max: 50 },
-      { key: "roe", label: "ROE %", min: -50, max: 100 },
-      { key: "roa", label: "ROA %", min: -50, max: 50 }
+      { key: "profitability_score", label: "Fundamental Score", min: 0, max: 100 },
     ]
   },
   liquidity: {
-    label: "Liquidity",
+    label: "Price Health",
     icon: BarChart3,
     filters: [
-      { key: "current_ratio", label: "Current Ratio", min: 0, max: 10 },
-      { key: "quick_ratio", label: "Quick Ratio", min: 0, max: 10 },
-      { key: "cash_ratio", label: "Cash Ratio", min: 0, max: 5 }
+      { key: "liquidity_score", label: "Price Health Score", min: 0, max: 100 },
     ]
   },
   leverage: {
-    label: "Leverage",
+    label: "Sector Fit",
     icon: Target,
     filters: [
-      { key: "debt_equity", label: "Debt/Equity", min: 0, max: 5 },
-      { key: "debt_assets", label: "Debt/Assets", min: 0, max: 1 },
-      { key: "interest_coverage", label: "Interest Coverage", min: 0, max: 50 }
+      { key: "leverage_score", label: "Sector Fit Score", min: 0, max: 100 },
     ]
   },
   ownership: {
     label: "Ownership",
     icon: Building2,
     filters: [
-      { key: "institutional_ownership", label: "Institutional %", min: 0, max: 100 },
-      { key: "promoter_holding", label: "Promoter %", min: 0, max: 100 },
-      { key: "public_float", label: "Public Float %", min: 0, max: 100 },
-      { key: "hhi", label: "HHI (max)", min: 0, max: 1 }
+      { key: "ownership_score", label: "Ownership Score", min: 0, max: 100 },
     ]
   }
 };
@@ -149,66 +147,67 @@ function CompanyCard({ company, score, onClick }) {
   const { color, textColor } = CLASSIFICATION_TIERS[tier];
   
   return (
-    <div 
-      className="card p-4 hover-lift cursor-pointer transition-all duration-200 hover:border-[var(--orange)]/30"
-      onClick={() => onClick(company)}
+    <Link
+      to={`/companies/${company.id}`}
+      className="card p-4 hover-lift block transition-all duration-200 hover:border-[var(--orange)]/30"
     >
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-sm font-semibold text-[var(--text)] truncate">{company.name}</h4>
         <div className={`px-2 py-1 rounded text-xs font-bold ${color} text-white`}>
-          {score}
+          {score?.toFixed(0) ?? "—"}
         </div>
       </div>
       <p className="text-xs text-[var(--text-3)] mb-2">{company.ticker}</p>
       <div className="flex items-center justify-between">
         <span className={`text-xs font-semibold ${textColor}`}>
-          {CLASSIFICATION_TIERS[tier].label}
+          {company.composite_tier || CLASSIFICATION_TIERS[tier].label}
         </span>
-        <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-1">
-          <div 
-            className={`h-1 rounded-full ${color}`}
-            style={{ width: `${score}%` }}
-          />
+        <div className="flex items-center gap-2">
+          <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+            <div 
+              className={`h-1 rounded-full ${color}`}
+              style={{ width: `${Math.min(100, score || 0)}%` }}
+            />
+          </div>
+          <ArrowUpRight size={12} className="text-[var(--text-3)]" />
         </div>
       </div>
-    </div>
+      {company.summary && (
+        <p className="text-[10px] text-[var(--text-3)] mt-2 leading-relaxed line-clamp-2">{company.summary}</p>
+      )}
+    </Link>
   );
 }
 
 export default function FilteringClassification() {
-  const { companies } = useAppData();
+  const { companies, latestMl } = useAppData();
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("filters");
   const [filterValues, setFilterValues] = useState({});
   const [sortBy, setSortBy] = useState("score");
   const [sortOrder, setSortOrder] = useState("desc");
 
-  // Mock data for demonstration - in real app, this would come from API
-  const [companyScores] = useState(() => {
-    return companies.map(company => ({
-      ...company,
-      score: Math.floor(Math.random() * 100),
-      profitability_score: Math.floor(Math.random() * 100),
-      liquidity_score: Math.floor(Math.random() * 100),
-      leverage_score: Math.floor(Math.random() * 100),
-      ownership_score: Math.floor(Math.random() * 100),
-      // Mock financial metrics
-      gross_margin: Math.random() * 50 + 10,
-      net_margin: Math.random() * 20 - 5,
-      roe: Math.random() * 30 - 5,
-      roa: Math.random() * 15 - 2,
-      current_ratio: Math.random() * 5 + 0.5,
-      quick_ratio: Math.random() * 3 + 0.3,
-      cash_ratio: Math.random() * 2 + 0.1,
-      debt_equity: Math.random() * 3,
-      debt_assets: Math.random() * 0.8,
-      interest_coverage: Math.random() * 20 + 1,
-      institutional_ownership: Math.random() * 80 + 10,
-      promoter_holding: Math.random() * 70 + 15,
-      public_float: Math.random() * 60 + 20,
-      hhi: Math.random() * 0.5 + 0.1
-    }));
-  });
+  // Build company scores from real classifier data (latestMl)
+  const companyScores = useMemo(() => {
+    const mlMap = new Map(latestMl.map(r => [r.company_id, r]));
+    return companies.map(company => {
+      const ml = mlMap.get(company.id);
+      const dims = ml?.dimensions || {};
+      return {
+        ...company,
+        score:               ml?.composite_score       ?? null,
+        profitability_score: ml?.fundamental_score     ?? dims.fundamental?.score  ?? null,
+        liquidity_score:     ml?.price_score           ?? dims.price_health?.score ?? null,
+        leverage_score:      ml?.sector_fit_score      ?? dims.sector_fit?.score   ?? null,
+        ownership_score:     ml?.ownership_score       ?? dims.ownership?.score    ?? null,
+        composite_tier:      ml?.composite_tier        ?? null,
+        composite_grade:     ml?.composite_grade       ?? null,
+        passes_filter:       ml?.passes_filter         ?? null,
+        summary:             ml?.summary               ?? null,
+        date:                ml?.date                  ?? null,
+      };
+    }).filter(c => c.score != null);
+  }, [companies, latestMl]);
 
   const handleFilterChange = (key, type, value) => {
     setFilterValues(prev => ({
@@ -419,10 +418,6 @@ export default function FilteringClassification() {
                     key={company.id}
                     company={company}
                     score={company.score}
-                    onClick={(company) => {
-                      // Navigate to company detail
-                      window.location.href = `/companies/${company.id}`;
-                    }}
                   />
                 ))}
               </div>
@@ -434,38 +429,37 @@ export default function FilteringClassification() {
           <div className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="card p-5">
-                <h4 className="text-sm font-semibold mb-4 text-[var(--text)]">Score Distribution</h4>
+                <h4 className="text-sm font-semibold mb-4 text-[var(--text)]">Fundamental vs Price Health</h4>
                 <ResponsiveContainer width="100%" height={250}>
-                  <ScatterChart data={filteredCompanies}>
+                  <ScatterChart>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="profitability_score" name="Profitability" />
-                    <YAxis dataKey="liquidity_score" name="Liquidity" />
-                    <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                    <Scatter dataKey="score" fill="#FF6B35" />
+                    <XAxis dataKey="profitability_score" name="Fundamental" type="number" domain={[0,100]} tick={{ fontSize: 10 }} />
+                    <YAxis dataKey="liquidity_score" name="Price Health" type="number" domain={[0,100]} tick={{ fontSize: 10 }} />
+                    <Tooltip cursor={{ strokeDasharray: '3 3' }} formatter={(v, n) => [`${v?.toFixed(1)}`, n]} />
+                    <Scatter data={filteredCompanies} fill="var(--orange)" fillOpacity={0.7} />
                   </ScatterChart>
                 </ResponsiveContainer>
               </div>
               
               <div className="card p-5">
-                <h4 className="text-sm font-semibold mb-4 text-[var(--text)]">Category Performance</h4>
+                <h4 className="text-sm font-semibold mb-4 text-[var(--text)]">Dimension Averages</h4>
                 <div className="space-y-3">
-                  {['profitability_score', 'liquidity_score', 'leverage_score', 'ownership_score'].map(category => {
-                    const avg = filteredCompanies.reduce((sum, c) => sum + (c[category] || 0), 0) / filteredCompanies.length;
+                  {[
+                    { key: 'profitability_score', label: 'Fundamental' },
+                    { key: 'liquidity_score',     label: 'Price Health' },
+                    { key: 'leverage_score',      label: 'Sector Fit' },
+                    { key: 'ownership_score',     label: 'Ownership' },
+                  ].map(({ key, label }) => {
+                    const vals = filteredCompanies.map(c => c[key]).filter(v => v != null);
+                    const avg = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
                     return (
-                      <div key={category} className="flex items-center justify-between">
-                        <span className="text-xs text-[var(--text-2)] capitalize">
-                          {category.replace('_score', '').replace('_', ' ')}
-                        </span>
+                      <div key={key} className="flex items-center justify-between">
+                        <span className="text-xs text-[var(--text-2)]">{label}</span>
                         <div className="flex items-center gap-2">
                           <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div 
-                              className="h-2 rounded-full bg-[var(--orange)]"
-                              style={{ width: `${avg}%` }}
-                            />
+                            <div className="h-2 rounded-full bg-[var(--orange)]" style={{ width: `${avg}%` }} />
                           </div>
-                          <span className="text-xs font-semibold text-[var(--text)] w-8">
-                            {avg.toFixed(0)}
-                          </span>
+                          <span className="text-xs font-semibold text-[var(--text)] w-8">{avg.toFixed(0)}</span>
                         </div>
                       </div>
                     );

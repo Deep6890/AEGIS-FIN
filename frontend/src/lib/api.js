@@ -91,40 +91,39 @@ export const fetchLatestCompanyMetrics = (companyId) =>
 export const fetchAllCompanyHealth = () =>
   supabase
     .from("ohlcv_health")
-    .select("company_id, date, health_score, signal, regime, composite, trend")
+    .select("company_id, date, health_score, signal, composite, ret_z, z_change, volatility, spike_up, spike_down")
     .order("date", { ascending: false })
     .limit(500);
 
-// ── Correlation (correlation_scores) ─────────────────────────────────────────
+// ── Correlation (actual schema: correlation JSONB table) ─────────────────────
 export const fetchStaticCorr = (companyId) =>
   supabase
-    .from("correlation_scores")
-    .select("sector_id,date,corr_20d,corr_60d,corr_100d,corr_full,outperf_60d,avg_top_health,sectors(name)")
+    .from("correlation")
+    .select("date,company_vs_sectors,top_sectors,health_by_top,relative_growth,relative_spikes,sift_latest,insights")
     .eq("company_id", companyId)
     .order("date", { ascending: false })
     .limit(1);
 
 export const fetchRollingCorr = (companyId, windowDays = 60) =>
   supabase
-    .from("correlation_scores")
-    .select("sector_id,date,corr_20d,corr_60d,corr_100d,sectors(name)")
+    .from("correlation")
+    .select("date,company_vs_sectors,top_sectors")
     .eq("company_id", companyId)
     .order("date", { ascending: true })
     .limit(120);
 
 export const fetchTopSectors = (companyId) =>
   supabase
-    .from("correlation_scores")
-    .select("sector_id,date,corr_20d,corr_60d,corr_100d,corr_full,outperf_60d,avg_top_health,sectors(name)")
+    .from("correlation")
+    .select("date,top_sectors,health_by_top,relative_growth,relative_spikes,insights")
     .eq("company_id", companyId)
     .order("date", { ascending: false })
-    .order("corr_60d", { ascending: false })
-    .limit(50);
+    .limit(1);
 
-// ── Company Insights (new — classifier + insights output) ───────────────────
+// ── Classifier (actual schema: classifier table) ──────────────────────────────
 export const fetchCompanyInsights = (companyId) =>
   supabase
-    .from("company_insights")
+    .from("classifier")
     .select("*")
     .eq("company_id", companyId)
     .order("date", { ascending: false })
@@ -132,16 +131,49 @@ export const fetchCompanyInsights = (companyId) =>
 
 export const fetchAllCompanyInsights = () =>
   supabase
-    .from("company_insights")
-    .select("company_id,date,final_score,insight_score,class,momentum,risk,strength,summary")
+    .from("classifier")
+    .select("company_id,date,composite_score,composite_tier,composite_grade,price_score,fundamental_score,ownership_score,sector_fit_score,summary")
     .order("date", { ascending: false })
     .limit(600);
 
-// ── Balance Sheet (new normalized: balance_sheet_scores) ─────────────────────
+// ── Classifier as ML predictions ──────────────────────────────────────────────
+export const fetchMlPredictions = (companyId) =>
+  supabase
+    .from("classifier")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false })
+    .limit(30);
+
+export const fetchAllMlPredictions = () =>
+  supabase
+    .from("classifier")
+    .select("company_id,date,composite_score,composite_tier,composite_grade,price_score,fundamental_score,ownership_score,sector_fit_score,filter,summary,companies(name,ticker)")
+    .order("date", { ascending: false })
+    .limit(600);
+
+// ── Feature Store (from classifier dimensions) ────────────────────────────────
+export const fetchFeatureStore = (companyId) =>
+  supabase
+    .from("classifier")
+    .select("date,composite_score,composite_tier,composite_grade,price_score,fundamental_score,ownership_score,sector_fit_score,dimensions,composite,filter")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false })
+    .limit(30);
+
+// ── Portfolio Summary ─────────────────────────────────────────────────────────
+export const fetchPortfolioSummary = () =>
+  supabase
+    .from("classifier")
+    .select("company_id,composite_score,composite_tier,composite_grade,companies(name,ticker)")
+    .order("date", { ascending: false })
+    .limit(600);
+
+// ── Balance Sheet (actual schema: balance_sheet_ratios) ──────────────────────
 export const fetchBalanceSheet = (companyId) =>
   supabase
-    .from("balance_sheet_scores")
-    .select("*, ratio_definitions(name, category, higher_is_better)")
+    .from("balance_sheet_ratios")
+    .select("*, ratio_definitions(name, category, description, higher_is_better)")
     .eq("company_id", companyId)
     .order("period", { ascending: false })
     .limit(100);
@@ -155,14 +187,32 @@ export const fetchBalanceSheetHistory = (companyId, ratioId) =>
     .order("date", { ascending: true })
     .limit(40);
 
-// ── Stock Holding (new normalized: holding_scores) ────────────────────────────
+// ── Balance Sheet Insights (actual schema: balance_sheet_insights) ────────────
+export const fetchBalanceSheetInsights = (companyId) =>
+  supabase
+    .from("balance_sheet_insights")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("period", { ascending: false })
+    .limit(1);
+
+// ── Stock Holding (actual schema: stock_holding) ──────────────────────────────
 export const fetchHoldingMetrics = (companyId) =>
   supabase
-    .from("holding_scores")
-    .select("*, holding_metric_definitions(name, category)")
+    .from("stock_holding")
+    .select("*, holding_metric_definitions(name, category, description)")
     .eq("company_id", companyId)
     .order("period", { ascending: false })
     .limit(50);
+
+// ── Stock Holding Insights (actual schema: stock_holding_insights) ────────────
+export const fetchHoldingInsights = (companyId) =>
+  supabase
+    .from("stock_holding_insights")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("period", { ascending: false })
+    .limit(1);
 
 // ── Classifier → now company_insights ────────────────────────────────────────
 export const fetchMlPredictions = (companyId) =>
