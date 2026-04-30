@@ -83,6 +83,9 @@ with open(CSV_PATH, newline="", encoding="utf-8") as f:
         })
 
 print(f"  {len(companies)} unique companies to seed")
+LIMIT = int(os.environ.get("SEED_LIMIT", len(companies)))
+companies = companies[:LIMIT]
+print(f"  Seeding first {len(companies)} companies...")
 
 # Upsert in batches of 50
 ok = 0
