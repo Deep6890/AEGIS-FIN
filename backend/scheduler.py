@@ -15,7 +15,6 @@ import time
 import json
 import signal
 import logging
-import threading
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -223,20 +222,6 @@ def _seconds_until_next_run() -> float:
     return (target - now).total_seconds()
 
 
-def _keep_alive():
-    """Ping own Render URL every 10 min to prevent free tier spin-down."""
-    url = os.environ.get("RENDER_EXTERNAL_URL")
-    if not url:
-        return
-    import urllib.request
-    while True:
-        try:
-            urllib.request.urlopen(url, timeout=10)
-        except Exception:
-            pass
-        time.sleep(600)
-
-
 def main():
     # Validate env
     if not os.environ.get("SUPABASE_URL") or not os.environ.get("SUPABASE_KEY"):
@@ -244,10 +229,6 @@ def main():
         sys.exit(1)
 
     log.info(f"Scheduler starting — daily at {PIPELINE_HOUR:02d}:{PIPELINE_MIN:02d} UTC")
-
-    # Start keep-alive thread for Render free tier
-    t = threading.Thread(target=_keep_alive, daemon=True)
-    t.start()
 
     if "--run-now" in sys.argv:
         log.info("--run-now: running pipeline immediately")
