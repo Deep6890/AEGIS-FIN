@@ -15,6 +15,7 @@ import {
   fetchHoldingMetrics, fetchMlPredictions, fetchTopSectors, fetchFeatureStore,
   fetchCompanyOHLCVHistory, fetchSectorOHLCVHistory
 } from "../lib/api";
+import { adaptInsightRow, adaptBalanceSheetRow, adaptHoldingRow, adaptCorrelationForTopSecState } from "../lib/adapter";
 
 const TAB_ICONS = { metrics: Activity, balance: BarChart2, holdings: Users, sectors: TrendingUp, features: ShieldAlert };
 
@@ -66,11 +67,31 @@ export default function CompanyDetail() {
     ]).then(([c, m, b, h, ml_, ts, fs]) => {
       setCompany(c.data);
       setMetrics((m.data || []).reverse());
-      setBalance(b.data || []);
-      setHoldings(h.data || []);
-      setMl((ml_.data || []).reverse());
-      setTopSec(ts.data || []);
-      setFeatures((fs.data || []).reverse());
+      // Adapt balance sheet rows to UI-expected shape
+      setBalance((b.data || []).map(adaptBalanceSheetRow));
+      // Adapt holding rows to UI-expected shape
+      setHoldings((h.data || []).map(adaptHoldingRow));
+      // Adapt insight rows to UI-expected shape (composite_score, tier, grade)
+      setMl((ml_.data || []).map(adaptInsightRow).reverse());
+      // Adapt correlation_scores rows into top_sectors shape UI expects
+      setTopSec(adaptCorrelationForTopSecState(ts.data || []));
+      // Adapt feature store: map new fields to old dimensions shape
+      setFeatures((fs.data || []).map(r => ({
+        ...r,
+        composite_score: r.final_score ?? r.insight_score ?? null,
+        composite_tier:  r.class ? ({ STRONG:"TIER_1", POSITIVE:"TIER_2", NEUTRAL:"TIER_3", WEAK:"TIER_4", DISTRESSED:"TIER_4" })[r.class] : null,
+        dimensions: {
+          price_health:  { score: r.trend_score ?? null },
+          fundamental:   { score: r.fundamental_score ?? null },
+          ownership:     { score: null },
+          sector_fit:    { score: r.sector_alignment_score ?? null },
+        },
+        composite: {
+          score: r.final_score ?? null,
+          tier:  r.class ? ({ STRONG:"TIER_1", POSITIVE:"TIER_2", NEUTRAL:"TIER_3", WEAK:"TIER_4", DISTRESSED:"TIER_4" })[r.class] : null,
+          grade: r.class ? ({ STRONG:"A", POSITIVE:"B", NEUTRAL:"C", WEAK:"D", DISTRESSED:"F" })[r.class] : null,
+        },
+      })).reverse());
     }).finally(() => setLoading(false));
   }, [id]);
 

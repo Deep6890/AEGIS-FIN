@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { fetchCompanies, fetchSectors, fetchLatestSectorHealth, fetchAllMlPredictions } from "../lib/api";
+import { adaptInsightRow } from "../lib/adapter";
 import { useAuth } from "./AuthContext";
 
 const AppDataContext = createContext(null);
@@ -157,21 +158,12 @@ export function AppDataProvider({ children }) {
     return Array.from(seen.values());
   }, [sectorHealth]);
 
-  // ── Latest classifier per company ─────────────────────────────────────────
+  // ── Latest classifier per company (adapted to UI shape) ─────────────────────
   const latestMl = React.useMemo(() => {
     const seen = new Map();
     for (const row of mlSummary) {
       if (!seen.has(row.company_id)) {
-        const score = row.composite_score ?? null;
-        seen.set(row.company_id, {
-          ...row,
-          // Canonical field — always use composite_score as the source of truth
-          composite_score:      score,
-          // Alias for backward-compat with pages that use survival_score
-          survival_score:       score,
-          distress_probability: score != null ? Math.max(0, 100 - score) : null,
-          model_version:        row.composite_tier || "v2",
-        });
+        seen.set(row.company_id, adaptInsightRow(row));
       }
     }
     return Array.from(seen.values());

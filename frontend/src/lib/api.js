@@ -120,11 +120,27 @@ export const fetchTopSectors = (companyId) =>
     .order("date", { ascending: false })
     .limit(1);
 
-// ── Balance Sheet (new normalized tables) ─────────────────────────────────────
+// ── Company Insights (new — classifier + insights output) ───────────────────
+export const fetchCompanyInsights = (companyId) =>
+  supabase
+    .from("company_insights")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false })
+    .limit(30);
+
+export const fetchAllCompanyInsights = () =>
+  supabase
+    .from("company_insights")
+    .select("company_id,date,final_score,insight_score,class,momentum,risk,strength,summary")
+    .order("date", { ascending: false })
+    .limit(600);
+
+// ── Balance Sheet (new normalized: balance_sheet_scores) ─────────────────────
 export const fetchBalanceSheet = (companyId) =>
   supabase
-    .from("balance_sheet_ratios")
-    .select("*, ratio_definitions(name, category, description, higher_is_better)")
+    .from("balance_sheet_scores")
+    .select("*, ratio_definitions(name, category, higher_is_better)")
     .eq("company_id", companyId)
     .order("period", { ascending: false })
     .limit(100);
@@ -138,19 +154,19 @@ export const fetchBalanceSheetHistory = (companyId, ratioId) =>
     .order("date", { ascending: true })
     .limit(40);
 
-// ── Stock Holding ─────────────────────────────────────────────────────────────
+// ── Stock Holding (new normalized: holding_scores) ────────────────────────────
 export const fetchHoldingMetrics = (companyId) =>
   supabase
-    .from("stock_holding")
-    .select("*, holding_metric_definitions(name, category, description)")
+    .from("holding_scores")
+    .select("*, holding_metric_definitions(name, category)")
     .eq("company_id", companyId)
     .order("period", { ascending: false })
     .limit(50);
 
-// ── Classifier (replaces ml_predictions) ─────────────────────────────────────
+// ── Classifier → now company_insights ────────────────────────────────────────
 export const fetchMlPredictions = (companyId) =>
   supabase
-    .from("classifier")
+    .from("company_insights")
     .select("*")
     .eq("company_id", companyId)
     .order("date", { ascending: false })
@@ -158,42 +174,37 @@ export const fetchMlPredictions = (companyId) =>
 
 export const fetchAllMlPredictions = () =>
   supabase
-    .from("classifier")
-    .select("*, companies(name, ticker)")
+    .from("company_insights")
+    .select("company_id,date,final_score,insight_score,class,momentum,risk,strength,summary,companies(name,ticker)")
     .order("date", { ascending: false })
-    .limit(400);
+    .limit(600);
 
-// ── Feature Store (from classifier dimensions JSONB) ─────────────────────────
+// ── Top Sectors (from correlation_scores) ─────────────────────────────────────
+export const fetchTopSectors = (companyId) =>
+  supabase
+    .from("correlation_scores")
+    .select("sector_id,date,corr_20d,corr_60d,corr_100d,corr_full,outperf_60d,avg_top_health,sectors(name)")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false })
+    .order("corr_60d", { ascending: false })
+    .limit(50);
+
+// ── Feature Store (from company_insights dimensions) ─────────────────────────
 export const fetchFeatureStore = (companyId) =>
   supabase
-    .from("classifier")
-    .select("date, dimensions, composite")
+    .from("company_insights")
+    .select("date,final_score,trend_score,fundamental_score,sentiment_score,sector_alignment_score,class")
     .eq("company_id", companyId)
     .order("date", { ascending: false })
     .limit(30);
 
-// ── Macro Overlay (from sector_health where sector_type = macro) ──────────────
-export const fetchMacroOverlay = (days = 90) =>
-  supabase
-    .from("sector_health")
-    .select("*, sectors!inner(name, yf_ticker, sector_type)")
-    .order("date", { ascending: true })
-    .limit(days * 14); // all 14 sectors × days, filter client-side
-
-export const fetchLatestMacro = () =>
-  supabase
-    .from("sector_health")
-    .select("*, sectors!inner(name, yf_ticker, sector_type)")
-    .order("date", { ascending: false })
-    .limit(28); // latest rows for all sectors, filter client-side
-
 // ── Portfolio Summary ─────────────────────────────────────────────────────────
 export const fetchPortfolioSummary = () =>
   supabase
-    .from("classifier")
-    .select("composite_score, composite_tier, companies(name, ticker)")
+    .from("company_insights")
+    .select("company_id,final_score,class,companies(name,ticker)")
     .order("date", { ascending: false })
-    .limit(400);
+    .limit(600);
 
 // ── Pipeline Log ──────────────────────────────────────────────────────────────
 export const fetchPipelineLog = (limit = 100) =>
@@ -229,14 +240,14 @@ export const checkTickersInDB = async (tickers) => {
     let scoreMap = new Map();
     if (companyIds.length > 0) {
       const { data: clsData } = await supabase
-        .from("classifier")
-        .select("company_id, composite_score, composite_tier, date")
+        .from("company_insights")
+        .select("company_id,final_score,date")
         .in("company_id", companyIds)
         .order("date", { ascending: false })
-        .limit(companyIds.length * 2); // fetch recent rows, deduplicate below
+        .limit(companyIds.length * 2);
       for (const row of (clsData || [])) {
         if (!scoreMap.has(row.company_id)) {
-          scoreMap.set(row.company_id, row.composite_score);
+          scoreMap.set(row.company_id, row.final_score);
         }
       }
     }
