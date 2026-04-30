@@ -12,6 +12,7 @@ import LiveMarketBar from "../components/ui/LiveMarketBar";
 import { useAppData } from "../context/AppDataContext";
 import { useChartTheme } from "../hooks/useChartTheme";
 import { fetchSectorHealthHistory, fetchSectorMetricsHistory } from "../lib/api";
+import { adaptSectorHealthRow } from "../lib/adapter";
 
 /* ── Sector type filter tabs ─────────────────────────────────────────────── */
 const FILTERS = [
@@ -36,8 +37,8 @@ export default function Sectors() {
       fetchSectorHealthHistory(selected, 90),
       fetchSectorMetricsHistory(selected, 90),
     ]).then(([h, m]) => {
-      setHealthHistory(h.data || []);
-      setMetricsHistory(m.data || []);
+      setHealthHistory((h.data || []).map(adaptSectorHealthRow));
+      setMetricsHistory((m.data || []).map(adaptSectorHealthRow));
     }).finally(() => setDetailLoading(false));
   }, [selected]);
 

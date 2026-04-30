@@ -145,10 +145,76 @@ export function adaptCorrelationToTopSectors(corrRows) {
 }
 
 /**
- * Wraps correlation rows into the shape CompanyDetail expects:
- * topSec[0].top_sectors = [...] (array of sector objects)
+ * adaptSectorHealthRow
+ * Maps new sector_health schema → fields UI expects.
+ * New schema has: health_score, composite, ret_z, z_change, volatility,
+ *                 spike_up, spike_down, daily_return, cum_change_1m etc.
+ * UI expects:     signal, regime, market_phase, trend, vol_z, momentum_z,
+ *                 slope_z, close
  */
-export function adaptCorrelationForTopSecState(corrRows) {
+export function adaptSectorHealthRow(row) {
+  if (!row) return null;
+  const hs = safeNumber(row.health_score, 50);
+  const comp = safeNumber(row.composite, 0);
+  const rz = safeNumber(row.ret_z, 0);
+
+  // Derive signal from health_score
+  const signal = hs >= 75 ? "STRONG" : hs >= 50 ? "NEUTRAL" : hs >= 25 ? "WATCH" : "WEAK";
+
+  // Derive regime from composite z-score
+  const regime = comp > 0.5 ? "BULL" : comp < -0.5 ? "BEAR" : "NEUTRAL";
+
+  // Derive trend from z_change direction
+  const zChange = safeNumber(row.z_change, 0);
+  const trend = zChange > 0.1 ? "Upward" : zChange < -0.1 ? "Downward" : "Sideways";
+
+  return {
+    ...row,
+    // Derived fields UI expects
+    signal,
+    regime,
+    trend,
+    market_phase: null,
+    // Field aliases
+    vol_z:      safeNumber(row.volatility),   // volatility → vol_z
+    momentum_z: safeNumber(row.cum_z_change), // cum_z_change → momentum_z
+    slope_z:    safeNumber(row.z_change),     // z_change → slope_z
+    close:      row.close ?? null,
+    // Keep originals
+    health_score: hs,
+    composite:    comp,
+    ret_z:        rz,
+  };
+}
+
+/**
+ * adaptOhlcvHealthRow
+ * Maps new ohlcv_health schema → fields UI expects.
+ * Same derivation logic as sector health.
+ */
+export function adaptOhlcvHealthRow(row) {
+  if (!row) return null;
+  const hs = safeNumber(row.health_score, 50);
+  const comp = safeNumber(row.composite, 0);
+  const zChange = safeNumber(row.z_change, 0);
+
+  const signal = hs >= 75 ? "STRONG" : hs >= 50 ? "NEUTRAL" : hs >= 25 ? "WATCH" : "WEAK";
+  const regime = comp > 0.5 ? "BULL" : comp < -0.5 ? "BEAR" : "NEUTRAL";
+  const trend  = zChange > 0.1 ? "Upward" : zChange < -0.1 ? "Downward" : "Sideways";
+
+  return {
+    ...row,
+    signal,
+    regime,
+    trend,
+    vol_z:      safeNumber(row.volatility),
+    momentum_z: safeNumber(row.cum_z_change),
+    slope_z:    safeNumber(row.z_change),
+    close:      row.close ?? null,
+    health_score: hs,
+    composite:    comp,
+  };
+}
   const topSectors = adaptCorrelationToTopSectors(corrRows);
   if (!topSectors.length) return [];
   return [{ top_sectors: topSectors, date: corrRows[0]?.date }];

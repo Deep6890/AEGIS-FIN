@@ -9,6 +9,7 @@ import LiveMarketBar from "../components/ui/LiveMarketBar";
 import { useAppData } from "../context/AppDataContext";
 import { useChartTheme } from "../hooks/useChartTheme";
 import { fetchMacroOverlay, fetchLatestSectorMetrics } from "../lib/api";
+import { adaptSectorHealthRow } from "../lib/adapter";
 
 function CompanyRow({ rank, name, ticker, score, companyId }) {
   const pct = Math.min(100, score || 0);
@@ -55,7 +56,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchMacroOverlay(60).then(r => setMacroHistory(r.data || []));
-    fetchLatestSectorMetrics().then(r => setSectorMetrics(r.data || []));
+    fetchLatestSectorMetrics().then(r => setSectorMetrics((r.data || []).map(adaptSectorHealthRow)));
   }, []);
 
   const macroChartData = macroHistory.slice(-30).map(r => ({ date: r.date?.slice(5), score: parseFloat(r.health_score?.toFixed(2) || 0) }));

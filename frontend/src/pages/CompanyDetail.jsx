@@ -15,7 +15,7 @@ import {
   fetchHoldingMetrics, fetchMlPredictions, fetchTopSectors, fetchFeatureStore,
   fetchCompanyOHLCVHistory, fetchSectorOHLCVHistory
 } from "../lib/api";
-import { adaptInsightRow, adaptBalanceSheetRow, adaptHoldingRow, adaptCorrelationForTopSecState } from "../lib/adapter";
+import { adaptInsightRow, adaptBalanceSheetRow, adaptHoldingRow, adaptCorrelationForTopSecState, adaptOhlcvHealthRow } from "../lib/adapter";
 
 const TAB_ICONS = { metrics: Activity, balance: BarChart2, holdings: Users, sectors: TrendingUp, features: ShieldAlert };
 
@@ -66,7 +66,7 @@ export default function CompanyDetail() {
       fetchHoldingMetrics(id), fetchMlPredictions(id), fetchTopSectors(id), fetchFeatureStore(id),
     ]).then(([c, m, b, h, ml_, ts, fs]) => {
       setCompany(c.data);
-      setMetrics((m.data || []).reverse());
+      setMetrics((m.data || []).map(adaptOhlcvHealthRow).reverse());
       // Adapt balance sheet rows to UI-expected shape
       setBalance((b.data || []).map(adaptBalanceSheetRow));
       // Adapt holding rows to UI-expected shape

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { fetchCompanies, fetchSectors, fetchLatestSectorHealth, fetchAllMlPredictions } from "../lib/api";
-import { adaptInsightRow } from "../lib/adapter";
+import { adaptInsightRow, adaptSectorHealthRow } from "../lib/adapter";
 import { useAuth } from "./AuthContext";
 
 const AppDataContext = createContext(null);
@@ -41,7 +41,7 @@ export function AppDataProvider({ children }) {
 
         setCompanies(c.data || []);
         setSectors(s.data || []);
-        setSectorHealth(sh.data || []);
+        setSectorHealth((sh.data || []).map(adaptSectorHealthRow));
         setMlSummary(ml.data || []);
 
         // Build macro from latest sector_health where sector_type = macro
