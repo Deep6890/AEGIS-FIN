@@ -214,39 +214,6 @@ export const fetchHoldingInsights = (companyId) =>
     .order("period", { ascending: false })
     .limit(1);
 
-// ── Classifier → now company_insights ────────────────────────────────────────
-export const fetchMlPredictions = (companyId) =>
-  supabase
-    .from("company_insights")
-    .select("*")
-    .eq("company_id", companyId)
-    .order("date", { ascending: false })
-    .limit(30);
-
-export const fetchAllMlPredictions = () =>
-  supabase
-    .from("company_insights")
-    .select("company_id,date,final_score,insight_score,class,momentum,risk,strength,summary,companies(name,ticker)")
-    .order("date", { ascending: false })
-    .limit(600);
-
-// ── Feature Store (from company_insights dimensions) ─────────────────────────
-export const fetchFeatureStore = (companyId) =>
-  supabase
-    .from("company_insights")
-    .select("date,final_score,trend_score,fundamental_score,sentiment_score,sector_alignment_score,class")
-    .eq("company_id", companyId)
-    .order("date", { ascending: false })
-    .limit(30);
-
-// ── Portfolio Summary ─────────────────────────────────────────────────────────
-export const fetchPortfolioSummary = () =>
-  supabase
-    .from("company_insights")
-    .select("company_id,final_score,class,companies(name,ticker)")
-    .order("date", { ascending: false })
-    .limit(600);
-
 // ── Macro Overlay (from sector_health where sector_type = macro) ──────────────
 export const fetchMacroOverlay = (days = 90) =>
   supabase
