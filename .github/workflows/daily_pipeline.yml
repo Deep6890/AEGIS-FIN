@@ -2,21 +2,18 @@ name: Daily AEGIS-FIN Pipeline
 
 on:
   schedule:
-    # 13:00 UTC = 18:30 IST (after NSE market close), weekdays only
-    - cron: "0 13 * * 1-5"
-  workflow_dispatch:  # allow manual trigger from GitHub UI
+    - cron: "0 13 * * 1-5"   # 13:00 UTC = 18:30 IST, weekdays only
+  workflow_dispatch:           # manual trigger from GitHub UI
 
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # 6 hours max
+    timeout-minutes: 360
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
@@ -26,10 +23,11 @@ jobs:
         run: pip install -r requirements.txt
         working-directory: backend
 
-      - name: Run pipeline (--once exits after single run)
+      - name: Run pipeline
         env:
           SUPABASE_URL:  ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY:  ${{ secrets.SUPABASE_KEY }}
           STORE_BACKEND: supabase
+          AEGIS_LOG_FORMAT: json
         run: python scheduler.py --run-now --once
         working-directory: backend
