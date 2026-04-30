@@ -30,11 +30,8 @@ if _env.exists():
                 os.environ.setdefault(k.strip(), v.strip())
 
 # ── Path setup ────────────────────────────────────────────────────────────────
-_services = str(_here / "Services")
-_logic    = str(_here / "Services" / "LogicEngine")
-for _p in [_services, _logic]:
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+if str(_here) not in sys.path:
+    sys.path.insert(0, str(_here))
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -105,8 +102,8 @@ def _log_run(client, status: str, detail: dict, duration_s: float):
 
 def run_pipeline():
     from supabase import create_client
-    from LogicEngine.pipelines import ingest_ohlcv, ohlcv_pipeline, correlation_pipeline
-    from LogicEngine.pipelines import fundamental_pipeline
+    from app.pipelines import ingest_ohlcv, ohlcv_pipeline, correlation_pipeline
+    from app.pipelines import fundamental_pipeline
 
     url = os.environ["SUPABASE_URL"]
     key = os.environ["SUPABASE_KEY"]

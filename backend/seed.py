@@ -28,8 +28,7 @@ if _env.exists():
                 os.environ.setdefault(k.strip(), v.strip())
 
 # ── Path setup ────────────────────────────────────────────────────────────────
-sys.path.insert(0, str(_here / "Services"))
-sys.path.insert(0, str(_here / "Services" / "LogicEngine"))
+sys.path.insert(0, str(_here))
 
 from supabase import create_client
 
@@ -41,7 +40,7 @@ if not url or not key:
 
 client = create_client(url, key)
 
-CSV_PATH = _here / "Services" / "sme_companies_loan_analysis.csv"
+CSV_PATH = _here / "data" / "sme_companies_loan_analysis.csv"
 
 # =============================================================================
 # Step 1: Verify sectors exist
