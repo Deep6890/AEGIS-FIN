@@ -309,3 +309,35 @@ INSERT INTO sectors (name, yf_ticker, sector_type) VALUES
   ('USD-INR',       'INR=X',      'macro'),
   ('India VIX',     '^INDIAVIX',  'macro')
 ON CONFLICT (name) DO NOTHING;
+
+
+-- =============================================================================
+-- 8.  COMPANY INSIGHTS  (daily — classifier + insight outputs)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS company_insights (
+    company_id              UUID          NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    date                    DATE          NOT NULL,
+    insight_score           NUMERIC(6,2),
+    final_score             NUMERIC(6,2),
+    class                   TEXT,
+    trend_score             NUMERIC(6,2),
+    fundamental_score       NUMERIC(6,2),
+    sentiment_score         NUMERIC(6,2),
+    sector_alignment_score  NUMERIC(6,2),
+    momentum                NUMERIC(6,2),
+    risk                    NUMERIC(6,2),
+    strength                NUMERIC(6,2),
+    summary                 TEXT,
+    created_at              TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (company_id, date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_insights_company_date  ON company_insights (company_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_insights_score         ON company_insights (insight_score DESC);
+CREATE INDEX IF NOT EXISTS idx_insights_class         ON company_insights (class);
+
+-- Allow anon read for frontend
+ALTER TABLE company_insights ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_company_insights" ON company_insights;
+CREATE POLICY "anon_read_company_insights" ON company_insights FOR SELECT USING (true);

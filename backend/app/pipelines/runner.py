@@ -1,5 +1,6 @@
 from app.pipelines.db import _client
 from app.pipelines import ingest_ohlcv, ohlcv_pipeline, correlation_pipeline
+from app.pipelines import classifier_pipeline
 
 
 def _companies() -> list[dict]:
@@ -140,9 +141,18 @@ def run_daily() -> dict:
             label=co["ticker"],
         ))
 
+    # ── Classifier + Insights ─────────────────────────────────────────────────
+    clf = []
+    for co in companies:
+        clf.append(_safe_run(
+            lambda cid=co["id"]: classifier_pipeline.run(cid),
+            label=co["ticker"],
+        ))
+
     return {
         "ingest":      ingest,
         "health_sec":  health_sec,
         "health_co":   health_co,
         "correlation": corr,
+        "classifier":  clf,
     }
