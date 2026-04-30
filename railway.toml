@@ -1,8 +1,0 @@
-[build]
-builder = "nixpacks"
-buildCommand = "pip install -r backend/requirements.txt --prefer-binary --no-cache-dir"
-
-[deploy]
-startCommand = "cd backend && python scheduler.py"
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10
