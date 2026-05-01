@@ -527,14 +527,13 @@ export function AppDataProvider({ children }) {
   }, []);
 
   const fetchBalanceSheetHistory = useCallback(async (companyId, ratioId) => {
-    // balance_sheet_hist: company_id, ratio_id, date, value
-    const q = supabase
+    let q = supabase
       .from("balance_sheet_hist")
       .select("ratio_id, date, value")
       .eq("company_id", companyId)
       .order("date", { ascending: true })
       .limit(40);
-    if (ratioId != null) q.eq("ratio_id", ratioId);
+    if (ratioId != null) q = q.eq("ratio_id", ratioId);
     const { data, error } = await q;
     if (error) console.error("balance_sheet_hist:", error);
     return data || [];

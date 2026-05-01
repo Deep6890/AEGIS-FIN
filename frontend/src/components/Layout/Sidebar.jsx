@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Building2, TrendingUp, GitBranch,
   Brain, Globe, ShieldAlert, Sun, Moon, LogOut,
-  User, Upload, Activity, Stethoscope, BarChart3, Zap, Compass,
+  User, Upload, Activity, Stethoscope,
   MoreHorizontal, X
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
@@ -11,14 +11,13 @@ import { useAuth } from "../../context/AuthContext";
 
 // Primary nav — always visible in sidebar
 const NAV_PRIMARY = [
-  { to: "/",                    icon: LayoutDashboard, label: "Dashboard"      },
-  { to: "/companies",           icon: Building2,       label: "Companies"      },
-  { to: "/sectors",             icon: TrendingUp,      label: "Sectors"        },
-  { to: "/correlation",         icon: GitBranch,       label: "Correlation"    },
-  { to: "/risk-engine",         icon: Brain,           label: "Risk Engine"    },
-  { to: "/macro",               icon: Globe,           label: "Macro Overlay"  },
-  { to: "/balance",             icon: ShieldAlert,     label: "Balance Sheet"  },
-  { to: "/market-intelligence", icon: BarChart3,       label: "Market Intel"   },
+  { to: "/",            icon: LayoutDashboard, label: "Dashboard"      },
+  { to: "/companies",   icon: Building2,       label: "Companies"      },
+  { to: "/sectors",     icon: TrendingUp,      label: "Sectors"        },
+  { to: "/correlation", icon: GitBranch,       label: "Correlation"    },
+  { to: "/risk-engine", icon: Brain,           label: "Risk Engine"    },
+  { to: "/macro",       icon: Globe,           label: "Macro Overlay"  },
+  { to: "/balance",     icon: ShieldAlert,     label: "Balance Sheet"  },
 ];
 
 // Secondary nav — shown in "More" flyout panel

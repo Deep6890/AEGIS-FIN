@@ -6,8 +6,8 @@ import PageLayout from "../components/Layout/PageLayout";
 const TABLES = [
   "companies","sectors","ratio_definitions","holding_metric_definitions",
   "ohlcv_raw","sector_ohlcv_raw","ohlcv_health","sector_health",
-  "balance_sheet_ratios","balance_sheet_hist","stock_holding",
-  "correlation","classifier","pipeline_log","user_profiles","csv_sessions",
+  "balance_sheet_scores","balance_sheet_hist","holding_scores",
+  "correlation_scores","company_insights","pipeline_log","user_profiles","csv_sessions",
 ];
 
 const RLS_SQL = `-- Paste in Supabase → SQL Editor → Run
@@ -19,11 +19,11 @@ ALTER TABLE ohlcv_raw              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sector_ohlcv_raw       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ohlcv_health           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sector_health          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE balance_sheet_ratios   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE balance_sheet_scores   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE balance_sheet_hist     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE stock_holding          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE correlation            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE classifier             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE holding_scores         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE correlation_scores     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE company_insights       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pipeline_log           ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "anon_read_companies"    ON companies             FOR SELECT USING (true);
@@ -34,11 +34,11 @@ CREATE POLICY "anon_read_ohlcv"        ON ohlcv_raw             FOR SELECT USING
 CREATE POLICY "anon_read_sector_ohlcv" ON sector_ohlcv_raw      FOR SELECT USING (true);
 CREATE POLICY "anon_read_ohlcv_health" ON ohlcv_health          FOR SELECT USING (true);
 CREATE POLICY "anon_read_sector_health"ON sector_health         FOR SELECT USING (true);
-CREATE POLICY "anon_read_bs_ratios"    ON balance_sheet_ratios  FOR SELECT USING (true);
+CREATE POLICY "anon_read_bs_scores"    ON balance_sheet_scores  FOR SELECT USING (true);
 CREATE POLICY "anon_read_bs_hist"      ON balance_sheet_hist    FOR SELECT USING (true);
-CREATE POLICY "anon_read_stock_holding"ON stock_holding         FOR SELECT USING (true);
-CREATE POLICY "anon_read_correlation"  ON correlation           FOR SELECT USING (true);
-CREATE POLICY "anon_read_classifier"   ON classifier            FOR SELECT USING (true);
+CREATE POLICY "anon_read_holding"      ON holding_scores        FOR SELECT USING (true);
+CREATE POLICY "anon_read_corr"         ON correlation_scores    FOR SELECT USING (true);
+CREATE POLICY "anon_read_insights"     ON company_insights      FOR SELECT USING (true);
 CREATE POLICY "anon_read_pipeline_log" ON pipeline_log          FOR SELECT USING (true);`;
 
 export default function Diagnostics() {

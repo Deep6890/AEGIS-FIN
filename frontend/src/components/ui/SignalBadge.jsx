@@ -34,5 +34,5 @@ export default function SignalBadge({ value }) {
   if (!value) return <span className="badge badge-gray">—</span>;
   const cls   = MAP[value] || "badge-gray";
   const label = LABELS[value] || value;
-  return <span className={cls}>{label}</span>;
+  return <span className={`badge ${cls}`}>{label}</span>;
 }

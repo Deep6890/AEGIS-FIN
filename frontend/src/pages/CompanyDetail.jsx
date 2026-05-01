@@ -134,7 +134,7 @@ export default function CompanyDetail() {
   const tier     = latestMl?.composite_tier || null;
   const grade    = latestMl?.composite_grade || null;
   const scoreColor = score != null ? (score >= 70 ? "text-[#00B341]" : score >= 40 ? "text-[#FFC224]" : "text-[#FF3B30]") : "text-[var(--text-3)]";
-  const tabs = ["metrics","balance","holdings","sectors","features"];
+  const tabs = ["metrics","balance","holdings","ml","sectors","features"];
   const bsCategories = [...new Set(balance.map(r => r.ratio_definitions?.category || "Other"))].filter(Boolean);
   const latestBs = {};
   balance.forEach(r => { const name = r.ratio_definitions?.name || "Ratio"; if (!latestBs[name]) latestBs[name] = r; });

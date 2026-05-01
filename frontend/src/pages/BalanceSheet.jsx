@@ -6,6 +6,7 @@ import LoadingSpinner from "../components/ui/LoadingSpinner";
 import EmptyState from "../components/ui/EmptyState";
 import { useAppData } from "../context/AppDataContext";
 import { fetchBalanceSheet } from "../lib/api";
+import { adaptBalanceSheetRow } from "../lib/adapter";
 
 const RATIO_ICONS = {
   "Gross Margin %": Percent, "Net Profit Margin %": Percent, "EBITDA Margin %": Percent,
@@ -33,7 +34,7 @@ export default function BalanceSheet() {
   useEffect(() => {
     if (!selectedCompany) return;
     setLoading(true);
-    fetchBalanceSheet(selectedCompany).then(res => setRatios(res.data || [])).finally(() => setLoading(false));
+    fetchBalanceSheet(selectedCompany).then(res => setRatios((res.data || []).map(adaptBalanceSheetRow))).finally(() => setLoading(false));
   }, [selectedCompany]);
 
   const selectedComp = companies.find(c => c.id === selectedCompany);

@@ -4,7 +4,7 @@ import {
   Layers, Database, Play, ChevronDown, ChevronRight, Terminal,
   Building2, TrendingUp, Brain, GitBranch, ShieldAlert, Users, Globe
 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import PageLayout from "../components/Layout/PageLayout";
 import { PageSkeleton } from "../components/ui/LoadingSpinner";
 import EmptyState from "../components/ui/EmptyState";
@@ -63,22 +63,22 @@ export default function PipelineMonitor() {
     try {
       // Get real counts from DB
       const [
-        classifierRes, correlationRes, ohlcvHealthRes,
+        insightsRes, correlationRes, ohlcvHealthRes,
         sectorHealthRes, bsRatiosRes, holdingRes
       ] = await Promise.all([
-        supabase.from("classifier").select("*", { count: "exact", head: true }),
-        supabase.from("correlation").select("*", { count: "exact", head: true }),
+        supabase.from("company_insights").select("*", { count: "exact", head: true }),
+        supabase.from("correlation_scores").select("*", { count: "exact", head: true }),
         supabase.from("ohlcv_health").select("*", { count: "exact", head: true }),
         supabase.from("sector_health").select("*", { count: "exact", head: true }),
-        supabase.from("balance_sheet_ratios").select("*", { count: "exact", head: true }),
-        supabase.from("stock_holding").select("*", { count: "exact", head: true }),
+        supabase.from("balance_sheet_scores").select("*", { count: "exact", head: true }),
+        supabase.from("holding_scores").select("*", { count: "exact", head: true }),
       ]);
 
-      // Get latest classifier run date
-      const latestRun = await supabase.from("classifier").select("date").order("date", { ascending: false }).limit(1);
+      // Get latest insights run date
+      const latestRun = await supabase.from("company_insights").select("date").order("date", { ascending: false }).limit(1);
 
       setDbStats({
-        classifierRows:   classifierRes.count || 0,
+        classifierRows:   insightsRes.count || 0,
         correlationRows:  correlationRes.count || 0,
         ohlcvHealthRows:  ohlcvHealthRes.count || 0,
         sectorHealthRows: sectorHealthRes.count || 0,
@@ -194,7 +194,7 @@ export default function PipelineMonitor() {
                   <Tooltip {...ct.tooltip} />
                   <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={44}>
                     {bucketData.map((b, i) => (
-                      <rect key={i} fill={b.fill} />
+                      <Cell key={i} fill={b.fill} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -302,13 +302,13 @@ export default function PipelineMonitor() {
           </div>
           <div className="mt-3 insight-box">
             <p className="text-xs">
-              <span className="font-bold">Schema:</span> New v2 schema uses{" "}
-              <code className="font-mono">classifier</code>,{" "}
-              <code className="font-mono">correlation</code>,{" "}
+              <span className="font-bold">Schema:</span> Tables used:{" "}
+              <code className="font-mono">company_insights</code>,{" "}
+              <code className="font-mono">correlation_scores</code>,{" "}
               <code className="font-mono">ohlcv_health</code>,{" "}
               <code className="font-mono">sector_health</code>,{" "}
-              <code className="font-mono">balance_sheet_ratios</code>,{" "}
-              <code className="font-mono">stock_holding</code>.
+              <code className="font-mono">balance_sheet_scores</code>,{" "}
+              <code className="font-mono">holding_scores</code>.
               Make sure <code className="font-mono">.env</code> has <code className="font-mono">SUPABASE_URL</code> and <code className="font-mono">SUPABASE_KEY</code>.
             </p>
           </div>
