@@ -3,51 +3,32 @@ import { supabase } from "../lib/supabase";
 
 const AuthContext = createContext(null);
 
+const IS_LOCAL =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
+
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user,    setUser]    = useState(IS_LOCAL ? { id: "local-dev", email: "dev@localhost" } : null);
+  const [loading, setLoading] = useState(!IS_LOCAL);
 
   useEffect(() => {
-    // ── Localhost bypass ──────────────────────────────────────────────────
-    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-      setUser({ id: "local-dev", email: "dev@localhost" });
-      setLoading(false);
-      return;
-    }
-    // ── Production auth ───────────────────────────────────────────────────
+    if (IS_LOCAL) return; // skip Supabase auth on localhost
+
+    supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user ?? null);
       setLoading(false);
     });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      const u = session?.user ?? null;
-      setUser(u);
-      // Ensure user_profiles row exists (fallback if DB trigger didn't fire)
-      if (u) _ensureProfile(u);
+      setUser(session?.user ?? null);
     });
+
     return () => subscription.unsubscribe();
   }, []);
 
-  /** Upsert user_profiles row — skip silently if table doesn't exist */
-  async function _ensureProfile(u) {
-    // Silently skip — user_profiles table may not exist in this deployment
-    return;
-  }
-
-  const signIn = (email, password) =>
-    supabase.auth.signInWithPassword({ email, password });
-
-  const signUp = (email, password, metadata = {}) =>
-    supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          role:      metadata.role      || "analyst",
-          interests: metadata.interests || [],
-        },
-      },
-    });
-
+  const signIn  = (email, password) => supabase.auth.signInWithPassword({ email, password });
+  const signUp  = (email, password, metadata = {}) =>
+    supabase.auth.signUp({ email, password, options: { data: { role: metadata.role || "analyst" } } });
   const signOut = () => supabase.auth.signOut();
 
   return (
