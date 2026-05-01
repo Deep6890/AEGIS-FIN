@@ -43,8 +43,8 @@ function DiagnosticsRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login"  element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
+      <Route path="/login"  element={IS_LOCAL ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/signup" element={IS_LOCAL ? <Navigate to="/" replace /> : <Signup />} />
 
       <Route path="/"              element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/companies"     element={<ProtectedRoute><Companies /></ProtectedRoute>} />
