@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider }   from "./context/ThemeContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { AppDataProvider } from "./context/AppDataContext";
-import { supabase } from "./lib/supabase";
 
 import Login           from "./pages/Login";
 import Signup          from "./pages/Signup";
@@ -15,18 +14,16 @@ import Correlation     from "./pages/Correlation";
 import RiskEngine      from "./pages/RiskEngine";
 import MacroOverlay    from "./pages/MacroOverlay";
 import BalanceSheet    from "./pages/BalanceSheet";
-import EnhancedBalanceSheet from "./pages/EnhancedBalanceSheet";
-import EnhancedStockHolding from "./pages/EnhancedStockHolding";
-import FilteringClassification from "./pages/FilteringClassification";
-import MarketIntelligence from "./pages/MarketIntelligence";
-import SectorIntelligence from "./pages/SectorIntelligence";
-import CorrelationExplorer from "./pages/CorrelationExplorer";
 import Profile         from "./pages/Profile";
 import UploadCSV       from "./pages/UploadCSV";
 import PipelineMonitor from "./pages/PipelineMonitor";
 import Diagnostics     from "./pages/Diagnostics";
 
-/* ── Protected route — requires auth ─────────────────────────────────────── */
+const IS_LOCAL =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
+
+/* ── Protected route ─────────────────────────────────────────────────────── */
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -34,38 +31,12 @@ function ProtectedRoute({ children }) {
   return <AppDataProvider>{children}</AppDataProvider>;
 }
 
-/* ── Diagnostics-only route — requires auth (dev/admin access) ───────────── */
+/* ── Diagnostics route — always allowed on localhost ─────────────────────── */
 function DiagnosticsRoute({ children }) {
   const { user, loading } = useAuth();
-  const [allowed, setAllowed] = React.useState(null); // null = checking
-
-  React.useEffect(() => {
-    if (!user) { setAllowed(false); return; }
-
-    // Fast check: known dev domains or metadata role
-    const allowedDomains = ["@aegisfin.in", "@admin.com"];
-    const fastAllow =
-      allowedDomains.some(d => user.email?.includes(d)) ||
-      user.app_metadata?.role === "admin" ||
-      user.user_metadata?.role === "developer";
-
-    if (fastAllow) { setAllowed(true); return; }
-
-    // Slow check: query user_profiles.is_admin from DB
-    supabase
-      .from("user_profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        setAllowed(data?.is_admin === true);
-      })
-      .catch(() => setAllowed(false));
-  }, [user]);
-
-  if (loading || allowed === null) return null;
+  if (IS_LOCAL) return <AppDataProvider>{children}</AppDataProvider>;
+  if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
-  if (!allowed) return <Navigate to="/" replace />;
   return <AppDataProvider>{children}</AppDataProvider>;
 }
 
