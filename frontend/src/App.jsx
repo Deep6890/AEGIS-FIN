@@ -83,12 +83,13 @@ function AppRoutes() {
       <Route path="/risk-engine"   element={<ProtectedRoute><RiskEngine /></ProtectedRoute>} />
       <Route path="/macro"         element={<ProtectedRoute><MacroOverlay /></ProtectedRoute>} />
       <Route path="/balance"       element={<ProtectedRoute><BalanceSheet /></ProtectedRoute>} />
-      <Route path="/enhanced-balance" element={<ProtectedRoute><EnhancedBalanceSheet /></ProtectedRoute>} />
-      <Route path="/enhanced-holdings" element={<ProtectedRoute><EnhancedStockHolding /></ProtectedRoute>} />
-      <Route path="/filtering"     element={<ProtectedRoute><FilteringClassification /></ProtectedRoute>} />
-      <Route path="/market-intelligence" element={<ProtectedRoute><MarketIntelligence /></ProtectedRoute>} />
-      <Route path="/sector-intelligence" element={<ProtectedRoute><SectorIntelligence /></ProtectedRoute>} />
-      <Route path="/correlation-explorer" element={<ProtectedRoute><CorrelationExplorer /></ProtectedRoute>} />
+      {/* Legacy redirects — merged pages */}
+      <Route path="/enhanced-balance"      element={<Navigate to="/balance" replace />} />
+      <Route path="/enhanced-holdings"     element={<Navigate to="/companies" replace />} />
+      <Route path="/filtering"             element={<Navigate to="/risk-engine" replace />} />
+      <Route path="/market-intelligence"   element={<Navigate to="/" replace />} />
+      <Route path="/sector-intelligence"   element={<Navigate to="/sectors" replace />} />
+      <Route path="/correlation-explorer"  element={<Navigate to="/correlation" replace />} />
       <Route path="/profile"       element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="/upload"        element={<ProtectedRoute><UploadCSV /></ProtectedRoute>} />
       <Route path="/pipeline"      element={<ProtectedRoute><PipelineMonitor /></ProtectedRoute>} />

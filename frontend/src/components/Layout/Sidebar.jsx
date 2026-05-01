@@ -23,14 +23,9 @@ const NAV_PRIMARY = [
 
 // Secondary nav — shown in "More" flyout panel
 const NAV_MORE = [
-  { to: "/enhanced-balance",    icon: ShieldAlert,  label: "Enhanced Balance"  },
-  { to: "/enhanced-holdings",   icon: Building2,    label: "Enhanced Holdings" },
-  { to: "/filtering",           icon: Brain,        label: "Filtering & Class" },
-  { to: "/sector-intelligence", icon: Zap,          label: "Sector Intel"      },
-  { to: "/correlation-explorer",icon: Compass,      label: "Correlation Exp"   },
-  { to: "/upload",              icon: Upload,        label: "Upload CSV"        },
-  { to: "/pipeline",            icon: Activity,      label: "Pipeline"          },
-  { to: "/diagnostics",         icon: Stethoscope,   label: "Diagnostics"       },
+  { to: "/upload",    icon: Upload,     label: "Upload CSV"  },
+  { to: "/pipeline",  icon: Activity,   label: "Pipeline"    },
+  { to: "/diagnostics", icon: Stethoscope, label: "Diagnostics" },
 ];
 
 function Tip({ label, children }) {
