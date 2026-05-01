@@ -1,370 +1,358 @@
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  BarChart, Bar, XAxis, YAxis, Cell, ResponsiveContainer,
-  Tooltip, LineChart, Line,
+  BarChart, Bar, XAxis, YAxis, Cell, LabelList,
+  ResponsiveContainer, Tooltip, LineChart, Line,
 } from "recharts";
 import { useAegisData } from "../context/AegisDataContext";
-import { ChevronRight, Activity, AlertTriangle } from "lucide-react";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-// PALETTE: Only terracotta tones. No red, no green.
-const C_CRITICAL = "#B84E28";   // terra-3 — darkest, most urgent
-const C_WATCH = "#D4613A";   // terra   — mid
-const C_HEALTHY = "#E07450";   // terra-2 — lightest / best
-const C_MUTED = "var(--ink-3)";
 
-function scoreColor(s) {
-  if (s == null) return C_MUTED;
-  if (s < 40) return C_CRITICAL;
-  if (s < 70) return C_WATCH;
-  return C_HEALTHY;
+export function scoreColor(s) {
+  if (s == null) return "var(--text-3)";
+  if (s < 40)   return "#EF4444";
+  if (s < 65)   return "var(--orange-2)";
+  return "var(--orange)";
 }
 
-function classBadge(cls) {
+export function classBadge(cls) {
   if (!cls) return "badge-gray";
-  const c = cls.toUpperCase();
-  if (c === "HIGH RISK" || c === "WEAK") return "badge-red";
-  if (c === "WATCHLIST" || c === "NEUTRAL") return "badge-amber";
-  if (c === "SAFE" || c === "STRONG") return "badge-green";
-  return "badge-gray";
+  const c = cls.toLowerCase();
+  if (c.includes("high") || c.includes("distress")) return "badge-red";
+  if (c.includes("weak") || c.includes("watch"))    return "badge-amber";
+  if (c.includes("neutral"))                         return "badge-gray";
+  return "badge-orange";
 }
 
-function fmt(v, dp = 1) { return v == null ? "—" : Number(v).toFixed(dp); }
-// cum_change_1y stored as raw % (not 0-1 fraction)
-function fmtPct(v) {
+function fmt(v, dp = 1) {
   if (v == null) return "—";
-  const n = Number(v);
-  return `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
+  return Number(v).toFixed(dp);
 }
 
-function MiniSparkline({ data, color }) {
-  if (!data || data.length < 3) return <div style={{ width: 52, height: 24 }} />;
-  return (
-    <ResponsiveContainer width={52} height={24}>
-      <LineChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 2 }}>
-        <Line type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} dot={false} isAnimationActive={false} />
-      </LineChart>
-    </ResponsiveContainer>
-  );
-}
+// ── Health Ring ────────────────────────────────────────────────────────────
 
-function ScoreBar({ value, max = 100 }) {
-  const w = value != null ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
+function HealthRing({ score, size = 64 }) {
+  const r = (size - 8) / 2;
+  const circ = 2 * Math.PI * r;
+  const pct = score != null ? Math.min(Math.max(score, 0), 100) : 0;
+  const offset = circ - (pct / 100) * circ;
+  const color = scoreColor(score);
   return (
-    <div style={{ height: 3, background: "var(--border)", borderRadius: 99, width: 56, overflow: "hidden" }}>
-      <div style={{ height: "100%", width: `${w}%`, background: scoreColor(value), borderRadius: 99, transition: "width .4s" }} />
-    </div>
+    <svg width={size} height={size} style={{ transform: "rotate(-90deg)", flexShrink: 0 }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth={6} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={6}
+        strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+        style={{ transition: "stroke-dashoffset 0.8s cubic-bezier(.34,1.56,.64,1)" }} />
+    </svg>
   );
 }
 
 // ── Skeleton ───────────────────────────────────────────────────────────────
+
 function Skel() {
   return (
     <div className="page-wrap animate-fade-in">
-      <div className="grid-4">{[...Array(4)].map((_, i) => <div key={i} className="skeleton" style={{ height: 120, borderRadius: 16 }} />)}</div>
-      <div className="grid-2">
-        <div className="skeleton" style={{ height: 220, borderRadius: 16 }} />
-        <div className="skeleton" style={{ height: 220, borderRadius: 16 }} />
-      </div>
-      <div className="skeleton" style={{ height: 300, borderRadius: 16 }} />
+      <div className="grid-4">{[...Array(4)].map((_, i) => <div key={i} className="skeleton" style={{ height: 90, borderRadius: 14 }} />)}</div>
+      <div className="grid-2">{[...Array(2)].map((_, i) => <div key={i} className="skeleton" style={{ height: 200, borderRadius: 14 }} />)}</div>
+      <div className="skeleton" style={{ height: 130, borderRadius: 14 }} />
+      <div className="grid-auto">{[...Array(5)].map((_, i) => <div key={i} className="skeleton" style={{ height: 90, borderRadius: 14 }} />)}</div>
     </div>
   );
 }
 
-// ── Score Band Bar Chart ───────────────────────────────────────────────────
-function ScoreBandChart({ insights }) {
-  const bands = useMemo(() => {
-    const b = { "0–20": 0, "20–40": 0, "40–60": 0, "60–80": 0, "80–100": 0 };
-    for (const i of insights) {
-      const s = i.final_score;
-      if (s == null) continue;
-      if (s < 20) b["0–20"]++;
-      else if (s < 40) b["20–40"]++;
-      else if (s < 60) b["40–60"]++;
-      else if (s < 80) b["60–80"]++;
-      else b["80–100"]++;
-    }
-    return Object.entries(b).map(([name, count]) => ({ name, count }));
-  }, [insights]);
-
-  const maxVal = Math.max(...bands.map(b => b.count), 1);
-
-  return (
-    <ResponsiveContainer width="100%" height={80}>
-      <BarChart data={bands} margin={{ top: 4, right: 0, left: 0, bottom: 0 }} barSize={28}>
-        <XAxis dataKey="name" tick={{ fontSize: 9, fill: "var(--ink-3)", fontWeight: 600 }} axisLine={false} tickLine={false} />
-        <YAxis hide domain={[0, maxVal + 1]} />
-        <Tooltip
-          cursor={{ fill: "rgba(0,0,0,.04)" }}
-          contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11, padding: "4px 10px" }}
-          formatter={v => [v, "companies"]}
-        />
-        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-          {bands.map(({ name }, i) => {
-            const mid = parseInt(name);
-            const color = mid < 40 ? C_CRITICAL : mid < 70 ? C_WATCH : C_HEALTHY;
-            return <Cell key={i} fill={color} />;
-          })}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
 // ── Main ───────────────────────────────────────────────────────────────────
+
 export default function PortfolioOverview() {
   const navigate = useNavigate();
   const { companies, portfolioInsights, sectorHealth, sectorHealthHistory, loading, errors } = useAegisData();
 
   const activeCount = (companies || []).length;
-  const scoredCount = (portfolioInsights || []).filter(i => i.final_score != null).length;
 
   const avgScore = useMemo(() => {
     const scores = (portfolioInsights || []).map(i => i.final_score).filter(s => s != null);
-    return scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+    if (!scores.length) return null;
+    return scores.reduce((a, b) => a + b, 0) / scores.length;
   }, [portfolioInsights]);
 
-  const criticalCount = useMemo(() => (portfolioInsights || []).filter(i => (i.final_score ?? 100) < 40).length, [portfolioInsights]);
-  const watchCount = useMemo(() => (portfolioInsights || []).filter(i => { const s = i.final_score; return s != null && s >= 40 && s < 70; }).length, [portfolioInsights]);
-  const sectorsCount = (sectorHealth || []).length;
-
-  const companyMap = useMemo(() => new Map((companies || []).map(c => [c.id, c])), [companies]);
-
-  // Top 10 priority (lowest score first)
-  const watchlist = useMemo(() =>
-    (portfolioInsights || [])
-      .filter(i => i.final_score != null)
-      .map(i => ({ ...i, co: companyMap.get(i.company_id) ?? null }))
-      .sort((a, b) => a.final_score - b.final_score)
-      .slice(0, 10),
-    [portfolioInsights, companyMap]
+  const highRiskCount = useMemo(() =>
+    (portfolioInsights || []).filter(i => {
+      const c = (i.class || "").toLowerCase();
+      return c.includes("high") || c.includes("distress");
+    }).length,
+    [portfolioInsights]
   );
 
-  // Verdicts feed
-  const verdicts = useMemo(() =>
-    (portfolioInsights || [])
-      .filter(i => i.summary?.trim() && i.final_score != null)
-      .map(i => ({ ...i, co: companyMap.get(i.company_id) ?? null }))
+  // Risk matrix data
+  const riskMatrix = useMemo(() => {
+    let critical = 0, watch = 0, safe = 0;
+    for (const i of portfolioInsights || []) {
+      const s = i.final_score;
+      if (s == null) continue;
+      if (s < 40) critical++;
+      else if (s < 65) watch++;
+      else safe++;
+    }
+    return [
+      { name: "Critical", count: critical, fill: "#EF4444" },
+      { name: "Watch",    count: watch,    fill: "#F06A3A" },
+      { name: "Safe",     count: safe,     fill: "rgba(232,87,42,0.5)" },
+    ];
+  }, [portfolioInsights]);
+
+  // Bottom 5 by score
+  const bottom5 = useMemo(() => {
+    const companyMap = new Map((companies || []).map(c => [c.id, c]));
+    return (portfolioInsights || [])
+      .filter(i => i.final_score != null)
+      .map(i => ({ ...i, company: companyMap.get(i.company_id) ?? null }))
       .sort((a, b) => a.final_score - b.final_score)
-      .slice(0, 6),
-    [portfolioInsights, companyMap]
+      .slice(0, 5);
+  }, [portfolioInsights, companies]);
+
+  // Risk verdicts feed
+  const verdicts = useMemo(() => {
+    const companyMap = new Map((companies || []).map(c => [c.id, c]));
+    return (portfolioInsights || [])
+      .filter(i => i.summary?.trim())
+      .map(i => ({ ...i, company: companyMap.get(i.company_id) ?? null }))
+      .sort((a, b) => (a.final_score ?? 999) - (b.final_score ?? 999));
+  }, [portfolioInsights, companies]);
+
+  // Sector health sorted
+  const sortedSectors = useMemo(() =>
+    [...(sectorHealth || [])].sort((a, b) => (b.health_score ?? 0) - (a.health_score ?? 0)),
+    [sectorHealth]
   );
 
   // Sector sparklines (last 30 days)
-  const sectorTrendMap = useMemo(() => {
+  const sparkMap = useMemo(() => {
     const map = new Map();
-    const cutStr = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+    const cutoffStr = cutoff.toISOString().split("T")[0];
     for (const row of sectorHealthHistory || []) {
-      if (row.date < cutStr) continue;
+      if (row.date < cutoffStr) continue;
       if (!map.has(row.sector_id)) map.set(row.sector_id, []);
       map.get(row.sector_id).push({ v: row.health_score });
     }
     return map;
   }, [sectorHealthHistory]);
 
-  const sortedSectors = useMemo(
-    () => [...(sectorHealth || [])].sort((a, b) => (a.health_score ?? 0) - (b.health_score ?? 0)),
-    [sectorHealth]
-  );
-
   if (loading.portfolio) return <Skel />;
 
   return (
     <div className="page-wrap animate-fade-in">
 
-      {/* ── HEADER ── */}
+      {/* Header */}
       <div>
-        <p className="page-eyebrow">AEGIS-FIN · PORTFOLIO COMMAND CENTER</p>
+        <p className="page-eyebrow">AEGIS-FIN · PORTFOLIO COMMAND</p>
         <h1 className="page-title">Portfolio Overview</h1>
-        <p className="page-subtitle">Post-disbursement NPA early warning across {activeCount} monitored SME loan accounts</p>
+        <p className="page-subtitle">Real-time NPA risk intelligence across {activeCount} monitored companies</p>
       </div>
 
-      {errors.portfolio && (
-        <div className="warning-strip"><span>⚠</span><span>{errors.portfolio}</span></div>
-      )}
+      {errors.portfolio && <div className="warning-strip"><span>⚠</span><span>{errors.portfolio}</span></div>}
 
-      {/* ── KPI ROW — big numbers ── */}
+      {/* KPI Row */}
       <div className="grid-4">
 
-        {/* Universe */}
+        {/* Health Ring KPI */}
+        <div className="card" style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <HealthRing score={avgScore} size={60} />
+            <div style={{
+              position: "absolute", inset: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 12, fontWeight: 800, color: scoreColor(avgScore),
+            }}>
+              {avgScore != null ? Math.round(avgScore) : "—"}
+            </div>
+          </div>
+          <div>
+            <p className="kpi-compact-label">Health Index</p>
+            <p style={{ fontSize: 11, color: "var(--text-2)", lineHeight: 1.5 }}>Portfolio avg<br />risk score</p>
+          </div>
+        </div>
+
         <div className="kpi-card">
-          <p className="kpi-compact-label">Universe</p>
-          <p style={{ fontSize: "3rem", fontWeight: 900, letterSpacing: "-.06em", lineHeight: 1.05, color: "var(--ink)" }}>{activeCount}</p>
-          <p className="kpi-compact-sub">companies tracked</p>
+          <p className="kpi-compact-label">Active Companies</p>
+          <p className="kpi-compact-value">{activeCount}</p>
+          <p className="kpi-compact-sub">monitored</p>
         </div>
 
-        {/* Scored */}
+        <div className={highRiskCount > 0 ? "kpi-card-danger" : "kpi-card"}>
+          <p className="kpi-compact-label">Critical Alerts</p>
+          <p className="kpi-compact-value" style={{ color: highRiskCount > 0 ? "#EF4444" : "var(--text)" }}>
+            {highRiskCount}
+          </p>
+          <p className="kpi-compact-sub">high risk companies</p>
+        </div>
+
         <div className="kpi-card">
-          <p className="kpi-compact-label">Scored</p>
-          <p style={{ fontSize: "3rem", fontWeight: 900, letterSpacing: "-.06em", lineHeight: 1.05, color: "var(--ink)" }}>{scoredCount}</p>
-          <p className="kpi-compact-sub">with NPA scores</p>
-        </div>
-
-        {/* Critical Risk */}
-        <div className="kpi-card" style={{
-          borderTop: criticalCount > 0 ? `3px solid ${C_CRITICAL}` : undefined,
-          background: criticalCount > 0 ? `rgba(184,78,40,.06)` : "var(--surface-2)",
-        }}>
-          <p className="kpi-compact-label" style={{ color: criticalCount > 0 ? C_CRITICAL : undefined }}>
-            Critical Risk
-          </p>
-          <p style={{ fontSize: "3rem", fontWeight: 900, letterSpacing: "-.06em", lineHeight: 1.05, color: criticalCount > 0 ? C_CRITICAL : "var(--ink)" }}>
-            {criticalCount}
-          </p>
-          <p className="kpi-compact-sub" style={{ color: criticalCount > 0 ? C_CRITICAL : undefined }}>
-            score &lt; 40 · immediate review
-          </p>
-        </div>
-
-        {/* Under Watch */}
-        <div className="kpi-card" style={{
-          borderTop: watchCount > 0 ? `3px solid ${C_WATCH}` : undefined,
-        }}>
-          <p className="kpi-compact-label">Under Watch</p>
-          <p style={{ fontSize: "3rem", fontWeight: 900, letterSpacing: "-.06em", lineHeight: 1.05, color: watchCount > 0 ? C_WATCH : "var(--ink)" }}>
-            {watchCount}
-          </p>
-          <p className="kpi-compact-sub">score 40–70 · monitor closely</p>
+          <p className="kpi-compact-label">Sectors Tracked</p>
+          <p className="kpi-compact-value">{sortedSectors.length}</p>
+          <p className="kpi-compact-sub">active sectors</p>
         </div>
 
       </div>
 
-      {/* ── PORTFOLIO HEALTH HERO + SCORE DISTRIBUTION ── */}
+      {/* Risk Matrix + Priority Risks */}
       <div className="grid-2">
 
-        {/* Big Health Score card */}
-        <div className="card" style={{ padding: "28px 28px 20px" }}>
-          <p className="kpi-compact-label">Portfolio Health</p>
-          <p style={{ fontSize: "5rem", fontWeight: 900, letterSpacing: "-.07em", lineHeight: 1, color: scoreColor(avgScore), margin: "8px 0" }}>
-            {avgScore != null ? fmt(avgScore, 1) : "—"}
-          </p>
-          <p style={{ fontSize: 12, color: "var(--ink-3)", marginBottom: 16 }}>avg composite score / 100</p>
-          {portfolioInsights.length > 0 && <ScoreBandChart insights={portfolioInsights} />}
+        <div className="card" style={{ padding: 16 }}>
+          <div className="section-header" style={{ marginBottom: 10 }}>
+            <span className="title-sm">Risk Priority Matrix</span>
+          </div>
+          {portfolioInsights.length === 0 ? (
+            <p className="muted" style={{ fontSize: 12, padding: "16px 0" }}>Run the pipeline to generate scores.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={130}>
+              <BarChart data={riskMatrix} layout="vertical" margin={{ top: 4, right: 36, left: 0, bottom: 4 }} barSize={18}>
+                <XAxis type="number" domain={[0, Math.max(...riskMatrix.map(d => d.count), 1) + 1]}
+                  tick={{ fontSize: 10, fill: "var(--text-3)" }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name"
+                  tick={{ fontSize: 11, fill: "var(--text-2)", fontWeight: 600 }}
+                  axisLine={false} tickLine={false} width={50} />
+                <Tooltip cursor={{ fill: "rgba(0,0,0,0.03)" }}
+                  contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11, padding: "5px 10px" }}
+                  formatter={v => [v, "companies"]} />
+                <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                  {riskMatrix.map((e, i) => <Cell key={i} fill={e.fill} />)}
+                  <LabelList dataKey="count" position="right" style={{ fontSize: 11, fontWeight: 700, fill: "var(--text)" }} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
-        {/* Sector distress */}
-        <div className="card" style={{ padding: "20px 22px" }}>
-          <div className="section-header" style={{ marginBottom: 12 }}>
-            <span className="title-sm">Sector Distress Signals</span>
-            <span className="muted" style={{ fontSize: 10, marginLeft: "auto" }}>{sectorsCount} sectors</span>
+        <div className="card" style={{ padding: 16 }}>
+          <div className="section-header" style={{ marginBottom: 10 }}>
+            <span className="title-sm">Top 5 Priority Risks</span>
           </div>
-          {sortedSectors.slice(0, 6).map((s, i) => {
-            const name = s?.sectors?.name ?? "—";
-            const score = s.health_score;
-            const color = scoreColor(score);
-            const spark = sectorTrendMap.get(s.sector_id) ?? [];
-            return (
-              <div key={s.sector_id ?? i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: i < 5 ? "1px solid var(--border)" : "none" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</p>
-                  <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
-                    {s.cum_change_1y != null && <span style={{ fontSize: 9, fontWeight: 700, color: Number(s.cum_change_1y) >= 0 ? C_HEALTHY : C_CRITICAL }}>{fmtPct(s.cum_change_1y)}</span>}
-                    {s.spike_down && <span style={{ fontSize: 8, fontWeight: 700, color: C_CRITICAL, textTransform: "uppercase" }}>↓ spike</span>}
-                  </div>
+          {bottom5.length === 0 ? (
+            <p className="muted" style={{ fontSize: 12, padding: "16px 0" }}>No score data available.</p>
+          ) : (
+            <div>
+              {bottom5.map((row, idx) => (
+                <div key={row.company_id ?? idx}
+                  onClick={() => row.company?.id && navigate(`/aegis/company/${row.company.id}`)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "7px 4px", cursor: "pointer",
+                    borderBottom: idx < bottom5.length - 1 ? "1px solid var(--border)" : "none",
+                    transition: "background 0.1s",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(232,87,42,0.03)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  <span style={{
+                    width: 20, height: 20, borderRadius: 6, flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 10, fontWeight: 700,
+                    background: row.final_score < 40 ? "rgba(239,68,68,0.1)" : "rgba(232,87,42,0.1)",
+                    color: row.final_score < 40 ? "#EF4444" : "var(--orange)",
+                  }}>{idx + 1}</span>
+                  <span className="ticker-chip">{row.company?.ticker ?? "—"}</span>
+                  <span style={{ flex: 1, fontSize: 11, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {row.company?.name ?? "—"}
+                  </span>
+                  <span style={{
+                    fontSize: 12, fontWeight: 700, flexShrink: 0,
+                    color: row.final_score < 40 ? "#EF4444" : "var(--orange)",
+                  }}>{fmt(row.final_score)}</span>
                 </div>
-                <MiniSparkline data={spark} color={color} />
-                <span style={{ fontSize: 14, fontWeight: 800, color, fontVariantNumeric: "tabular-nums", minWidth: 32, textAlign: "right" }}>{fmt(score)}</span>
-              </div>
-            );
-          })}
+              ))}
+            </div>
+          )}
         </div>
 
       </div>
 
-      {/* ── PRIORITY WATCHLIST TABLE ── */}
-      {watchlist.length > 0 && (
-        <div className="card" style={{ overflow: "hidden" }}>
-          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
-            <AlertTriangle size={15} style={{ color: C_CRITICAL, flexShrink: 0 }} />
-            <p className="title-sm">Priority NPA Watchlist</p>
-            <p className="muted" style={{ fontSize: 10 }}>· lowest score = highest NPA risk</p>
-            <button onClick={() => navigate("/aegis/companies")} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--terra)", background: "none", border: "none", cursor: "pointer" }}>
-              View all <ChevronRight size={12} />
-            </button>
-          </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  {["#", "Company", "NPA Class", "Score", "Trend", "Fundamental", "Momentum", "Risk", "Strength", "Verdict"].map(h => (
-                    <th key={h} className="th-base">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {watchlist.map((row, idx) => {
-                  const sc = row.final_score;
-                  return (
-                    <tr key={row.company_id ?? idx} className="tr-base" style={{ cursor: "pointer" }}
-                      onClick={() => row.co?.id && navigate(`/aegis/company/${row.co.id}`)}>
-                      <td className="td-base">
-                        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 6, fontSize: 10, fontWeight: 700, background: sc < 40 ? `rgba(184,78,40,.12)` : "var(--terra-soft)", color: scoreColor(sc) }}>
-                          {idx + 1}
-                        </span>
-                      </td>
-                      <td className="td-base" style={{ minWidth: 160 }}>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)" }}>{row.co?.name ?? "—"}</p>
-                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "var(--terra)", background: "var(--terra-soft)", borderRadius: 4, padding: "1px 6px" }}>{row.co?.ticker ?? "—"}</span>
-                      </td>
-                      <td className="td-base">
-                        {row.class ? <span className={`badge ${classBadge(row.class)}`} style={{ fontSize: 9 }}>{row.class}</span> : <span className="muted">—</span>}
-                      </td>
-                      <td className="td-base">
-                        <p style={{ fontSize: 16, fontWeight: 900, color: scoreColor(sc), letterSpacing: "-.04em", fontVariantNumeric: "tabular-nums" }}>{fmt(sc, 0)}</p>
-                        <ScoreBar value={sc} />
-                      </td>
-                      {[row.trend_score, row.fundamental_score, row.momentum, row.risk, row.strength].map((val, vi) => (
-                        <td key={vi} className="td-base">
-                          <p style={{ fontSize: 13, fontWeight: 700, color: scoreColor(val), fontVariantNumeric: "tabular-nums" }}>{fmt(val, 0)}</p>
-                          <ScoreBar value={val} />
-                        </td>
-                      ))}
-                      <td className="td-base" style={{ maxWidth: 180 }}>
-                        <span style={{ fontSize: 10, color: "var(--ink-2)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                          {row.summary ?? "—"}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── RISK VERDICTS FEED ── */}
+      {/* Risk Verdicts Feed */}
       {verdicts.length > 0 && (
         <div className="card-spotlight">
-          <div className="section-header" style={{ marginBottom: 12 }}>
-            <Activity size={14} style={{ color: "var(--terra)", flexShrink: 0 }} />
-            <span className="title-sm">System Risk Verdicts</span>
-            <span className="muted" style={{ fontSize: 10, marginLeft: "auto" }}>highest-risk accounts · auto-generated insights</span>
+          <div className="section-header" style={{ marginBottom: 10 }}>
+            <span className="title-sm">Risk Verdicts</span>
+            <span className="muted" style={{ fontSize: 10, marginLeft: "auto" }}>{verdicts.length} companies</span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <div style={{ maxHeight: 200, overflowY: "auto", scrollbarWidth: "thin" }}>
             {verdicts.map((row, idx) => (
-              <div key={row.company_id ?? idx} className="hover-row"
-                style={{ display: "flex", gap: 10, padding: "10px 8px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer" }}
-                onClick={() => row.co?.id && navigate(`/aegis/company/${row.co.id}`)}>
-                <div style={{ width: 6, borderRadius: 3, background: scoreColor(row.final_score), flexShrink: 0, alignSelf: "stretch" }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "var(--terra)", background: "var(--terra-soft)", borderRadius: 4, padding: "1px 6px" }}>{row.co?.ticker ?? "—"}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)" }}>{row.co?.name ?? "—"}</span>
-                    <span style={{ marginLeft: "auto", fontSize: 18, fontWeight: 900, color: scoreColor(row.final_score), letterSpacing: "-.05em" }}>{fmt(row.final_score, 0)}</span>
-                  </div>
-                  <p style={{ fontSize: 11, color: "var(--ink-2)", lineHeight: 1.55 }}>{row.summary}</p>
+              <div key={row.company_id ?? idx}
+                onClick={() => row.company?.id && navigate(`/aegis/company/${row.company.id}`)}
+                style={{
+                  display: "flex", alignItems: "flex-start", gap: 10,
+                  padding: "7px 4px", cursor: "pointer",
+                  borderBottom: idx < verdicts.length - 1 ? "1px solid var(--border)" : "none",
+                  transition: "background 0.1s",
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(232,87,42,0.03)"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <div style={{ width: 7, height: 7, borderRadius: "50%", background: scoreColor(row.final_score), marginTop: 5, flexShrink: 0 }} />
+                <span className="ticker-chip" style={{ flexShrink: 0, marginTop: 1 }}>{row.company?.ticker ?? "—"}</span>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text)", marginRight: 6 }}>{row.company?.name ?? "—"}</span>
+                  <span style={{ fontSize: 11, color: "var(--text-2)", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    {row.summary}
+                  </span>
                 </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: scoreColor(row.final_score), flexShrink: 0, marginTop: 1 }}>
+                  {fmt(row.final_score)}
+                </span>
               </div>
             ))}
           </div>
         </div>
       )}
 
+      {/* Sector Health Pulse Grid */}
+      {sortedSectors.length > 0 && (
+        <div>
+          <div className="section-header" style={{ marginBottom: 10 }}>
+            <span className="title-sm">Sector Health Pulse</span>
+            <span className="muted" style={{ fontSize: 10, marginLeft: "auto" }}>{sortedSectors.length} sectors</span>
+          </div>
+          <div className="grid-auto">
+            {sortedSectors.map(sector => {
+              const score = sector.health_score ?? 0;
+              const isHealthy = score >= 60;
+              const borderColor = isHealthy ? "var(--orange)" : "#EF4444";
+              const cum1y = sector.cum_change_1y;
+              const sparkData = sparkMap.get(sector.sector_id) ?? [];
+              return (
+                <div key={sector.sector_id} className="card" style={{ borderLeft: `3px solid ${borderColor}`, padding: "12px 14px" }}>
+                  <p className="kpi-compact-label" style={{ marginBottom: 4 }}>
+                    {sector?.sectors?.name ?? "—"}
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: "1.25rem", fontWeight: 800, letterSpacing: "-.04em", color: scoreColor(score), lineHeight: 1 }}>
+                      {fmt(score)}
+                    </span>
+                    {cum1y != null && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: cum1y >= 0 ? "var(--orange)" : "#EF4444" }}>
+                        {cum1y >= 0 ? "+" : ""}{fmt(cum1y, 1)}%
+                      </span>
+                    )}
+                  </div>
+                  {sparkData.length > 2 && (
+                    <ResponsiveContainer width="100%" height={26}>
+                      <LineChart data={sparkData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                        <Line type="monotone" dataKey="v" stroke={isHealthy ? "var(--orange)" : "#EF4444"} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
+                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                    {sector.volatility != null && <span className="muted" style={{ fontSize: 9 }}>vol {Number(sector.volatility).toFixed(3)}</span>}
+                    {sector.ret_z != null && <span className="muted" style={{ fontSize: 9 }}>z {Number(sector.ret_z).toFixed(1)}</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {portfolioInsights.length === 0 && activeCount > 0 && (
-        <div style={{ background: "var(--terra-soft)", border: "1px solid rgba(212,97,58,.15)", borderRadius: 10, padding: "12px 16px", fontSize: 12, color: "var(--ink-2)" }}>
-          ⚡ Pipeline not yet run — execute <code style={{ fontSize: 11 }}>scheduler.py --run-now --once</code> to generate NPA scores.
+        <div style={{ background: "rgba(232,87,42,0.05)", border: "1px solid rgba(232,87,42,0.12)", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "var(--text-2)" }}>
+          ⚡ Insight pipeline not yet run — run <code style={{ fontSize: 11 }}>scheduler.py --run-now --once</code> to generate scores.
         </div>
       )}
 

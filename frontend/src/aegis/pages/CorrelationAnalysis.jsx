@@ -15,10 +15,10 @@ function fmt(value, decimals) {
 }
 
 function corrColor(v) {
-  if (v === null || v === undefined) return "var(--text-3)";
-  if (v > 0.7) return "var(--orange)";
-  if (v < 0)   return "#EF4444";
-  return "var(--text-2)";
+  if (v === null || v === undefined) return "var(--ink-3)";
+  if (v > 0.7) return "var(--terra)";
+  if (v < 0)   return "var(--terra-3)";
+  return "var(--ink-2)";
 }
 
 export function buildDualAxisData(ohlcvRaw, sectorOhlcv) {
@@ -49,7 +49,7 @@ function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
-      <p style={{ color: "var(--text-2)", marginBottom: 3, fontSize: 11 }}>{label}</p>
+      <p style={{ color: "var(--ink-2)", marginBottom: 3, fontSize: 11 }}>{label}</p>
       {payload.map(e => (
         <p key={e.dataKey} style={{ color: e.color, margin: "2px 0", fontWeight: 600 }}>
           {e.name}: {e.value != null ? Number(e.value).toFixed(4) : "—"}
@@ -147,8 +147,8 @@ export default function CorrelationAnalysis() {
           {company && <p className="page-subtitle">{company.ticker} · No correlation data available</p>}
         </div>
         <div className="card" style={{ padding: 24, textAlign: "center" }}>
-          <GitBranch size={32} style={{ color: "var(--text-3)", margin: "0 auto 8px" }} />
-          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)" }}>No correlation_scores records found</p>
+          <GitBranch size={32} style={{ color: "var(--ink-3)", margin: "0 auto 8px" }} />
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-2)" }}>No correlation_scores records found</p>
           <p className="muted" style={{ marginTop: 4 }}>Run the correlation pipeline to populate this data.</p>
         </div>
       </div>
@@ -167,6 +167,35 @@ export default function CorrelationAnalysis() {
 
       {errors.company && <div className="warning-strip"><span>⚠</span><span>{errors.company}</span></div>}
 
+      {/* Top Correlated Sector Spotlight */}
+      {sectorTableRows.length > 0 && (() => {
+        const top = sectorTableRows[0];
+        return (
+          <div className="card-spotlight">
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+              <div>
+                <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--orange)", marginBottom: 2 }}>Highest Correlated Sector</p>
+                <p style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text)", letterSpacing: "-.02em" }}>{top.sectors?.name ?? "—"}</p>
+              </div>
+              <div style={{ display: "flex", gap: 16, marginLeft: "auto", flexWrap: "wrap" }}>
+                {[
+                  { l: "Corr 100d",    v: top.corr_100d != null ? Number(top.corr_100d).toFixed(4) : "—",  c: top.corr_100d > 0.7 ? "var(--orange)" : "var(--text)" },
+                  { l: "Corr Full",    v: top.corr_full != null ? Number(top.corr_full).toFixed(4) : "—",  c: "var(--text)" },
+                  { l: "Outperf 100d", v: top.outperf_100d != null ? `${top.outperf_100d >= 0 ? "+" : ""}${Number(top.outperf_100d).toFixed(2)}%` : "—", c: top.outperf_100d >= 0 ? "var(--orange)" : "#EF4444" },
+                  { l: "Aligned Down", v: top.aligned_dn_pct != null ? `${Number(top.aligned_dn_pct).toFixed(2)}%` : "—", c: "var(--text)" },
+                  { l: "Avg Health",   v: top.avg_top_health != null ? Number(top.avg_top_health).toFixed(1) : "—", c: "var(--text)" },
+                ].map(({ l, v, c }) => (
+                  <div key={l} style={{ textAlign: "right" }}>
+                    <p style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 2 }}>{l}</p>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: c, lineHeight: 1 }}>{v}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* KPI Row */}
       <div className="grid-3">
         {[
@@ -175,8 +204,8 @@ export default function CorrelationAnalysis() {
           { label: "Downside Alignment",  value: latestCorr?.aligned_dn_pct, decimals: 2, suffix: "%" },
         ].map(({ label, value, decimals, suffix }) => (
           <div key={label} className="kpi-card">
-            <p className="kpi-compact-label">{label}</p>
-            <p className="kpi-compact-value" style={{ color: value != null && value < 0 ? "#EF4444" : "var(--text)" }}>
+            <p className="kpi-compact-label" style={{ marginBottom: 8 }}>{label}</p>
+            <p style={{ fontSize: "3rem", fontWeight: 900, letterSpacing: "-.06em", lineHeight: 1.05, color: value != null && value < 0 ? "var(--terra-3)" : "var(--ink)" }}>
               {fmt(value, decimals)}{value != null && value !== undefined ? suffix : ""}
             </p>
           </div>
@@ -213,7 +242,7 @@ export default function CorrelationAnalysis() {
                         {fmt(v, 4)}
                       </td>
                     ))}
-                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: row.outperf_100d != null && row.outperf_100d >= 0 ? "var(--orange)" : "#EF4444", fontWeight: row.outperf_100d != null ? 600 : 400 }}>
+                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: row.outperf_100d != null && row.outperf_100d >= 0 ? "var(--terra)" : "var(--terra-3)", fontWeight: row.outperf_100d != null ? 600 : 400 }}>
                       {row.outperf_100d != null ? `${row.outperf_100d >= 0 ? "+" : ""}${fmt(row.outperf_100d, 2)}%` : "—"}
                     </td>
                     <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
@@ -242,13 +271,13 @@ export default function CorrelationAnalysis() {
           <div style={{ height: 180 }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={corrHistoryData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                <XAxis dataKey="date" tick={{ fill: "var(--text-3)", fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" tickFormatter={v => v?.slice(5)} />
-                <YAxis domain={[-1, 1]} tick={{ fill: "var(--text-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={28} tickFormatter={v => v.toFixed(1)} />
+                <XAxis dataKey="date" tick={{ fill: "var(--ink-3)", fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" tickFormatter={v => v?.slice(5)} />
+                <YAxis domain={[-1, 1]} tick={{ fill: "var(--ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={28} tickFormatter={v => v.toFixed(1)} />
                 <Tooltip content={<ChartTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 11, paddingTop: 6 }} iconType="line" iconSize={12} />
-                <Line type="monotone" dataKey="corr_20d"  name="Corr 20d"  stroke="#E8572A" strokeWidth={2} dot={false} connectNulls />
-                <Line type="monotone" dataKey="corr_60d"  name="Corr 60d"  stroke="#F06A3A" strokeWidth={2} dot={false} connectNulls />
-                <Line type="monotone" dataKey="corr_100d" name="Corr 100d" stroke="#C2410C" strokeWidth={2} dot={false} connectNulls />
+                <Line type="monotone" dataKey="corr_20d"  name="Corr 20d"  stroke="var(--terra)" strokeWidth={2} dot={false} connectNulls />
+                <Line type="monotone" dataKey="corr_60d"  name="Corr 60d"  stroke="var(--terra-2)" strokeWidth={2} dot={false} connectNulls />
+                <Line type="monotone" dataKey="corr_100d" name="Corr 100d" stroke="var(--terra-3)" strokeWidth={2} dot={false} connectNulls />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -267,12 +296,12 @@ export default function CorrelationAnalysis() {
             <div style={{ height: 180 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={outperfBarData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                  <XAxis dataKey="metric" tick={{ fill: "var(--text-3)", fontSize: 12 }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fill: "var(--text-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={36} tickFormatter={v => `${Number(v).toFixed(1)}%`} />
+                  <XAxis dataKey="metric" tick={{ fill: "var(--ink-3)", fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fill: "var(--ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={36} tickFormatter={v => `${Number(v).toFixed(1)}%`} />
                   <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} formatter={val => [val != null ? `${Number(val).toFixed(2)}%` : "—", "Outperformance"]} />
                   <Bar dataKey="value" name="Outperformance" radius={[4, 4, 0, 0]}>
                     {outperfBarData.map((entry, i) => (
-                      <Cell key={i} fill={entry.value == null ? "var(--border)" : entry.value >= 0 ? "#E8572A" : "#EF4444"} />
+                      <Cell key={i} fill={entry.value == null ? "var(--border)" : entry.value >= 0 ? "var(--terra)" : "var(--terra-3)"} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -292,11 +321,11 @@ export default function CorrelationAnalysis() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={donutData} cx="50%" cy="50%" innerRadius={48} outerRadius={72} paddingAngle={2} dataKey="value" nameKey="name">
-                    <Cell fill="#E8572A" />
-                    <Cell fill="#EF4444" />
+                    <Cell fill="var(--terra)" />
+                    <Cell fill="var(--terra-3)" />
                   </Pie>
                   <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} formatter={val => [`${fmt(val, 2)}%`, ""]} />
-                  <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-2)" }} />
+                  <Legend wrapperStyle={{ fontSize: 11, color: "var(--ink-2)" }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -309,24 +338,24 @@ export default function CorrelationAnalysis() {
         <div className="card" style={{ padding: 16 }}>
           <div className="section-header" style={{ marginBottom: 10 }}>
             <span className="title-sm">Company vs. Sector Close Price</span>
-            <div style={{ marginLeft: "auto", display: "flex", gap: 14, fontSize: 11, color: "var(--text-3)" }}>
+            <div style={{ marginLeft: "auto", display: "flex", gap: 14, fontSize: 11, color: "var(--ink-3)" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ width: 12, height: 2, background: "#E8572A", display: "inline-block" }} /> Company
+                <span style={{ width: 12, height: 2, background: "var(--terra)", display: "inline-block" }} /> Company
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ width: 12, height: 2, background: "#EF4444", display: "inline-block" }} /> Sector
+                <span style={{ width: 12, height: 2, background: "var(--terra-3)", display: "inline-block" }} /> Sector
               </span>
             </div>
           </div>
           <div style={{ height: 200 }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dualAxisData} margin={{ top: 4, right: 24, left: 0, bottom: 0 }}>
-                <XAxis dataKey="date" tick={{ fill: "var(--text-3)", fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" tickFormatter={v => v?.slice(5)} />
-                <YAxis yAxisId="company" orientation="left"  tick={{ fill: "var(--text-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={48} tickFormatter={v => Number(v).toFixed(0)} />
-                <YAxis yAxisId="sector"  orientation="right" tick={{ fill: "var(--text-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={48} tickFormatter={v => Number(v).toFixed(0)} />
+                <XAxis dataKey="date" tick={{ fill: "var(--ink-3)", fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" tickFormatter={v => v?.slice(5)} />
+                <YAxis yAxisId="company" orientation="left"  tick={{ fill: "var(--ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={48} tickFormatter={v => Number(v).toFixed(0)} />
+                <YAxis yAxisId="sector"  orientation="right" tick={{ fill: "var(--ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={48} tickFormatter={v => Number(v).toFixed(0)} />
                 <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} formatter={(val, name) => [val != null ? Number(val).toFixed(2) : "—", name]} />
-                <Line yAxisId="company" type="monotone" dataKey="companyClose" name="Company Close" stroke="#E8572A" strokeWidth={2} dot={false} activeDot={{ r: 3 }} connectNulls />
-                <Line yAxisId="sector"  type="monotone" dataKey="sectorClose"  name="Sector Close"  stroke="#EF4444" strokeWidth={2} dot={false} activeDot={{ r: 3 }} connectNulls />
+                <Line yAxisId="company" type="monotone" dataKey="companyClose" name="Company Close" stroke="var(--terra)" strokeWidth={2} dot={false} activeDot={{ r: 3 }} connectNulls />
+                <Line yAxisId="sector"  type="monotone" dataKey="sectorClose"  name="Sector Close"  stroke="var(--terra-3)" strokeWidth={2} dot={false} activeDot={{ r: 3 }} connectNulls />
               </LineChart>
             </ResponsiveContainer>
           </div>

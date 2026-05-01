@@ -48,26 +48,21 @@ const isInterestCov  = n => n.includes("interest") && n.includes("coverage");
 const isCurrentRatio = n => n === "current ratio" || (n.includes("current") && n.includes("ratio"));
 
 function statusBadgeClass(status) {
-  if (!status) return "badge-gray";
-  const s = status.toLowerCase();
-  if (s.includes("critical") || s.includes("high risk") || s.includes("danger")) return "badge-red";
-  if (s.includes("warning") || s.includes("moderate")) return "badge-amber";
-  if (s.includes("good") || s.includes("healthy") || s.includes("strong")) return "badge-green";
-  return "badge-gray";
+  return "badge-orange"; // Using monolithic terracotta theme
 }
 
 function sectorPressureStyle(val) {
-  if (val === null || val === undefined) return { color: "var(--text-3)" };
-  if (val > 0.7) return { color: "#EF4444", fontWeight: 700 };
-  if (val >= 0.3) return { color: "var(--orange)", fontWeight: 600 };
-  return { color: "var(--text-3)" };
+  if (val === null || val === undefined) return { color: "var(--ink-3)" };
+  if (val > 0.7) return { color: "var(--terra-3)", fontWeight: 700 };
+  if (val >= 0.3) return { color: "var(--terra)", fontWeight: 600 };
+  return { color: "var(--ink-3)" };
 }
 
 function HistRankBadge({ rank }) {
   if (rank === null || rank === undefined) return <span className="muted">—</span>;
   const n = Number(rank);
-  if (n < 10) return <span className="badge badge-red" style={{ fontSize: 9 }}>{n.toFixed(0)}</span>;
-  if (n < 25) return <span className="badge badge-amber" style={{ fontSize: 9 }}>{n.toFixed(0)}</span>;
+  if (n < 10) return <span className="badge badge-orange" style={{ fontSize: 9 }}>{n.toFixed(0)}</span>;
+  if (n < 25) return <span className="badge badge-orange" style={{ fontSize: 9 }}>{n.toFixed(0)}</span>;
   return <span className="muted" style={{ fontSize: 11 }}>{n.toFixed(0)}</span>;
 }
 
@@ -75,8 +70,8 @@ function ChartTooltip({ active, payload, label, metricName }) {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
-      <p style={{ fontWeight: 600, marginBottom: 3, color: "var(--text-2)", fontSize: 11 }}>{label}</p>
-      <p style={{ color: "#E8572A", fontWeight: 700 }}>{metricName}: {renderValue(payload[0]?.value, 2)}</p>
+      <p style={{ fontWeight: 600, marginBottom: 3, color: "var(--ink-2)", fontSize: 11 }}>{label}</p>
+      <p style={{ color: "var(--terra)", fontWeight: 700 }}>{metricName}: {renderValue(payload[0]?.value, 2)}</p>
     </div>
   );
 }
@@ -85,7 +80,7 @@ function HealthTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
-      <p style={{ fontWeight: 600, marginBottom: 3, color: "var(--text-2)", fontSize: 11 }}>{label}</p>
+      <p style={{ fontWeight: 600, marginBottom: 3, color: "var(--ink-2)", fontSize: 11 }}>{label}</p>
       {payload.map(entry => (
         <p key={entry.dataKey} style={{ color: entry.color, margin: "2px 0", fontWeight: 600 }}>
           {entry.name}: {entry.value != null ? Number(entry.value).toFixed(1) : "—"}
@@ -158,8 +153,8 @@ export default function SolvencyRisk() {
           {company && <p className="page-subtitle">{company.ticker} · No balance sheet data available</p>}
         </div>
         <div className="card" style={{ padding: 24, textAlign: "center" }}>
-          <ShieldAlert size={32} style={{ color: "var(--text-3)", margin: "0 auto 8px" }} />
-          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)" }}>No Leverage or Liquidity records found</p>
+          <ShieldAlert size={32} style={{ color: "var(--ink-3)", margin: "0 auto 8px" }} />
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-2)" }}>No Leverage or Liquidity records found</p>
           <p className="muted" style={{ marginTop: 4 }}>Run the fundamentals pipeline to populate balance sheet data.</p>
         </div>
       </div>
@@ -182,9 +177,9 @@ export default function SolvencyRisk() {
 
       {/* Default Warning */}
       {showDefaultWarning && (
-        <div className="warning-strip">
-          <ShieldAlert size={15} />
-          <span>Default Warning: Interest Coverage {renderValue(latestIC?.value, 2)} — below 1.5 threshold. Imminent default risk.</span>
+        <div className="warning-strip" style={{ borderColor: "var(--terra-3)", background: "rgba(184,78,40,.06)" }}>
+          <ShieldAlert size={15} style={{ color: "var(--terra-3)" }} />
+          <span style={{ color: "var(--terra-3)" }}>Default Warning: Interest Coverage {renderValue(latestIC?.value, 2)} — below 1.5 threshold. Imminent default risk.</span>
         </div>
       )}
 
@@ -198,14 +193,14 @@ export default function SolvencyRisk() {
         ].map(({ label, rec, danger }) => {
           const isDanger = rec?.value != null && danger(rec.value);
           return (
-            <div key={label} className={isDanger ? "kpi-card-danger" : "kpi-card"}>
-              <p className="kpi-compact-label">{label}</p>
-              <p className="kpi-compact-value" style={{ color: isDanger ? "#EF4444" : "var(--text)" }}>
+            <div key={label} className="kpi-card">
+              <p className="kpi-compact-label" style={{ marginBottom: 8 }}>{label}</p>
+              <p style={{ fontSize: "3rem", fontWeight: 900, letterSpacing: "-.06em", lineHeight: 1.05, color: isDanger ? "var(--terra-3)" : "var(--ink)" }}>
                 {renderValue(rec?.value, 2)}
               </p>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
                 {rec?.yoy_pct != null && (
-                  <span style={{ fontSize: 11, fontWeight: 600, color: rec.yoy_pct >= 0 ? "var(--orange)" : "#EF4444" }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: rec.yoy_pct >= 0 ? "var(--terra)" : "var(--terra-3)" }}>
                     {rec.yoy_pct >= 0 ? "+" : ""}{Number(rec.yoy_pct).toFixed(1)}% YoY
                   </span>
                 )}
@@ -234,14 +229,14 @@ export default function SolvencyRisk() {
                 <AreaChart data={deHistory} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="deGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#E8572A" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#E8572A" stopOpacity={0} />
+                      <stop offset="5%"  stopColor="var(--terra)" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="var(--terra)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="period" tick={{ fill: "var(--text-3)", fontSize: 10 }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fill: "var(--text-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={32} />
+                  <XAxis dataKey="period" tick={{ fill: "var(--ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fill: "var(--ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={32} />
                   <Tooltip content={<ChartTooltip metricName="Debt/Equity" />} />
-                  <Area type="monotone" dataKey="value" stroke="#E8572A" strokeWidth={2} fill="url(#deGrad)" dot={false} activeDot={{ r: 3 }} />
+                  <Area type="monotone" dataKey="value" stroke="var(--terra)" strokeWidth={2} fill="url(#deGrad)" dot={false} activeDot={{ r: 3 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -259,11 +254,11 @@ export default function SolvencyRisk() {
             <div style={{ height: 170 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={icHistory} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                  <XAxis dataKey="period" tick={{ fill: "var(--text-3)", fontSize: 10 }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fill: "var(--text-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={32} />
+                  <XAxis dataKey="period" tick={{ fill: "var(--ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fill: "var(--ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={32} />
                   <Tooltip content={<ChartTooltip metricName="Interest Coverage" />} />
-                  <ReferenceLine y={1.5} stroke="#EF4444" strokeDasharray="4 3" label={{ value: "1.5", fill: "#EF4444", fontSize: 10, position: "insideTopRight" }} />
-                  <Line type="monotone" dataKey="value" stroke="#E8572A" strokeWidth={2} dot={false} activeDot={{ r: 3 }} />
+                  <ReferenceLine y={1.5} stroke="var(--terra-3)" strokeDasharray="4 3" label={{ value: "1.5", fill: "var(--terra-3)", fontSize: 10, position: "insideTopRight" }} />
+                  <Line type="monotone" dataKey="value" stroke="var(--terra)" strokeWidth={2} dot={false} activeDot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -276,23 +271,23 @@ export default function SolvencyRisk() {
         <div className="card" style={{ padding: 16 }}>
           <div className="section-header" style={{ marginBottom: 10 }}>
             <span className="title-sm">Company vs Sector Health Score</span>
-            <div style={{ marginLeft: "auto", display: "flex", gap: 14, fontSize: 11, color: "var(--text-3)" }}>
+            <div style={{ marginLeft: "auto", display: "flex", gap: 14, fontSize: 11, color: "var(--ink-3)" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ width: 12, height: 2, background: "#E8572A", display: "inline-block" }} /> Company
+                <span style={{ width: 12, height: 2, background: "var(--terra)", display: "inline-block" }} /> Company
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ width: 12, height: 2, background: "#EF4444", display: "inline-block" }} /> Sector
+                <span style={{ width: 12, height: 2, background: "var(--terra-3)", display: "inline-block" }} /> Sector
               </span>
             </div>
           </div>
           <div style={{ height: 150 }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={healthChartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                <XAxis dataKey="date" tick={{ fill: "var(--text-3)", fontSize: 9 }} tickLine={false} axisLine={false} tickFormatter={v => v?.slice(5)} interval="preserveStartEnd" />
-                <YAxis tick={{ fill: "var(--text-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={28} domain={[0, 100]} />
+                <XAxis dataKey="date" tick={{ fill: "var(--ink-3)", fontSize: 9 }} tickLine={false} axisLine={false} tickFormatter={v => v?.slice(5)} interval="preserveStartEnd" />
+                <YAxis tick={{ fill: "var(--ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={28} domain={[0, 100]} />
                 <Tooltip content={<HealthTooltip />} />
-                <Line type="monotone" dataKey="company" name="Company" stroke="#E8572A" strokeWidth={2} dot={false} connectNulls />
-                <Line type="monotone" dataKey="sector" name="Sector" stroke="#EF4444" strokeWidth={1.5} strokeDasharray="4 3" dot={false} connectNulls />
+                <Line type="monotone" dataKey="company" name="Company" stroke="var(--terra)" strokeWidth={2} dot={false} connectNulls />
+                <Line type="monotone" dataKey="sector" name="Sector" stroke="var(--terra-3)" strokeWidth={1.5} strokeDasharray="4 3" dot={false} connectNulls />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -325,7 +320,7 @@ export default function SolvencyRisk() {
                     <tr key={name}>
                       <td style={{ fontWeight: 500 }}>{name}</td>
                       <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{renderValue(row.value, 2)}</td>
-                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: row.yoy_pct == null ? "var(--text-3)" : row.yoy_pct >= 0 ? "var(--orange)" : "#EF4444", fontWeight: row.yoy_pct != null ? 600 : 400 }}>
+                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: row.yoy_pct == null ? "var(--ink-3)" : row.yoy_pct >= 0 ? "var(--terra)" : "var(--terra-3)", fontWeight: row.yoy_pct != null ? 600 : 400 }}>
                         {row.yoy_pct != null ? `${row.yoy_pct >= 0 ? "+" : ""}${Number(row.yoy_pct).toFixed(2)}%` : "—"}
                       </td>
                       <td style={{ textAlign: "right" }}><HistRankBadge rank={row.hist_pct_rank} /></td>
@@ -348,15 +343,15 @@ export default function SolvencyRisk() {
 
       {/* YoY Drop Alert */}
       {yoyDropRows.length > 0 && (
-        <div className="card-accent-danger">
+        <div className="card" style={{ background: "rgba(184,78,40,.04)", border: "1px solid var(--terra-3)" }}>
           <div className="section-header" style={{ marginBottom: 10 }}>
-            <span className="title-sm" style={{ color: "#EF4444" }}>YoY Drop Alert — Metrics Below −20%</span>
+            <span className="title-sm" style={{ color: "var(--terra-3)" }}>YoY Drop Alert — Metrics Below −20%</span>
           </div>
           {yoyDropRows.map((row, idx) => (
             <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: idx < yoyDropRows.length - 1 ? "1px solid var(--border)" : "none" }}>
               <span className="ticker-chip">{row.ratio_definitions?.category ?? "—"}</span>
-              <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: "var(--text)" }}>{row.ratio_definitions?.name ?? "—"}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#EF4444" }}>{row.yoy_pct != null ? `${Number(row.yoy_pct).toFixed(2)}%` : "—"}</span>
+              <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: "var(--ink)" }}>{row.ratio_definitions?.name ?? "—"}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--terra-3)" }}>{row.yoy_pct != null ? `${Number(row.yoy_pct).toFixed(2)}%` : "—"}</span>
             </div>
           ))}
         </div>

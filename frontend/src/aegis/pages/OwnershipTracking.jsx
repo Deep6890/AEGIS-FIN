@@ -48,25 +48,21 @@ function getHistory(records, matchFn) {
 
 function statusBadgeClass(status) {
   if (!status) return "badge-gray";
-  const s = status.toLowerCase();
-  if (s.includes("critical") || s.includes("high risk") || s.includes("danger")) return "badge-red";
-  if (s.includes("warning") || s.includes("moderate")) return "badge-amber";
-  if (s.includes("good") || s.includes("healthy") || s.includes("strong")) return "badge-green";
-  return "badge-gray";
+  return "badge-orange";
 }
 
 function sectorPressureStyle(val) {
-  if (val === null || val === undefined) return { color: "var(--text-3)" };
-  if (val > 0.7) return { color: "#EF4444", fontWeight: 700 };
-  if (val >= 0.3) return { color: "var(--orange)", fontWeight: 600 };
-  return { color: "var(--text-3)" };
+  if (val === null || val === undefined) return { color: "var(--ink-3)" };
+  if (val > 0.7) return { color: "var(--terra-3)", fontWeight: 700 };
+  if (val >= 0.3) return { color: "var(--terra)", fontWeight: 600 };
+  return { color: "var(--ink-3)" };
 }
 
 function HistRankBadge({ rank }) {
   if (rank === null || rank === undefined) return <span className="muted">—</span>;
   const n = Number(rank);
-  if (n < 10) return <span className="badge badge-red" style={{ fontSize: 9 }}>{n.toFixed(0)}</span>;
-  if (n < 25) return <span className="badge badge-amber" style={{ fontSize: 9 }}>{n.toFixed(0)}</span>;
+  if (n < 10) return <span className="badge badge-orange" style={{ fontSize: 9 }}>{n.toFixed(0)}</span>;
+  if (n < 25) return <span className="badge badge-orange" style={{ fontSize: 9 }}>{n.toFixed(0)}</span>;
   return <span className="muted" style={{ fontSize: 11 }}>{n.toFixed(0)}</span>;
 }
 
@@ -172,8 +168,8 @@ export default function OwnershipTracking() {
           {company && <p className="page-subtitle">{company.ticker} · No ownership data available</p>}
         </div>
         <div className="card" style={{ padding: 24, textAlign: "center" }}>
-          <Users size={32} style={{ color: "var(--text-3)", margin: "0 auto 8px" }} />
-          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)" }}>No holding score records found</p>
+          <Users size={32} style={{ color: "var(--ink-3)", margin: "0 auto 8px" }} />
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-2)" }}>No holding score records found</p>
           <p className="muted" style={{ marginTop: 4 }}>Run the fundamentals pipeline to populate ownership data.</p>
         </div>
       </div>
@@ -200,7 +196,7 @@ export default function OwnershipTracking() {
         </div>
       )}
       {showNegativeInsider && (
-        <div className="warning-strip" style={{ background: "rgba(245,158,11,0.06)", borderColor: "rgba(245,158,11,0.2)", color: "#92400E" }}>
+        <div className="warning-strip">
           <Users size={15} />
           <span>Negative Insider Activity: Insider Net Buy % is negative — net insider selling detected.</span>
         </div>
@@ -218,9 +214,9 @@ export default function OwnershipTracking() {
         ].map(({ label, rec, alert }) => {
           const isDanger = rec?.value != null && alert(rec.value);
           return (
-            <div key={label} className={isDanger ? "kpi-card-danger" : "kpi-card"}>
-              <p className="kpi-compact-label">{label}</p>
-              <p className="kpi-compact-value" style={{ color: isDanger ? "#EF4444" : "var(--text)" }}>
+            <div key={label} className="kpi-card">
+              <p className="kpi-compact-label" style={{ marginBottom: 8 }}>{label}</p>
+              <p style={{ fontSize: "3rem", fontWeight: 900, letterSpacing: "-.06em", lineHeight: 1.05, color: isDanger ? "var(--terra-3)" : "var(--ink)" }}>
                 {renderValue(rec?.value, 2)}
               </p>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
@@ -249,21 +245,31 @@ export default function OwnershipTracking() {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={stackedAreaData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <defs>
-                    {[["promotersGrad","#E8572A"],["fiiGrad","#F06A3A"],["diiGrad","#C2410C"],["publicGrad","#9A3412"]].map(([id, color]) => (
-                      <linearGradient key={id} id={id} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor={color} stopOpacity={0.65} />
-                        <stop offset="95%" stopColor={color} stopOpacity={0.05} />
-                      </linearGradient>
-                    ))}
+                    <linearGradient id="promotersGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="var(--terra)" stopOpacity={0.65} />
+                      <stop offset="95%" stopColor="var(--terra)" stopOpacity={0.05} />
+                    </linearGradient>
+                    <linearGradient id="fiiGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="var(--terra-2)" stopOpacity={0.65} />
+                      <stop offset="95%" stopColor="var(--terra-2)" stopOpacity={0.05} />
+                    </linearGradient>
+                    <linearGradient id="diiGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="var(--terra-3)" stopOpacity={0.65} />
+                      <stop offset="95%" stopColor="var(--terra-3)" stopOpacity={0.05} />
+                    </linearGradient>
+                    <linearGradient id="publicGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="var(--border)" stopOpacity={0.65} />
+                      <stop offset="95%" stopColor="var(--border)" stopOpacity={0.05} />
+                    </linearGradient>
                   </defs>
-                  <XAxis dataKey="period" tick={{ fill: "var(--text-3)", fontSize: 10 }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fill: "var(--text-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={28} tickFormatter={v => `${v}%`} />
+                  <XAxis dataKey="period" tick={{ fill: "var(--ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fill: "var(--ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={28} tickFormatter={v => `${v}%`} />
                   <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} formatter={(val, name) => [val != null ? `${Number(val).toFixed(2)}%` : "—", name]} />
                   <Legend wrapperStyle={{ fontSize: 11, paddingTop: 6 }} />
-                  <Area type="monotone" dataKey="Promoters" stackId="o" stroke="#E8572A" strokeWidth={1.5} fill="url(#promotersGrad)" dot={false} activeDot={{ r: 3 }} />
-                  <Area type="monotone" dataKey="FII"       stackId="o" stroke="#F06A3A" strokeWidth={1.5} fill="url(#fiiGrad)"       dot={false} activeDot={{ r: 3 }} />
-                  <Area type="monotone" dataKey="DII"       stackId="o" stroke="#C2410C" strokeWidth={1.5} fill="url(#diiGrad)"       dot={false} activeDot={{ r: 3 }} />
-                  <Area type="monotone" dataKey="Public"    stackId="o" stroke="#9A3412" strokeWidth={1.5} fill="url(#publicGrad)"    dot={false} activeDot={{ r: 3 }} />
+                  <Area type="monotone" dataKey="Promoters" stackId="o" stroke="var(--terra)" strokeWidth={1.5} fill="url(#promotersGrad)" dot={false} activeDot={{ r: 3 }} />
+                  <Area type="monotone" dataKey="FII"       stackId="o" stroke="var(--terra-2)" strokeWidth={1.5} fill="url(#fiiGrad)"       dot={false} activeDot={{ r: 3 }} />
+                  <Area type="monotone" dataKey="DII"       stackId="o" stroke="var(--terra-3)" strokeWidth={1.5} fill="url(#diiGrad)"       dot={false} activeDot={{ r: 3 }} />
+                  <Area type="monotone" dataKey="Public"    stackId="o" stroke="var(--border)" strokeWidth={1.5} fill="url(#publicGrad)"    dot={false} activeDot={{ r: 3 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -273,7 +279,7 @@ export default function OwnershipTracking() {
         <div className="card" style={{ padding: 16 }}>
           <div className="section-header" style={{ marginBottom: 10 }}>
             <span className="title-sm">Insider Net Buy % — Per Period</span>
-            <span className="muted" style={{ marginLeft: "auto", fontSize: 10 }}>Red = selling</span>
+            <span className="muted" style={{ marginLeft: "auto", fontSize: 10 }}>Darker = selling</span>
           </div>
           {insiderBarData.length === 0 ? (
             <p className="muted" style={{ fontSize: 12, padding: "20px 0" }}>No insider activity data.</p>
@@ -281,12 +287,12 @@ export default function OwnershipTracking() {
             <div style={{ height: 200 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={insiderBarData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                  <XAxis dataKey="period" tick={{ fill: "var(--text-3)", fontSize: 10 }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fill: "var(--text-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={28} tickFormatter={v => `${v}%`} />
+                  <XAxis dataKey="period" tick={{ fill: "var(--ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fill: "var(--ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={28} tickFormatter={v => `${v}%`} />
                   <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} formatter={val => [val != null ? `${Number(val).toFixed(2)}%` : "—", "Insider Net Buy %"]} />
                   <Bar dataKey="value" radius={[3, 3, 0, 0]}>
                     {insiderBarData.map((entry, i) => (
-                      <Cell key={i} fill={entry.value != null && entry.value < 0 ? "#EF4444" : "#E8572A"} />
+                      <Cell key={i} fill={entry.value != null && entry.value < 0 ? "var(--terra-3)" : "var(--terra)"} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -325,11 +331,11 @@ export default function OwnershipTracking() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {sectorPressureByCategory.map(({ category, avgPressure }) => {
                 const spNum = avgPressure != null ? Number(avgPressure) : null;
-                const barColor = spNum != null && spNum > 0.7 ? "#EF4444" : spNum != null && spNum >= 0.3 ? "var(--orange)" : "#E8572A";
+                const barColor = spNum != null && spNum > 0.7 ? "var(--terra-3)" : spNum != null && spNum >= 0.3 ? "var(--terra)" : "var(--terra-2)";
                 return (
                   <div key={category}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text)" }}>{category}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ink)" }}>{category}</span>
                       <span style={{ fontSize: 11, fontWeight: 700, ...sectorPressureStyle(avgPressure) }}>
                         {spNum != null ? spNum.toFixed(2) : "—"}
                       </span>
@@ -368,8 +374,8 @@ export default function OwnershipTracking() {
                 {Array.from(metricsByCategory.entries()).map(([category, rows]) => (
                   <React.Fragment key={category}>
                     <tr>
-                      <td colSpan={6} style={{ padding: "8px 14px 5px", background: "rgba(232,87,42,0.04)", borderBottom: "1px solid var(--border)" }}>
-                        <span className="label-caps" style={{ color: "var(--orange)" }}>{category}</span>
+                      <td colSpan={6} style={{ padding: "8px 14px 5px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+                        <span className="label-caps" style={{ color: "var(--terra)" }}>{category}</span>
                       </td>
                     </tr>
                     {rows.map(row => {

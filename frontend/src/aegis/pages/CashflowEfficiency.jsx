@@ -45,7 +45,7 @@ function statusBadgeClass(status) {
 
 function sectorPressureStyle(val) {
   if (val === null || val === undefined) return { color: "var(--text-3)" };
-  if (val > 0.7) return { color: "#EF4444", fontWeight: 700 };
+  if (val > 0.7) return { color: "var(--terra-3)", fontWeight: 700 };
   if (val >= 0.3) return { color: "var(--orange)", fontWeight: 600 };
   return { color: "var(--text-3)" };
 }
@@ -198,7 +198,7 @@ export default function CashflowEfficiency() {
             <p className="kpi-compact-value">{renderValue(rec?.value, 2)}</p>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
               {rec?.yoy_pct != null && (
-                <span style={{ fontSize: 11, fontWeight: 600, color: rec.yoy_pct >= 0 ? "var(--orange)" : "#EF4444" }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: rec.yoy_pct >= 0 ? "var(--terra)" : "var(--terra-3)" }}>
                   {rec.yoy_pct >= 0 ? "+" : ""}{Number(rec.yoy_pct).toFixed(1)}% YoY
                 </span>
               )}
@@ -266,7 +266,7 @@ export default function CashflowEfficiency() {
                 const name = row.ratio_definitions?.name ?? "—";
                 const sp = row.sector_pressure;
                 const spNum = sp != null ? Number(sp) : null;
-                const barColor = spNum != null && spNum > 0.7 ? "#EF4444" : spNum != null && spNum >= 0.3 ? "var(--orange)" : "#E8572A";
+                const barColor = spNum != null && spNum > 0.7 ? "var(--terra-3)" : spNum != null && spNum >= 0.3 ? "var(--terra)" : "var(--terra-2)";
                 return (
                   <div key={name}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
@@ -318,7 +318,7 @@ export default function CashflowEfficiency() {
                         <tr key={name}>
                           <td style={{ paddingLeft: 22, fontWeight: 500 }}>{name}</td>
                           <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{renderValue(row.value, 2)}</td>
-                          <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: row.yoy_pct == null ? "var(--text-3)" : row.yoy_pct >= 0 ? "var(--orange)" : "#EF4444", fontWeight: row.yoy_pct != null ? 600 : 400 }}>
+                          <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: row.yoy_pct == null ? "var(--text-3)" : row.yoy_pct >= 0 ? "var(--terra)" : "var(--terra-3)", fontWeight: row.yoy_pct != null ? 600 : 400 }}>
                             {row.yoy_pct != null ? `${row.yoy_pct >= 0 ? "+" : ""}${Number(row.yoy_pct).toFixed(2)}%` : "—"}
                           </td>
                           <td style={{ textAlign: "right" }}><HistRankBadge rank={row.hist_pct_rank} /></td>
