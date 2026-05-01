@@ -6,8 +6,8 @@ import {
   Cell, ReferenceLine, RadarChart, Radar, PolarGrid, PolarAngleAxis
 } from "recharts";
 import {
-  ArrowUpRight, TrendingUp, TrendingDown, Zap, Globe,
-  Brain, Activity, Shield, ChevronRight, BarChart3
+  AlertTriangle, TrendingUp, TrendingDown, Shield, Globe,
+  Building2, Activity, ArrowUpRight, Eye, Zap, ChevronRight
 } from "lucide-react";
 import PageLayout from "../components/Layout/PageLayout";
 import SignalBadge from "../components/ui/SignalBadge";
@@ -16,47 +16,61 @@ import { PageSkeleton } from "../components/ui/LoadingSpinner";
 import { useAppData } from "../context/AppDataContext";
 import { useChartTheme } from "../hooks/useChartTheme";
 
-// ── Micro components ──────────────────────────────────────────────────────────
+// ── Risk status helpers ───────────────────────────────────────────────────────
 
-function MetricTile({ label, value, sub, accent }) {
+function riskColor(score) {
+  if (score == null) return "#ABABAB";
+  if (score >= 70) return "#22C55E";
+  if (score >= 40) return "var(--orange)";
+  return "#EF4444";
+}
+
+function riskLabel(score) {
+  if (score == null) return "No Data";
+  if (score >= 70) return "Stable";
+  if (score >= 40) return "Warning";
+  return "High Risk";
+}
+
+function riskBg(score) {
+  if (score == null) return "bg-neutral-100 dark:bg-neutral-800 text-neutral-500";
+  if (score >= 70) return "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400";
+  if (score >= 40) return "bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400";
+  return "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400";
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function RiskBadge({ score }) {
   return (
-    <div className="flex flex-col gap-1">
-      <p className="label-caps">{label}</p>
-      <p className={`text-2xl font-bold tabular-nums tracking-tight ${accent ? "text-[var(--orange)]" : "text-[var(--text)]"}`}>{value ?? "—"}</p>
-      {sub && <p className="text-[10px] text-[var(--text-3)]">{sub}</p>}
-    </div>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${riskBg(score)}`}>
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: riskColor(score) }} />
+      {riskLabel(score)}
+    </span>
   );
 }
 
-function ScoreBar({ score, label, id }) {
+function CompanyRiskRow({ company, ml, rank }) {
+  const score = ml?.composite_score;
+  const distress = ml?.distress_probability;
   const pct = Math.min(100, Math.max(0, score || 0));
-  const color = pct >= 70 ? "var(--orange)" : pct >= 40 ? "#F5C842" : "#D1D1D1";
   return (
-    <Link to={`/companies/${id}`} className="flex items-center gap-3 group hover:bg-neutral-50 dark:hover:bg-neutral-900/40 px-4 py-2.5 transition-colors">
-      <span className="text-xs font-medium text-[var(--text)] truncate flex-1 group-hover:text-[var(--orange)] transition-colors">{label}</span>
+    <Link to={`/companies/${company.id}`}
+      className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)] last:border-0 hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition-colors group">
+      <span className="text-[10px] font-mono text-[var(--text-3)] w-4 shrink-0">{rank}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-[var(--text)] truncate group-hover:text-[var(--orange)] transition-colors">{company.name}</p>
+        <p className="text-[10px] font-mono text-[var(--text-3)]">{company.ticker}</p>
+      </div>
       <div className="flex items-center gap-2 shrink-0">
-        <div className="w-16 h-1 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: color }} />
+        <div className="w-14 h-1 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: riskColor(score) }} />
         </div>
-        <span className="text-xs font-bold tabular-nums text-[var(--text)] w-6 text-right">{pct.toFixed(0)}</span>
+        <span className="text-xs font-bold tabular-nums w-6 text-right" style={{ color: riskColor(score) }}>{pct.toFixed(0)}</span>
       </div>
+      <RiskBadge score={score} />
+      <ChevronRight size={12} className="text-[var(--text-3)] group-hover:text-[var(--orange)] transition-colors shrink-0" />
     </Link>
-  );
-}
-
-function SectorPill({ row }) {
-  const hs = row.health_score ?? 0;
-  return (
-    <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] last:border-0 hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition-colors">
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: hs >= 75 ? "var(--orange)" : hs >= 50 ? "#F5C842" : "#D1D1D1" }} />
-        <span className="text-xs font-medium text-[var(--text)] truncate">{row.sectors?.name || "—"}</span>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <SignalBadge value={row.signal} />
-        <span className="text-xs font-bold tabular-nums text-[var(--text-2)] w-6 text-right">{hs.toFixed(0)}</span>
-      </div>
-    </div>
   );
 }
 
@@ -65,21 +79,32 @@ function SectorPill({ row }) {
 export default function Dashboard() {
   const { latestSectorHealth, macro, portfolioStats, latestMl, companies, loading } = useAppData();
   const ct = useChartTheme();
-  const [tab, setTab] = useState("top");
+  const [riskTab, setRiskTab] = useState("distress");
 
-  const compMap = useMemo(() => { const m = {}; companies.forEach(c => { m[c.id] = c; }); return m; }, [companies]);
+  const compMap = useMemo(() => {
+    const m = {};
+    companies.forEach(c => { m[c.id] = c; });
+    return m;
+  }, [companies]);
 
-  const topPicks = useMemo(() =>
-    [...latestMl].filter(r => r.composite_score != null)
-      .sort((a, b) => b.composite_score - a.composite_score).slice(0, 8),
+  // High risk companies — sorted by distress probability
+  const highRisk = useMemo(() =>
+    [...latestMl]
+      .filter(r => r.composite_score != null && r.composite_score < 40)
+      .sort((a, b) => (b.distress_probability || 0) - (a.distress_probability || 0))
+      .slice(0, 8),
     [latestMl]);
 
-  const atRisk = useMemo(() =>
-    [...latestMl].filter(r => r.composite_score != null)
-      .sort((a, b) => a.composite_score - b.composite_score).slice(0, 8),
+  // Warning zone
+  const watchZone = useMemo(() =>
+    [...latestMl]
+      .filter(r => r.composite_score != null && r.composite_score >= 40 && r.composite_score < 70)
+      .sort((a, b) => a.composite_score - b.composite_score)
+      .slice(0, 8),
     [latestMl]);
 
-  const sectorChartData = useMemo(() =>
+  // Sector returns
+  const sectorData = useMemo(() =>
     latestSectorHealth
       .filter(r => r.sectors?.sector_type === "sector" && r.daily_return != null)
       .map(r => ({
@@ -90,88 +115,113 @@ export default function Dashboard() {
       .sort((a, b) => b.ret - a.ret),
     [latestSectorHealth]);
 
+  // Portfolio risk radar
   const radarData = useMemo(() => {
-    if (!portfolioStats.scored) return [];
     const ml = latestMl.filter(r => r.composite_score != null);
-    const avg = f => ml.length ? ml.reduce((s, r) => s + (r[f] || 0), 0) / ml.length : 0;
+    if (!ml.length) return [];
+    const avg = f => ml.reduce((s, r) => s + (r[f] || 0), 0) / ml.length;
     return [
-      { subject: "Trend",       A: avg("trend_score")            || avg("health_score") },
-      { subject: "Fundamental", A: avg("fundamental_score")      || 50 },
-      { subject: "Sentiment",   A: avg("sentiment_score")        || 50 },
+      { subject: "Market",      A: avg("health_score") || avg("trend_score") || 50 },
+      { subject: "Financial",   A: avg("fundamental_score") || 50 },
+      { subject: "Governance",  A: avg("strength") || 50 },
+      { subject: "Momentum",    A: avg("momentum") || 50 },
       { subject: "Sector Fit",  A: avg("sector_alignment_score") || 50 },
-      { subject: "Momentum",    A: avg("momentum")               || 50 },
-      { subject: "Strength",    A: avg("strength")               || 50 },
+      { subject: "Sentiment",   A: avg("sentiment_score") || 50 },
     ];
-  }, [latestMl, portfolioStats]);
-
-  const scoreDistribution = useMemo(() => {
-    const buckets = [
-      { label: "0–20",   lo: 0,  hi: 20  },
-      { label: "20–40",  lo: 20, hi: 40  },
-      { label: "40–60",  lo: 40, hi: 60  },
-      { label: "60–80",  lo: 60, hi: 80  },
-      { label: "80–100", lo: 80, hi: 100 },
-    ];
-    return buckets.map(b => ({
-      ...b,
-      count: latestMl.filter(r => (r.composite_score || 0) >= b.lo && (r.composite_score || 0) < b.hi).length,
-    }));
   }, [latestMl]);
 
-  if (loading) return <PageLayout title="Dashboard"><PageSkeleton /></PageLayout>;
+  // Score distribution
+  const distData = useMemo(() => [
+    { label: "0–20",   lo: 0,  hi: 20,  risk: "high" },
+    { label: "20–40",  lo: 20, hi: 40,  risk: "high" },
+    { label: "40–60",  lo: 40, hi: 60,  risk: "watch" },
+    { label: "60–80",  lo: 60, hi: 80,  risk: "stable" },
+    { label: "80–100", lo: 80, hi: 100, risk: "stable" },
+  ].map(b => ({
+    ...b,
+    count: latestMl.filter(r => (r.composite_score || 0) >= b.lo && (r.composite_score || 0) < b.hi).length,
+  })), [latestMl]);
+
+  if (loading) return <PageLayout title="Risk Dashboard"><PageSkeleton /></PageLayout>;
 
   const regime = macro?.macro_regime || "NEUTRAL";
-  const isRiskOn = regime === "RISK_ON";
+  const macroRisk = regime === "RISK_OFF";
 
   return (
-    <PageLayout title="Dashboard">
+    <PageLayout title="Risk Dashboard">
       <div className="space-y-5 pb-10">
 
         {/* ── Header ── */}
         <div className="animate-fade-in">
-          <p className="label-caps text-[var(--orange)] mb-1">AEGIS-FIN · Intelligence Platform</p>
-          <h1 className="page-heading">Command Center</h1>
+          <p className="label-caps text-[var(--orange)] mb-1">AEGIS-FIN · Bank Risk Intelligence</p>
+          <div className="flex items-end justify-between gap-4">
+            <h1 className="page-heading">Portfolio Risk Overview</h1>
+            {macroRisk && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 shrink-0">
+                <AlertTriangle size={14} className="text-red-500" />
+                <span className="text-xs font-bold text-red-600 dark:text-red-400">Macro Risk-Off Environment</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <LiveMarketBar />
 
-        {/* ── Row 1: KPI strip ── */}
+        {/* ── Row 1: Risk KPI strip ── */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 stagger-1">
           {[
-            { label: "Universe",    value: portfolioStats.total,        sub: "companies tracked" },
-            { label: "Scored",      value: portfolioStats.scored,       sub: "with ML scores" },
-            { label: "Healthy ≥70", value: portfolioStats.healthy,      sub: "low distress",    accent: true },
-            { label: "Watch 40–70", value: portfolioStats.watch,        sub: "monitor closely" },
-            { label: "Distress <40",value: portfolioStats.distress,     sub: "review now" },
-          ].map(({ label, value, sub, accent }) => (
-            <div key={label} className="card p-5 hover-lift">
-              <MetricTile label={label} value={value} sub={sub} accent={accent} />
+            { label: "Total SMEs",     value: portfolioStats.total,    sub: "under monitoring",   color: "text-[var(--text)]" },
+            { label: "Scored",         value: portfolioStats.scored,   sub: "ML risk assessed",   color: "text-[var(--text)]" },
+            { label: "Stable",         value: portfolioStats.healthy,  sub: "score ≥ 70",         color: "text-green-600 dark:text-green-400" },
+            { label: "Watch Zone",     value: portfolioStats.watch,    sub: "score 40–70",        color: "text-[var(--orange)]" },
+            { label: "High Risk",      value: portfolioStats.distress, sub: "immediate review",   color: "text-red-500" },
+          ].map(({ label, value, sub, color }) => (
+            <div key={label} className="card p-5">
+              <p className="label-caps mb-2">{label}</p>
+              <p className={`text-3xl font-bold tabular-nums tracking-tight ${color}`}>{value ?? "—"}</p>
+              <p className="text-[10px] text-[var(--text-3)] mt-1">{sub}</p>
             </div>
           ))}
         </div>
 
-        {/* ── Row 2: Portfolio score + Macro + Radar ── */}
+        {/* ── Row 2: Portfolio health + Macro + Risk radar ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 stagger-2">
 
-          {/* Portfolio health */}
-          <div className="card p-6 relative overflow-hidden">
-            <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-[var(--orange)]/6 pointer-events-none" />
-            <p className="label-caps mb-3">Portfolio Health</p>
-            <p className="value-xl mb-1">{portfolioStats.avgSurvival}</p>
-            <p className="text-xs text-[var(--text-3)] mb-4">avg composite score / 100</p>
-            <div className="flex h-2 rounded-full overflow-hidden gap-px mb-3">
+          {/* Portfolio risk distribution */}
+          <div className="card p-6">
+            <p className="label-caps mb-1">Risk Distribution</p>
+            <p className="text-xs text-[var(--text-3)] mb-3">SME portfolio by risk score bucket</p>
+            <div className="flex items-end gap-1 mb-3">
+              <p className="text-3xl font-bold tabular-nums text-[var(--text)]">{portfolioStats.avgSurvival}</p>
+              <p className="text-xs text-[var(--text-3)] mb-1">/ 100 avg score</p>
+            </div>
+            {/* Stacked risk bar */}
+            <div className="flex h-2.5 rounded-full overflow-hidden gap-px mb-3">
               {portfolioStats.total > 0 ? <>
-                <div className="bg-[var(--orange)] rounded-l-full transition-all duration-1000" style={{ width: `${(portfolioStats.healthy / portfolioStats.total) * 100}%` }} />
-                <div className="bg-[var(--orange)]/40 transition-all duration-1000" style={{ width: `${(portfolioStats.watch / portfolioStats.total) * 100}%` }} />
-                <div className="bg-neutral-200 dark:bg-neutral-700 rounded-r-full transition-all duration-1000" style={{ width: `${(portfolioStats.distress / portfolioStats.total) * 100}%` }} />
+                <div className="bg-red-400 rounded-l-full" style={{ width: `${(portfolioStats.distress / portfolioStats.total) * 100}%` }} />
+                <div className="bg-[var(--orange)]/70" style={{ width: `${(portfolioStats.watch / portfolioStats.total) * 100}%` }} />
+                <div className="bg-green-400 rounded-r-full" style={{ width: `${(portfolioStats.healthy / portfolioStats.total) * 100}%` }} />
               </> : <div className="w-full bg-neutral-100 dark:bg-neutral-800 rounded-full" />}
             </div>
-            {/* Score distribution mini chart */}
+            <div className="flex items-center gap-4 mb-4">
+              {[
+                { l: "High Risk", v: portfolioStats.distress, c: "bg-red-400" },
+                { l: "Watch",     v: portfolioStats.watch,    c: "bg-[var(--orange)]/70" },
+                { l: "Stable",    v: portfolioStats.healthy,  c: "bg-green-400" },
+              ].map(({ l, v, c }) => (
+                <div key={l} className="flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${c}`} />
+                  <span className="text-[10px] text-[var(--text-3)]">{l} <span className="font-bold text-[var(--text)]">{v}</span></span>
+                </div>
+              ))}
+            </div>
             <ResponsiveContainer width="100%" height={80}>
-              <BarChart data={scoreDistribution} barSize={20}>
+              <BarChart data={distData} barSize={24}>
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                  {scoreDistribution.map((b, i) => (
-                    <Cell key={i} fill={i >= 2 ? "var(--orange)" : "#D1D1D1"} fillOpacity={0.85} />
+                  {distData.map((b, i) => (
+                    <Cell key={i}
+                      fill={b.risk === "high" ? "#EF4444" : b.risk === "watch" ? "var(--orange)" : "#22C55E"}
+                      fillOpacity={0.8} />
                   ))}
                 </Bar>
                 <XAxis dataKey="label" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} />
@@ -180,27 +230,37 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </div>
 
-          {/* Macro regime */}
-          <div className="card p-6 relative overflow-hidden"
-            style={{ borderTop: `3px solid ${isRiskOn ? "var(--orange)" : "#888"}` }}>
-            <div className="absolute right-0 top-0 w-32 h-32 rounded-full blur-[60px] pointer-events-none"
-              style={{ background: isRiskOn ? "rgba(232,87,42,0.08)" : "rgba(100,100,100,0.05)" }} />
-            <p className="label-caps mb-2">Macro Regime</p>
-            <div className="flex items-end gap-3 mb-3">
-              <p className="text-2xl font-bold tracking-tight text-[var(--text)]">{regime.replace("_", " ")}</p>
-              <SignalBadge value={regime} />
+          {/* Macro environment */}
+          <div className="card p-6" style={{ borderTop: `3px solid ${macroRisk ? "#EF4444" : regime === "RISK_ON" ? "#22C55E" : "#ABABAB"}` }}>
+            <p className="label-caps mb-2">Macro Environment</p>
+            <div className="flex items-center gap-2 mb-4">
+              <p className="text-xl font-bold text-[var(--text)]">{regime.replace("_", " ")}</p>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                macroRisk ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400" :
+                regime === "RISK_ON" ? "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400" :
+                "bg-neutral-100 text-neutral-500 dark:bg-neutral-800"
+              }`}>
+                {macroRisk ? "Headwind" : regime === "RISK_ON" ? "Tailwind" : "Neutral"}
+              </span>
             </div>
+            <p className="text-xs text-[var(--text-3)] mb-4 leading-relaxed">
+              {macroRisk
+                ? "Elevated macro stress — VIX high, INR weak. SME credit risk elevated."
+                : regime === "RISK_ON"
+                ? "Supportive macro conditions. Low volatility, stable currency."
+                : "Balanced macro environment. No strong directional signal."}
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { l: "VIX Z",   v: macro?.vix_z,   icon: "⚡" },
-                { l: "USD Z",   v: macro?.usd_z,   icon: "💱" },
-                { l: "Gold Z",  v: macro?.gold_z,  icon: "🥇" },
-                { l: "Crude Z", v: macro?.crude_z, icon: "🛢" },
-              ].map(({ l, v, icon }) => (
-                <div key={l} className="bg-neutral-50 dark:bg-neutral-900/60 rounded-xl p-2.5">
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-3)] mb-1">{icon} {l}</p>
-                  <p className={`text-sm font-bold tabular-nums ${Math.abs(v || 0) > 1 ? "text-[var(--orange)]" : "text-[var(--text)]"}`}>
-                    {v != null ? v.toFixed(2) : "—"}
+                { l: "VIX Z-Score",   v: macro?.vix_z,   warn: v => v > 1 },
+                { l: "USD-INR Z",     v: macro?.usd_z,   warn: v => v > 1 },
+                { l: "Gold Z-Score",  v: macro?.gold_z,  warn: v => v > 1 },
+                { l: "Crude Z-Score", v: macro?.crude_z, warn: v => v > 1 },
+              ].map(({ l, v, warn }) => (
+                <div key={l} className="bg-neutral-50 dark:bg-neutral-900/60 rounded-xl p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-3)] mb-1">{l}</p>
+                  <p className={`text-sm font-bold tabular-nums ${warn(v || 0) ? "text-red-500" : "text-[var(--text)]"}`}>
+                    {v != null ? (v > 0 ? "+" : "") + v.toFixed(2) : "—"}
                   </p>
                 </div>
               ))}
@@ -210,66 +270,48 @@ export default function Dashboard() {
             </Link>
           </div>
 
-          {/* Portfolio radar */}
+          {/* Risk radar */}
           <div className="card p-6">
-            <p className="label-caps mb-1">Portfolio Intelligence</p>
-            <p className="text-[10px] text-[var(--text-3)] mb-2">Avg scores across all dimensions</p>
+            <p className="label-caps mb-1">Portfolio Risk Dimensions</p>
+            <p className="text-[10px] text-[var(--text-3)] mb-2">Average risk scores across all SMEs</p>
             {radarData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={180}>
+              <ResponsiveContainer width="100%" height={200}>
                 <RadarChart data={radarData}>
                   <PolarGrid stroke={ct.grid} />
                   <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: ct.tick }} />
-                  <Radar dataKey="A" stroke="var(--orange)" fill="var(--orange)" fillOpacity={0.15} strokeWidth={2} />
+                  <Radar dataKey="A" stroke="var(--orange)" fill="var(--orange)" fillOpacity={0.12} strokeWidth={2} />
                   <Tooltip {...ct.tooltip} />
                 </RadarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[180px] flex items-center justify-center text-xs text-[var(--text-3)]">Run pipeline to generate scores</div>
+              <div className="h-[200px] flex items-center justify-center">
+                <p className="text-xs text-[var(--text-3)]">Data unavailable — run pipeline</p>
+              </div>
             )}
           </div>
         </div>
 
-        {/* ── Row 3: Sector returns + Companies ── */}
+        {/* ── Row 3: High risk + Sector health ── */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 stagger-3">
 
-          {/* Sector returns bar */}
-          <div className="lg:col-span-3 card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="title-md">Sector Returns</p>
-                <p className="text-xs text-[var(--text-3)]">Daily performance · NSE indices</p>
-              </div>
-              <Link to="/sectors" className="text-xs font-semibold text-[var(--orange)] flex items-center gap-1 hover:underline">
-                All sectors <ArrowUpRight size={11} />
-              </Link>
-            </div>
-            {sectorChartData.length ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={sectorChartData} layout="vertical" margin={{ left: 0, right: 8 }}>
-                  <XAxis type="number" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} width={72} />
-                  <Tooltip {...ct.tooltip} formatter={v => [`${v}%`, "Return"]} />
-                  <ReferenceLine x={0} stroke={ct.grid} />
-                  <Bar dataKey="ret" radius={[0, 5, 5, 0]} maxBarSize={14}>
-                    {sectorChartData.map((e, i) => (
-                      <Cell key={i} fill={e.ret >= 0 ? "var(--orange)" : "#D1D1D1"} fillOpacity={0.9} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[200px] flex items-center justify-center text-xs text-[var(--text-3)]">No sector data — run pipeline</div>
-            )}
-          </div>
-
-          {/* Top / At Risk companies */}
+          {/* Risk watchlist */}
           <div className="lg:col-span-2 card overflow-hidden">
             <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
               <div className="flex gap-1">
-                {["top", "risk"].map(t => (
-                  <button key={t} onClick={() => setTab(t)}
-                    className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide rounded-lg transition-all ${tab === t ? "bg-[var(--orange)] text-white" : "text-[var(--text-3)] hover:text-[var(--text)]"}`}>
-                    {t === "top" ? "Top Picks" : "At Risk"}
+                {[
+                  { key: "distress", label: "High Risk", count: portfolioStats.distress },
+                  { key: "watch",    label: "Watch",     count: portfolioStats.watch },
+                ].map(t => (
+                  <button key={t.key} onClick={() => setRiskTab(t.key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all ${
+                      riskTab === t.key
+                        ? t.key === "distress" ? "bg-red-500 text-white" : "bg-[var(--orange)] text-white"
+                        : "text-[var(--text-3)] hover:text-[var(--text)]"
+                    }`}>
+                    {t.label}
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${riskTab === t.key ? "bg-white/20" : "bg-neutral-100 dark:bg-neutral-800"}`}>
+                      {t.count}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -277,53 +319,83 @@ export default function Dashboard() {
                 All <ArrowUpRight size={10} />
               </Link>
             </div>
-            <div className="divide-y divide-[var(--border)]">
-              {(tab === "top" ? topPicks : atRisk).map(r => {
+            <div>
+              {(riskTab === "distress" ? highRisk : watchZone).map((r, i) => {
                 const c = compMap[r.company_id];
-                return c ? (
-                  <ScoreBar key={r.company_id} id={r.company_id} label={c.name} score={r.composite_score} />
-                ) : null;
+                return c ? <CompanyRiskRow key={r.company_id} company={c} ml={r} rank={i + 1} /> : null;
               })}
-              {!(tab === "top" ? topPicks : atRisk).length && (
-                <p className="text-xs text-[var(--text-3)] text-center py-8">No data — run pipeline</p>
+              {!(riskTab === "distress" ? highRisk : watchZone).length && (
+                <p className="text-xs text-[var(--text-3)] text-center py-8">
+                  {riskTab === "distress" ? "No high-risk companies detected" : "No companies in watch zone"}
+                </p>
               )}
             </div>
           </div>
+
+          {/* Sector returns */}
+          <div className="lg:col-span-3 card p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="title-md">Sector Performance</p>
+                <p className="text-xs text-[var(--text-3)]">Daily returns · NSE sector indices</p>
+              </div>
+              <Link to="/sectors" className="text-xs font-semibold text-[var(--orange)] flex items-center gap-1 hover:underline">
+                Sector analysis <ArrowUpRight size={11} />
+              </Link>
+            </div>
+            {sectorData.length ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={sectorData} layout="vertical" margin={{ left: 0, right: 8 }}>
+                  <XAxis type="number" tick={{ fontSize: 9, fill: ct.tick }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: ct.tick }} tickLine={false} axisLine={false} width={72} />
+                  <Tooltip {...ct.tooltip} formatter={v => [`${v}%`, "Return"]} />
+                  <ReferenceLine x={0} stroke={ct.grid} />
+                  <Bar dataKey="ret" radius={[0, 5, 5, 0]} maxBarSize={14}>
+                    {sectorData.map((e, i) => (
+                      <Cell key={i} fill={e.ret >= 0 ? "#22C55E" : "#EF4444"} fillOpacity={0.8} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[220px] flex items-center justify-center">
+                <p className="text-xs text-[var(--text-3)]">Data unavailable — run pipeline</p>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* ── Row 4: Sector health monitor ── */}
+        {/* ── Row 4: Sector health signals ── */}
         <div className="card overflow-hidden stagger-4">
           <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
             <div>
-              <p className="title-md">Sector Health Monitor</p>
-              <p className="text-xs text-[var(--text-3)] mt-0.5">Rolling z-score health signals · all 14 indices</p>
+              <p className="title-md">Sector Health Signals</p>
+              <p className="text-xs text-[var(--text-3)] mt-0.5">Rolling z-score health · 14 NSE indices · affects SME credit risk</p>
             </div>
             <Link to="/sectors" className="text-xs font-semibold text-[var(--orange)] flex items-center gap-1 hover:underline">
               Deep dive <ArrowUpRight size={11} />
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[var(--border)]">
-            {latestSectorHealth.slice(0, 8).map(row => {
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 divide-x divide-[var(--border)]">
+            {latestSectorHealth.filter(r => r.sectors?.sector_type === "sector").slice(0, 7).map(row => {
               const hs = row.health_score ?? 0;
+              const ret = row.daily_return;
               return (
                 <div key={row.sector_id} className="px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition-colors">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-xs font-semibold text-[var(--text)] truncate">{row.sectors?.name || "—"}</p>
-                    <SignalBadge value={row.signal} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-[var(--orange)] transition-all duration-700" style={{ width: `${hs}%` }} />
-                    </div>
-                    <span className="text-xs font-bold tabular-nums text-[var(--text-2)] w-6 text-right">{hs.toFixed(0)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[9px] text-[var(--text-3)]">{row.regime}</span>
-                    {row.daily_return != null && (
-                      <span className={`text-[9px] font-bold tabular-nums ${row.daily_return >= 0 ? "text-[var(--orange)]" : "text-[var(--text-3)]"}`}>
-                        {row.daily_return >= 0 ? "+" : ""}{(row.daily_return * 100).toFixed(2)}%
+                  <p className="text-[10px] font-semibold text-[var(--text)] truncate mb-2">
+                    {(row.sectors?.name || "—").replace(" Sector", "").replace(" Nifty", "")}
+                  </p>
+                  <p className="text-lg font-bold tabular-nums" style={{ color: riskColor(hs) }}>{hs.toFixed(0)}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    {ret != null && (
+                      <span className={`text-[9px] font-bold tabular-nums flex items-center gap-0.5 ${ret >= 0 ? "text-green-600" : "text-red-500"}`}>
+                        {ret >= 0 ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
+                        {Math.abs(ret * 100).toFixed(2)}%
                       </span>
                     )}
+                  </div>
+                  <div className="mt-2 h-1 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${hs}%`, background: riskColor(hs) }} />
                   </div>
                 </div>
               );
@@ -331,13 +403,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── Row 5: Quick nav ── */}
+        {/* ── Row 5: Quick actions ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 stagger-5">
           {[
-            { label: "Companies",   path: "/companies",   icon: Brain,    desc: `${companies.length} tracked · ML scored daily` },
-            { label: "Risk Engine", path: "/risk-engine", icon: Shield,   desc: "Distress probability · tier classification" },
-            { label: "Correlation", path: "/correlation", icon: Activity, desc: "Company vs sector co-movement analysis" },
-            { label: "Macro",       path: "/macro",       icon: Globe,    desc: "VIX · USD · Gold · Crude regime overlay" },
+            { label: "SME Portfolio",  path: "/companies",   icon: Building2, desc: `${companies.length} companies · daily risk scoring` },
+            { label: "Risk Engine",    path: "/risk-engine", icon: Shield,    desc: "Distress probability · classification" },
+            { label: "Correlation",    path: "/correlation", icon: Activity,  desc: "Company vs sector co-movement" },
+            { label: "Macro Overlay",  path: "/macro",       icon: Globe,     desc: "VIX · USD · Gold · Crude signals" },
           ].map(({ label, path, icon: Icon, desc }) => (
             <Link key={path} to={path} className="card p-5 group hover-lift flex flex-col gap-3">
               <div className="flex items-center justify-between">
