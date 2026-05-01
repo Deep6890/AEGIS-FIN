@@ -1,11 +1,9 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { ThemeProvider }   from "./context/ThemeContext";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider }  from "./context/ThemeContext";
+import { AuthProvider }   from "./context/AuthContext";
 import { AppDataProvider } from "./context/AppDataContext";
 
-import Login           from "./pages/Login";
-import Signup          from "./pages/Signup";
 import Dashboard       from "./pages/Dashboard";
 import Companies       from "./pages/Companies";
 import CompanyDetail   from "./pages/CompanyDetail";
@@ -19,57 +17,34 @@ import UploadCSV       from "./pages/UploadCSV";
 import PipelineMonitor from "./pages/PipelineMonitor";
 import Diagnostics     from "./pages/Diagnostics";
 
-const IS_LOCAL =
-  window.location.hostname === "localhost" ||
-  window.location.hostname === "127.0.0.1";
-
-/* ── Protected route ─────────────────────────────────────────────────────── */
-function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
-  if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
-  return <AppDataProvider>{children}</AppDataProvider>;
-}
-
-/* ── Diagnostics route — always allowed on localhost ─────────────────────── */
-function DiagnosticsRoute({ children }) {
-  const { user, loading } = useAuth();
-  if (IS_LOCAL) return <AppDataProvider>{children}</AppDataProvider>;
-  if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
-  return <AppDataProvider>{children}</AppDataProvider>;
-}
-
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/login"  element={IS_LOCAL ? <Navigate to="/" replace /> : <Login />} />
-      <Route path="/signup" element={IS_LOCAL ? <Navigate to="/" replace /> : <Signup />} />
-
-      <Route path="/"              element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/companies"     element={<ProtectedRoute><Companies /></ProtectedRoute>} />
-      <Route path="/companies/:id" element={<ProtectedRoute><CompanyDetail /></ProtectedRoute>} />
-      <Route path="/sectors"       element={<ProtectedRoute><Sectors /></ProtectedRoute>} />
-      <Route path="/correlation"   element={<ProtectedRoute><Correlation /></ProtectedRoute>} />
-      <Route path="/risk-engine"   element={<ProtectedRoute><RiskEngine /></ProtectedRoute>} />
-      <Route path="/macro"         element={<ProtectedRoute><MacroOverlay /></ProtectedRoute>} />
-      <Route path="/balance"       element={<ProtectedRoute><BalanceSheet /></ProtectedRoute>} />
-      {/* Legacy redirects — merged pages */}
-      <Route path="/enhanced-balance"      element={<Navigate to="/balance" replace />} />
-      <Route path="/enhanced-holdings"     element={<Navigate to="/companies" replace />} />
-      <Route path="/filtering"             element={<Navigate to="/risk-engine" replace />} />
-      <Route path="/market-intelligence"   element={<Navigate to="/" replace />} />
-      <Route path="/sector-intelligence"   element={<Navigate to="/sectors" replace />} />
-      <Route path="/correlation-explorer"  element={<Navigate to="/correlation" replace />} />
-      <Route path="/profile"       element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-      <Route path="/upload"        element={<ProtectedRoute><UploadCSV /></ProtectedRoute>} />
-      <Route path="/pipeline"      element={<ProtectedRoute><PipelineMonitor /></ProtectedRoute>} />
-
-      {/* Diagnostics — restricted to developers/admins only */}
-      <Route path="/diagnostics"   element={<DiagnosticsRoute><Diagnostics /></DiagnosticsRoute>} />
-
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <AppDataProvider>
+      <Routes>
+        <Route path="/"              element={<Dashboard />} />
+        <Route path="/companies"     element={<Companies />} />
+        <Route path="/companies/:id" element={<CompanyDetail />} />
+        <Route path="/sectors"       element={<Sectors />} />
+        <Route path="/correlation"   element={<Correlation />} />
+        <Route path="/risk-engine"   element={<RiskEngine />} />
+        <Route path="/macro"         element={<MacroOverlay />} />
+        <Route path="/balance"       element={<BalanceSheet />} />
+        <Route path="/profile"       element={<Profile />} />
+        <Route path="/upload"        element={<UploadCSV />} />
+        <Route path="/pipeline"      element={<PipelineMonitor />} />
+        <Route path="/diagnostics"   element={<Diagnostics />} />
+        {/* Legacy redirects */}
+        <Route path="/login"                 element={<Navigate to="/" replace />} />
+        <Route path="/signup"                element={<Navigate to="/" replace />} />
+        <Route path="/enhanced-balance"      element={<Navigate to="/balance" replace />} />
+        <Route path="/enhanced-holdings"     element={<Navigate to="/companies" replace />} />
+        <Route path="/filtering"             element={<Navigate to="/risk-engine" replace />} />
+        <Route path="/market-intelligence"   element={<Navigate to="/" replace />} />
+        <Route path="/sector-intelligence"   element={<Navigate to="/sectors" replace />} />
+        <Route path="/correlation-explorer"  element={<Navigate to="/correlation" replace />} />
+        <Route path="*"                      element={<Navigate to="/" replace />} />
+      </Routes>
+    </AppDataProvider>
   );
 }
 
