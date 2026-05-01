@@ -526,6 +526,20 @@ export function AppDataProvider({ children }) {
     return (data || []).map(adaptSectorHealthRow);
   }, []);
 
+  const fetchBalanceSheetHistory = useCallback(async (companyId, ratioId) => {
+    // balance_sheet_hist: company_id, ratio_id, date, value
+    const q = supabase
+      .from("balance_sheet_hist")
+      .select("ratio_id, date, value")
+      .eq("company_id", companyId)
+      .order("date", { ascending: true })
+      .limit(40);
+    if (ratioId != null) q.eq("ratio_id", ratioId);
+    const { data, error } = await q;
+    if (error) console.error("balance_sheet_hist:", error);
+    return data || [];
+  }, []);
+
   // ── Context value ─────────────────────────────────────────────────────────
   return (
     <AppDataContext.Provider value={{
@@ -569,6 +583,7 @@ export function AppDataProvider({ children }) {
       fetchCompanyInsightsHistory,// company_insights: history
       fetchSectorOhlcvRaw,        // sector_ohlcv_raw: price candles
       fetchSectorHealthHistory,   // sector_health: history
+      fetchBalanceSheetHistory,   // balance_sheet_hist: ratio_id, date, value
 
       // ── Loading / error ──────────────────────────────────────────────────
       loading,
